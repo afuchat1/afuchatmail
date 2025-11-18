@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,7 +25,38 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
   const [sending, setSending] = useState(false);
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
+  const [signature, setSignature] = useState("");
+  const [defaultReplyTo, setDefaultReplyTo] = useState("");
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchUserSettings();
+  }, []);
+
+  const fetchUserSettings = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("user_settings")
+        .select("email_signature, default_reply_to")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching settings:", error);
+        return;
+      }
+
+      if (data) {
+        setSignature(data.email_signature || "");
+        setDefaultReplyTo(data.default_reply_to || "");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
 
   const handleSend = async () => {
     if (!to || !subject || !body) {
@@ -43,6 +74,15 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
       const ccAddresses = cc ? cc.split(",").map(email => email.trim()) : [];
       const bccAddresses = bcc ? bcc.split(",").map(email => email.trim()) : [];
 
+      // Add signature to body if available
+      const fullBody = signature 
+        ? `${body}\n\n${signature}`
+        : body;
+
+      const fullBodyHtml = signature
+        ? `<p>${body.replace(/\n/g, "<br>")}</p><br><p>${signature.replace(/\n/g, "<br>")}</p>`
+        : `<p>${body.replace(/\n/g, "<br>")}</p>`;
+
       const { error } = await supabase.functions.invoke("send-email", {
         body: {
           from_address: fromAddress,
@@ -50,8 +90,9 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
           cc_addresses: ccAddresses,
           bcc_addresses: bccAddresses,
           subject,
-          body_html: `<p>${body.replace(/\n/g, "<br>")}</p>`,
-          body_text: body,
+          body_html: fullBodyHtml,
+          body_text: fullBody,
+          reply_to: defaultReplyTo || undefined,
         },
       });
 
