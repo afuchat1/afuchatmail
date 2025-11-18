@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "npm:resend";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -31,15 +31,23 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing authorization header");
     }
 
+    console.log("Checking environment variables...");
+    console.log("SUPABASE_URL:", Deno.env.get("SUPABASE_URL") ? "Set" : "Missing");
+    console.log("SUPABASE_ANON_KEY:", Deno.env.get("SUPABASE_ANON_KEY") ? "Set" : "Missing");
+    console.log("RESEND_API_KEY:", Deno.env.get("RESEND_API_KEY") ? "Set" : "Missing");
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
 
+    console.log("Getting user...");
     const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log("User result:", { user: user?.id, error: userError?.message });
+    
     if (userError || !user) {
-      throw new Error("Unauthorized");
+      throw new Error(`Auth failed: ${userError?.message || "No user found"}`);
     }
 
     const emailData: SendEmailRequest = await req.json();
@@ -104,8 +112,16 @@ const handler = async (req: Request): Promise<Response> => {
     });
   } catch (error: any) {
     console.error("Error in send-email function:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.toString()
+      }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
