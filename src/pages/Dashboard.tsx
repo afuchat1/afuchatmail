@@ -6,8 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, LogOut, Plus, Trash2 } from "lucide-react";
+import { Mail, LogOut, Plus, Trash2, Copy } from "lucide-react";
 import { User } from "@supabase/supabase-js";
+import { EmailSidebar } from "@/components/EmailSidebar";
+import { EmailList } from "@/components/EmailList";
+import { EmailViewer } from "@/components/EmailViewer";
+import { EmailComposer } from "@/components/EmailComposer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EmailAddress {
   id: string;
@@ -17,11 +22,28 @@ interface EmailAddress {
   created_at: string;
 }
 
+interface Email {
+  id: string;
+  from_address: string;
+  to_addresses: string[];
+  subject: string;
+  body_html: string;
+  body_text: string;
+  is_read: boolean;
+  is_starred: boolean;
+  sent_at: string;
+  received_at: string;
+}
+
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [emails, setEmails] = useState<EmailAddress[]>([]);
   const [newEmail, setNewEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -128,107 +150,180 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      <div className="container mx-auto p-4 max-w-4xl">
-        <div className="flex justify-between items-center mb-8 pt-8">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              AfuChat Mail
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Mail className="h-8 w-8 text-blue-600" />
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              AfuChat Email
             </h1>
-            <p className="text-muted-foreground mt-1">Manage your @afuchat.com emails</p>
           </div>
           <Button variant="outline" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
+            <LogOut className="h-4 w-4 mr-2" />
             Sign Out
           </Button>
         </div>
+      </header>
 
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Create New Email</CardTitle>
-            <CardDescription>
-              Choose a unique username for your @afuchat.com email address
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateEmail} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="newEmail">Email Username</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      id="newEmail"
-                      type="text"
-                      placeholder="yourname"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]"
-                      minLength={3}
-                      maxLength={30}
-                      required
-                      className="pr-32"
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
+        <Tabs defaultValue="inbox" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+            <TabsTrigger value="inbox">Inbox</TabsTrigger>
+            <TabsTrigger value="settings">Email Settings</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="inbox" className="space-y-0">
+            <Card className="border-blue-200 shadow-lg">
+              <div className="flex h-[calc(100vh-16rem)]">
+                <EmailSidebar
+                  onCompose={() => setShowComposer(true)}
+                  onFolderSelect={(folderId) => {
+                    setSelectedFolder(folderId);
+                    setSelectedEmail(null);
+                  }}
+                  selectedFolderId={selectedFolder}
+                />
+                
+                <div className="flex-1 flex flex-col">
+                  {selectedEmail ? (
+                    <EmailViewer
+                      email={selectedEmail}
+                      onBack={() => {
+                        setSelectedEmail(null);
+                        setRefreshTrigger(prev => prev + 1);
+                      }}
+                      onReply={() => {
+                        setShowComposer(true);
+                      }}
                     />
-                    <span className="absolute right-3 top-3 text-muted-foreground text-sm">
-                      @afuchat.com
-                    </span>
-                  </div>
-                  <Button type="submit" disabled={loading}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create
-                  </Button>
+                  ) : (
+                    <EmailList
+                      folderId={selectedFolder}
+                      onEmailSelect={setSelectedEmail}
+                      refreshTrigger={refreshTrigger}
+                    />
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  3-30 characters, lowercase letters, numbers, dots, hyphens, and underscores
-                </p>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </Card>
+          </TabsContent>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Email Addresses</CardTitle>
-            <CardDescription>
-              You have {emails.length} email address{emails.length !== 1 ? "es" : ""}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {emails.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No email addresses yet. Create your first one above!</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {emails.map((email) => (
-                  <div
-                    key={email.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium">{email.full_email}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Created {new Date(email.created_at).toLocaleDateString()}
-                        </p>
+          <TabsContent value="settings" className="space-y-8">
+            <Card className="border-blue-200 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-blue-900">Create New Email Address</CardTitle>
+                <CardDescription>Choose your unique @afuchat.com email address</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateEmail} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newEmail">Email Address</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="newEmail"
+                          placeholder="yourname"
+                          value={newEmail}
+                          onChange={(e) => setNewEmail(e.target.value.toLowerCase())}
+                          pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]"
+                          minLength={3}
+                          maxLength={30}
+                          required
+                          className="pr-32"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          @afuchat.com
+                        </span>
                       </div>
+                      <Button type="submit" disabled={loading}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteEmail(email.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      3-30 characters, lowercase letters, numbers, dots, hyphens, and underscores
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card className="border-blue-200 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-blue-900">Your Email Addresses</CardTitle>
+                <CardDescription>
+                  You have {emails.length} email address{emails.length !== 1 ? "es" : ""}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {emails.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No email addresses yet. Create your first one above!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {emails.map((email) => (
+                      <div
+                        key={email.id}
+                        className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Mail className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="font-medium text-blue-900">{email.full_email}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Created {new Date(email.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              navigator.clipboard.writeText(email.full_email);
+                              toast({
+                                title: "Copied!",
+                                description: "Email address copied to clipboard",
+                              });
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteEmail(email.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      {showComposer && emails.length > 0 && (
+        <EmailComposer
+          fromAddress={emails[0].full_email}
+          onClose={() => {
+            setShowComposer(false);
+            setRefreshTrigger(prev => prev + 1);
+          }}
+          replyTo={selectedEmail ? {
+            to: selectedEmail.from_address,
+            subject: selectedEmail.subject
+          } : undefined}
+        />
+      )}
     </div>
   );
 };
