@@ -41,6 +41,120 @@ export type Database = {
         }
         Relationships: []
       }
+      emails: {
+        Row: {
+          attachments: Json | null
+          bcc_addresses: string[] | null
+          body_html: string | null
+          body_text: string | null
+          cc_addresses: string[] | null
+          created_at: string
+          email_address_id: string | null
+          folder_id: string | null
+          from_address: string
+          id: string
+          is_draft: boolean
+          is_read: boolean
+          is_starred: boolean
+          received_at: string | null
+          reply_to: string | null
+          sent_at: string | null
+          subject: string
+          thread_id: string | null
+          to_addresses: string[]
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          bcc_addresses?: string[] | null
+          body_html?: string | null
+          body_text?: string | null
+          cc_addresses?: string[] | null
+          created_at?: string
+          email_address_id?: string | null
+          folder_id?: string | null
+          from_address: string
+          id?: string
+          is_draft?: boolean
+          is_read?: boolean
+          is_starred?: boolean
+          received_at?: string | null
+          reply_to?: string | null
+          sent_at?: string | null
+          subject: string
+          thread_id?: string | null
+          to_addresses: string[]
+          user_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          bcc_addresses?: string[] | null
+          body_html?: string | null
+          body_text?: string | null
+          cc_addresses?: string[] | null
+          created_at?: string
+          email_address_id?: string | null
+          folder_id?: string | null
+          from_address?: string
+          id?: string
+          is_draft?: boolean
+          is_read?: boolean
+          is_starred?: boolean
+          received_at?: string | null
+          reply_to?: string | null
+          sent_at?: string | null
+          subject?: string
+          thread_id?: string | null
+          to_addresses?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emails_email_address_id_fkey"
+            columns: ["email_address_id"]
+            isOneToOne: false
+            referencedRelation: "email_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emails_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
