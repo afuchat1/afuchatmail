@@ -31,21 +31,18 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing authorization header");
     }
 
-    console.log("Auth header received:", authHeader.substring(0, 20) + "...");
+    // Extract JWT token from Bearer header
+    const token = authHeader.replace("Bearer ", "");
+    console.log("Token received:", token.substring(0, 20) + "...");
 
-    // Create client with ANON key for user auth
+    // Create client with ANON key
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { 
-        global: { 
-          headers: { Authorization: authHeader } 
-        } 
-      }
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
     );
 
-    console.log("Getting user...");
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    console.log("Getting user with JWT...");
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     console.log("User result:", { user: user?.id, error: userError?.message });
     
     if (userError || !user) {
