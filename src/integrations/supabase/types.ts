@@ -111,6 +111,7 @@ export type Database = {
           is_important: boolean
           is_read: boolean
           is_starred: boolean
+          original_folder_id: string | null
           received_at: string | null
           reply_to: string | null
           sent_at: string | null
@@ -136,6 +137,7 @@ export type Database = {
           is_important?: boolean
           is_read?: boolean
           is_starred?: boolean
+          original_folder_id?: string | null
           received_at?: string | null
           reply_to?: string | null
           sent_at?: string | null
@@ -161,6 +163,7 @@ export type Database = {
           is_important?: boolean
           is_read?: boolean
           is_starred?: boolean
+          original_folder_id?: string | null
           received_at?: string | null
           reply_to?: string | null
           sent_at?: string | null
@@ -181,6 +184,13 @@ export type Database = {
           {
             foreignKeyName: "emails_folder_id_fkey"
             columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emails_original_folder_id_fkey"
+            columns: ["original_folder_id"]
             isOneToOne: false
             referencedRelation: "folders"
             referencedColumns: ["id"]
