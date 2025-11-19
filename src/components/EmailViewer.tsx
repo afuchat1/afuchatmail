@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip } from "lucide-react";
+import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface Attachment {
   name: string;
@@ -24,6 +25,7 @@ interface Email {
   received_at: string;
   thread_id?: string | null;
   attachments?: Attachment[];
+  created_at?: string;
 }
 
 interface EmailViewerProps {
@@ -34,12 +36,51 @@ interface EmailViewerProps {
 
 export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
   const { toast } = useToast();
+  const [threadEmails, setThreadEmails] = useState<Email[]>([]);
+  const [loadingThread, setLoadingThread] = useState(false);
 
   useEffect(() => {
     if (!email.is_read) {
       markAsRead();
     }
+    if (email.thread_id) {
+      fetchThreadEmails();
+    } else {
+      setThreadEmails([email]);
+    }
   }, [email.id]);
+
+  const fetchThreadEmails = async () => {
+    if (!email.thread_id) return;
+    
+    setLoadingThread(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("emails")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("thread_id", email.thread_id)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      
+      // Cast attachments to proper type
+      const typedEmails = (data || []).map(e => ({
+        ...e,
+        attachments: (e.attachments as any) as Attachment[] | undefined
+      })) as Email[];
+      
+      setThreadEmails(typedEmails.length > 0 ? typedEmails : [email]);
+    } catch (error: any) {
+      console.error("Error fetching thread:", error);
+      setThreadEmails([email]);
+    } finally {
+      setLoadingThread(false);
+    }
+  };
 
   const markAsRead = async () => {
     try {
