@@ -18,6 +18,7 @@ interface Email {
   id: string;
   user_id: string;
   folder_id: string;
+  email_address_id: string;
   original_folder_id?: string | null;
   from_address: string;
   to_addresses: string[];
@@ -44,12 +45,13 @@ interface EmailThread {
 
 interface EmailListProps {
   folderId: string | null;
+  emailAddressId: string | null;
   onEmailSelect: (email: Email) => void;
   refreshTrigger: number;
   searchQuery?: string;
 }
 
-export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery }: EmailListProps) => {
+export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrigger, searchQuery }: EmailListProps) => {
   const [emails, setEmails] = useState<Email[]>([]);
   const [threads, setThreads] = useState<EmailThread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
   useEffect(() => {
     fetchEmails();
     checkIfTrashFolder();
-  }, [folderId, refreshTrigger, searchQuery]);
+  }, [folderId, emailAddressId, refreshTrigger, searchQuery]);
 
   const checkIfTrashFolder = async () => {
     if (!folderId) {
@@ -90,6 +92,8 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
 
   // Real-time subscription for new emails
   useEffect(() => {
+    if (!emailAddressId) return;
+
     const channel = supabase
       .channel('emails-changes')
       .on(
@@ -105,6 +109,9 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
           // Get current user to filter emails
           const { data: { user } } = await supabase.auth.getUser();
           if (!user || newEmail.user_id !== user.id) return;
+          
+          // Only add email if it matches current email address and folder
+          if (newEmail.email_address_id !== emailAddressId) return;
           
           // Only add email if it matches current folder or no folder is selected
           if (!folderId || newEmail.folder_id === folderId) {
@@ -125,7 +132,7 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [folderId, toast]);
+  }, [folderId, emailAddressId, toast]);
 
   const fetchEmails = async () => {
     setLoading(true);
@@ -133,10 +140,18 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Don't fetch if no email address is selected
+      if (!emailAddressId) {
+        setEmails([]);
+        setLoading(false);
+        return;
+      }
+
       let query = supabase
         .from("emails")
         .select("*")
         .eq("user_id", user.id)
+        .eq("email_address_id", emailAddressId)
         .order("created_at", { ascending: false });
 
       if (folderId) {

@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PenSquare, Inbox, Send, FileText, AlertCircle, Trash2 } from "lucide-react";
 
+import { EmailAddressSwitcher } from "./EmailAddressSwitcher";
+
 interface Folder {
   id: string;
   name: string;
@@ -14,9 +16,17 @@ interface EmailSidebarProps {
   onCompose: () => void;
   onFolderSelect: (folderId: string) => void;
   selectedFolderId: string | null;
+  selectedEmailAddressId: string | null;
+  onEmailAddressChange: (emailAddressId: string) => void;
 }
 
-export const EmailSidebar = ({ onCompose, onFolderSelect, selectedFolderId }: EmailSidebarProps) => {
+export const EmailSidebar = ({ 
+  onCompose, 
+  onFolderSelect, 
+  selectedFolderId,
+  selectedEmailAddressId,
+  onEmailAddressChange 
+}: EmailSidebarProps) => {
   const [folders, setFolders] = useState<Folder[]>([]);
 
   useEffect(() => {
@@ -60,6 +70,11 @@ export const EmailSidebar = ({ onCompose, onFolderSelect, selectedFolderId }: Em
 
   return (
     <div className="w-64 border-r bg-card p-4 flex flex-col gap-4">
+      <EmailAddressSwitcher
+        selectedEmailAddressId={selectedEmailAddressId}
+        onEmailAddressChange={onEmailAddressChange}
+      />
+      
       <nav className="space-y-1">
         {folders.map((folder) => {
           const Icon = getIcon(folder.icon);

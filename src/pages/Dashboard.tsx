@@ -52,6 +52,7 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedEmailAddressId, setSelectedEmailAddressId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -80,7 +81,7 @@ const Dashboard = () => {
 
   // Real-time subscription for unread count updates
   useEffect(() => {
-    if (!user) return;
+    if (!user || !selectedEmailAddressId) return;
 
     const channel = supabase
       .channel('unread-count-changes')
@@ -101,7 +102,7 @@ const Dashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, selectedEmailAddressId]);
 
   const fetchEmails = async (userId: string) => {
     const { data, error } = await supabase
@@ -122,16 +123,26 @@ const Dashboard = () => {
   };
 
   const fetchUnreadCount = async (userId: string) => {
+    if (!selectedEmailAddressId) return;
+
     const { count, error } = await supabase
       .from("emails")
       .select("*", { count: 'exact', head: true })
       .eq("user_id", userId)
+      .eq("email_address_id", selectedEmailAddressId)
       .eq("is_read", false);
 
     if (!error && count !== null) {
       setUnreadCount(count);
     }
   };
+
+  // Update unread count when email address changes
+  useEffect(() => {
+    if (user && selectedEmailAddressId) {
+      fetchUnreadCount(user.id);
+    }
+  }, [user, selectedEmailAddressId]);
 
   const handleCreateEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +229,8 @@ const Dashboard = () => {
                   setDrawerOpen(false); // Close drawer immediately
                 }}
                 selectedFolderId={selectedFolder}
+                selectedEmailAddressId={selectedEmailAddressId}
+                onEmailAddressChange={setSelectedEmailAddressId}
               />
             </SheetContent>
           </Sheet>
@@ -281,6 +294,7 @@ const Dashboard = () => {
               </div>
               <EmailList
                 folderId={selectedFolder}
+                emailAddressId={selectedEmailAddressId}
                 onEmailSelect={(email) => {
                   setSelectedEmail(email);
                   setShowSearch(false);
@@ -307,6 +321,7 @@ const Dashboard = () => {
               </div>
               <EmailList
                 folderId={selectedFolder}
+                emailAddressId={selectedEmailAddressId}
                 onEmailSelect={setSelectedEmail}
                 refreshTrigger={refreshTrigger}
               />
@@ -324,6 +339,8 @@ const Dashboard = () => {
                 setSelectedEmail(null);
               }}
               selectedFolderId={selectedFolder}
+              selectedEmailAddressId={selectedEmailAddressId}
+              onEmailAddressChange={setSelectedEmailAddressId}
             />
             
             <div className="flex-1 flex flex-col">
@@ -341,6 +358,7 @@ const Dashboard = () => {
               ) : (
                 <EmailList
                   folderId={selectedFolder}
+                  emailAddressId={selectedEmailAddressId}
                   onEmailSelect={setSelectedEmail}
                   refreshTrigger={refreshTrigger}
                 />
@@ -381,9 +399,9 @@ const Dashboard = () => {
       </div>
 
       {/* Email Composer */}
-      {showComposer && emails.length > 0 && (
+      {showComposer && selectedEmailAddressId && (
         <EmailComposer
-          fromAddress={emails[0].full_email}
+          fromAddress={emails.find(e => e.id === selectedEmailAddressId)?.full_email}
           onClose={() => {
             setShowComposer(false);
             setRefreshTrigger(prev => prev + 1);
