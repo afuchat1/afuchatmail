@@ -50,6 +50,7 @@ const Dashboard = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -198,7 +199,7 @@ const Dashboard = () => {
       {/* Mobile Header - Gmail Style */}
       <header className="md:hidden bg-background border-b sticky top-0 z-50">
         <div className="flex items-center gap-3 px-4 py-3">
-          <Sheet>
+          <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="h-10 w-10">
                 <Menu className="h-5 w-5" />
@@ -206,10 +207,14 @@ const Dashboard = () => {
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-[280px]">
               <EmailSidebar
-                onCompose={() => setShowComposer(true)}
+                onCompose={() => {
+                  setShowComposer(true);
+                  setDrawerOpen(false);
+                }}
                 onFolderSelect={(folderId) => {
                   setSelectedFolder(folderId);
                   setSelectedEmail(null);
+                  setDrawerOpen(false); // Close drawer immediately
                 }}
                 selectedFolderId={selectedFolder}
               />
@@ -224,7 +229,10 @@ const Dashboard = () => {
             <span className="text-sm text-muted-foreground">Search in mail</span>
           </div>
           
-          <Avatar className="h-10 w-10">
+          <Avatar 
+            className="h-10 w-10 cursor-pointer"
+            onClick={() => navigate("/settings")}
+          >
             <AvatarFallback className="bg-primary text-primary-foreground">
               {user?.email?.[0].toUpperCase()}
             </AvatarFallback>
