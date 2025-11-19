@@ -81,43 +81,21 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log("Received email webhook:", {
       type: verifiedPayload.type,
-      email_id: webhookData.email_id,
       from: webhookData.from,
       to: webhookData.to,
       subject: webhookData.subject,
     });
 
-    // Fetch the full email content using Resend API directly
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const emailContentResponse = await fetch(
-      `https://api.resend.com/emails/${webhookData.email_id}`,
-      {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (!emailContentResponse.ok) {
-      console.error("Error fetching email content:", await emailContentResponse.text());
-      throw new Error(`Failed to fetch email content: ${emailContentResponse.statusText}`);
-    }
-
-    const emailContent = await emailContentResponse.json();
-    console.log("Fetched email content successfully");
-
-    // Use the fetched email content for payload
+    // For inbound emails, the content is directly in the webhook payload
     const payload: InboundEmailPayload = {
-      from: emailContent.from || webhookData.from,
-      to: Array.isArray(emailContent.to) ? emailContent.to : [emailContent.to],
-      subject: emailContent.subject || webhookData.subject,
-      html: emailContent.html || "",
-      text: emailContent.text || "",
-      reply_to: emailContent.reply_to?.[0],
-      cc: emailContent.cc,
-      bcc: emailContent.bcc,
+      from: webhookData.from,
+      to: Array.isArray(webhookData.to) ? webhookData.to : [webhookData.to],
+      subject: webhookData.subject,
+      html: webhookData.html || "",
+      text: webhookData.text || "",
+      reply_to: webhookData.reply_to,
+      cc: webhookData.cc,
+      bcc: webhookData.bcc,
       attachments: webhookData.attachments,
     };
 

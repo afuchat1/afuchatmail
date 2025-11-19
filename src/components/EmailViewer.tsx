@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText, Clock } from "lucide-react";
+import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +41,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
   const [threadEmails, setThreadEmails] = useState<Email[]>([]);
   const [loadingThread, setLoadingThread] = useState(false);
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
+  const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set([email.id]));
 
   useEffect(() => {
     if (!email.is_read) {
@@ -174,6 +175,18 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
     }
   };
 
+  const toggleEmailExpanded = (emailId: string) => {
+    setExpandedEmails(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(emailId)) {
+        newSet.delete(emailId);
+      } else {
+        newSet.add(emailId);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="border-b p-4 flex items-center justify-between bg-gradient-to-r from-primary/5 to-cyan-500/5">
@@ -208,65 +221,134 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
       />
 
       <div className="flex-1 overflow-y-auto p-6">
-        <h1 className="text-2xl font-bold mb-4">{email.subject}</h1>
+        <h1 className="text-2xl font-bold mb-6">{email.subject}</h1>
         
-        <div className="mb-6 space-y-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold">{email.from_address}</p>
-              <p className="text-sm text-muted-foreground">
-                to {email.to_addresses.join(", ")}
-              </p>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {formatDistanceToNow(new Date(email.sent_at || email.received_at), { addSuffix: true })}
-            </p>
-          </div>
-        </div>
-
-        <div className="prose prose-sm max-w-none">
-          {email.body_html ? (
-            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.body_html) }} />
-          ) : (
-            <pre className="whitespace-pre-wrap font-sans">{email.body_text}</pre>
-          )}
-        </div>
-
-        {/* Attachments Section */}
-        {email.attachments && email.attachments.length > 0 && (
-          <div className="mt-6 border-t pt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Paperclip className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold">{email.attachments.length} Attachment{email.attachments.length > 1 ? 's' : ''}</h3>
-            </div>
-            <div className="grid gap-2 md:grid-cols-2">
-              {email.attachments.map((attachment, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+        {/* Thread conversation view - Gmail style */}
+        <div className="space-y-4">
+          {threadEmails.map((threadEmail, index) => {
+            const isExpanded = expandedEmails.has(threadEmail.id);
+            const isLastEmail = index === threadEmails.length - 1;
+            
+            return (
+              <div 
+                key={threadEmail.id} 
+                className={cn(
+                  "border rounded-lg transition-all",
+                  isExpanded ? "shadow-md" : "hover:shadow-sm cursor-pointer"
+                )}
+              >
+                {/* Email header */}
+                <div 
+                  className="p-4 flex items-start justify-between gap-4"
+                  onClick={() => !isExpanded && toggleEmailExpanded(threadEmail.id)}
                 >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{attachment.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(attachment.size / 1024).toFixed(1)} KB
-                      </p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold truncate">{threadEmail.from_address}</p>
+                      {!isExpanded && (
+                        <span className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(threadEmail.sent_at || threadEmail.received_at), { addSuffix: true })}
+                        </span>
+                      )}
                     </div>
+                    {isExpanded ? (
+                      <p className="text-sm text-muted-foreground">
+                        to {threadEmail.to_addresses.join(", ")}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground truncate">
+                        {threadEmail.body_text?.substring(0, 100)}...
+                      </p>
+                    )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="flex-shrink-0"
-                    onClick={() => handleDownloadAttachment(attachment)}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {isExpanded && (
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatDistanceToNow(new Date(threadEmail.sent_at || threadEmail.received_at), { addSuffix: true })}
+                      </span>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="flex-shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleEmailExpanded(threadEmail.id);
+                      }}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+
+                {/* Expanded email body */}
+                {isExpanded && (
+                  <div className="px-4 pb-4">
+                    <div className="prose prose-sm max-w-none mb-4">
+                      {threadEmail.body_html ? (
+                        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(threadEmail.body_html) }} />
+                      ) : (
+                        <pre className="whitespace-pre-wrap font-sans">{threadEmail.body_text}</pre>
+                      )}
+                    </div>
+
+                    {/* Attachments */}
+                    {threadEmail.attachments && threadEmail.attachments.length > 0 && (
+                      <div className="mt-4 pt-4 border-t">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Paperclip className="h-4 w-4 text-muted-foreground" />
+                          <h4 className="text-sm font-semibold">
+                            {threadEmail.attachments.length} Attachment{threadEmail.attachments.length > 1 ? 's' : ''}
+                          </h4>
+                        </div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {threadEmail.attachments.map((attachment, attachIndex) => (
+                            <div
+                              key={attachIndex}
+                              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium truncate">{attachment.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {(attachment.size / 1024).toFixed(1)} KB
+                                  </p>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="flex-shrink-0"
+                                onClick={() => handleDownloadAttachment(attachment)}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reply button for each email in thread */}
+                    {isLastEmail && (
+                      <div className="mt-4 pt-4 border-t">
+                        <Button variant="outline" size="sm" onClick={onReply}>
+                          <Reply className="h-4 w-4 mr-2" />
+                          Reply
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
