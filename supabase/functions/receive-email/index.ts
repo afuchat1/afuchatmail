@@ -9,7 +9,7 @@ const corsHeaders = {
 
 interface InboundEmailPayload {
   from: string;
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   text: string;
@@ -91,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // Extract recipient email address
-    const toEmail = payload.to.toLowerCase();
+    const toEmail = (Array.isArray(payload.to) ? payload.to[0] : payload.to).toLowerCase();
     
     // Find the user who owns this email address
     const { data: emailAddress, error: emailError } = await supabaseAdmin
@@ -156,7 +156,7 @@ const handler = async (req: Request): Promise<Response> => {
         email_address_id: emailAddress.id,
         folder_id: inboxFolder.id,
         from_address: payload.from,
-        to_addresses: [payload.to],
+        to_addresses: Array.isArray(payload.to) ? payload.to : [payload.to],
         cc_addresses: ccAddresses,
         bcc_addresses: bccAddresses,
         subject: payload.subject,
