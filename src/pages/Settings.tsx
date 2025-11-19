@@ -133,6 +133,32 @@ const Settings = () => {
           <TabsContent value="preferences" className="space-y-6">
             <Card className="border-blue-200 shadow-lg">
               <CardHeader>
+                <CardTitle className="text-blue-900">Account</CardTitle>
+                <CardDescription>
+                  Manage your account settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between py-3">
+                  <div>
+                    <p className="font-medium">Signed in as</p>
+                    <p className="text-sm text-muted-foreground">{user?.email}</p>
+                  </div>
+                  <Button 
+                    variant="destructive"
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      navigate("/auth");
+                    }}
+                  >
+                    Sign Out
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-blue-200 shadow-lg">
+              <CardHeader>
                 <CardTitle className="text-blue-900">Email Settings</CardTitle>
                 <CardDescription>
                   Configure your email signature and default reply-to address

@@ -21,6 +21,14 @@ interface Email {
   sent_at: string;
   received_at: string;
   thread_id: string | null;
+  created_at?: string;
+}
+
+interface EmailThread {
+  thread_id: string;
+  emails: Email[];
+  latest_email: Email;
+  unread_count: number;
 }
 
 interface EmailListProps {
@@ -32,12 +40,18 @@ interface EmailListProps {
 
 export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery }: EmailListProps) => {
   const [emails, setEmails] = useState<Email[]>([]);
+  const [threads, setThreads] = useState<EmailThread[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchEmails();
   }, [folderId, refreshTrigger, searchQuery]);
+
+  useEffect(() => {
+    // Group emails into threads
+    groupEmailsIntoThreads(emails);
+  }, [emails]);
 
   // Real-time subscription for new emails
   useEffect(() => {
@@ -124,6 +138,61 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
     }
   };
 
+  const groupEmailsIntoThreads = (emailList: Email[]) => {
+    const threadMap = new Map<string, Email[]>();
+    const standaloneEmails: Email[] = [];
+
+    // Group emails by thread_id
+    emailList.forEach(email => {
+      if (email.thread_id) {
+        const existing = threadMap.get(email.thread_id) || [];
+        threadMap.set(email.thread_id, [...existing, email]);
+      } else {
+        // Email without thread_id is standalone
+        standaloneEmails.push(email);
+      }
+    });
+
+    // Create thread objects
+    const threadList: EmailThread[] = [];
+
+    // Add threaded emails
+    threadMap.forEach((threadEmails, threadId) => {
+      const sortedEmails = threadEmails.sort((a, b) => 
+        new Date(b.created_at || b.received_at || b.sent_at).getTime() - 
+        new Date(a.created_at || a.received_at || a.sent_at).getTime()
+      );
+      
+      const unreadCount = sortedEmails.filter(e => !e.is_read).length;
+      
+      threadList.push({
+        thread_id: threadId,
+        emails: sortedEmails,
+        latest_email: sortedEmails[0],
+        unread_count: unreadCount,
+      });
+    });
+
+    // Add standalone emails as single-email threads
+    standaloneEmails.forEach(email => {
+      threadList.push({
+        thread_id: email.id,
+        emails: [email],
+        latest_email: email,
+        unread_count: email.is_read ? 0 : 1,
+      });
+    });
+
+    // Sort threads by latest email date
+    threadList.sort((a, b) => {
+      const dateA = new Date(a.latest_email.created_at || a.latest_email.received_at || a.latest_email.sent_at).getTime();
+      const dateB = new Date(b.latest_email.created_at || b.latest_email.received_at || b.latest_email.sent_at).getTime();
+      return dateB - dateA;
+    });
+
+    setThreads(threadList);
+  };
+
   const toggleStar = async (emailId: string, currentStarred: boolean) => {
     try {
       const { error } = await supabase
@@ -202,7 +271,7 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
     );
   }
 
-  if (emails.length === 0) {
+  if (threads.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
         <Mail className="h-12 w-12 mb-4 opacity-50" />
@@ -213,18 +282,20 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
 
   return (
     <div className="divide-y">
-      {emails.map((email) => {
+      {threads.map((thread) => {
+        const email = thread.latest_email;
         const participantCount = getParticipantCount(email);
         const senderName = email.from_address.split('@')[0];
         const toAddresses = email.to_addresses.map(addr => addr.split('@')[0]).join(', ');
+        const hasMultipleEmails = thread.emails.length > 1;
         
         return (
           <div
-            key={email.id}
+            key={thread.thread_id}
             onClick={() => onEmailSelect(email)}
             className={cn(
               "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-accent/50",
-              !email.is_read && "bg-accent/20"
+              thread.unread_count > 0 && "bg-accent/20"
             )}
           >
             {/* Avatar */}
@@ -240,12 +311,17 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
               <div className="flex items-baseline justify-between gap-2 mb-1">
                 <span className={cn(
                   "text-sm truncate",
-                  !email.is_read ? "font-bold text-foreground" : "font-normal text-foreground"
+                  thread.unread_count > 0 ? "font-bold text-foreground" : "font-normal text-foreground"
                 )}>
                   {senderName}, {toAddresses}
                   {participantCount > 2 && (
                     <span className="ml-1 text-muted-foreground font-normal">
                       {participantCount}
+                    </span>
+                  )}
+                  {hasMultipleEmails && (
+                    <span className="ml-2 text-xs text-muted-foreground font-normal">
+                      ({thread.emails.length})
                     </span>
                   )}
                 </span>
@@ -257,7 +333,7 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
               {/* Subject */}
               <div className={cn(
                 "text-sm mb-1 truncate",
-                !email.is_read ? "font-medium text-foreground" : "text-muted-foreground"
+                thread.unread_count > 0 ? "font-medium text-foreground" : "text-muted-foreground"
               )}>
                 {email.subject}
               </div>
@@ -279,10 +355,9 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
               className="h-8 w-8 flex-shrink-0"
             >
               <Star
-                className={cn(
-                  "h-5 w-5",
-                  email.is_starred ? "fill-yellow-400 text-yellow-400" : "text-border"
-                )}
+                className={`h-4 w-4 ${
+                  email.is_starred ? "fill-yellow-500 text-yellow-500" : ""
+                }`}
               />
             </Button>
           </div>
