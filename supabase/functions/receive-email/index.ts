@@ -59,14 +59,14 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Verify webhook signature
     const wh = new Webhook(webhookSecret);
-    let payload: InboundEmailPayload;
+    let verifiedPayload: any;
     
     try {
-      payload = wh.verify(body, {
+      verifiedPayload = wh.verify(body, {
         "svix-id": svixId,
         "svix-timestamp": svixTimestamp,
         "svix-signature": svixSignature,
-      }) as InboundEmailPayload;
+      });
     } catch (err) {
       console.error("Webhook signature verification failed:", err);
       return new Response(
@@ -74,6 +74,9 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+    
+    // Resend sends the email data in the 'data' property
+    const payload: InboundEmailPayload = verifiedPayload.data || verifiedPayload;
     
     console.log("Received email:", {
       from: payload.from,
