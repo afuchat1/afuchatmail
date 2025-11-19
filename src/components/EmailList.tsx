@@ -1,11 +1,17 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Trash2, Mail, MailOpen } from "lucide-react";
+import { Star, Trash2, Mail, MailOpen, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Email {
   id: string;
@@ -13,6 +19,7 @@ interface Email {
   folder_id: string;
   from_address: string;
   to_addresses: string[];
+  cc_addresses?: string[] | null;
   subject: string;
   body_html: string;
   body_text: string;
@@ -254,13 +261,80 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
     return format(emailDate, 'MMM dd');
   };
 
-  // Helper function to count participants
-  const getParticipantCount = (email: Email) => {
+  const getParticipantCount = (email: Email): number => {
     const allAddresses = new Set([
       email.from_address,
-      ...email.to_addresses
+      ...email.to_addresses,
+      ...(email.cc_addresses || []),
     ]);
     return allAddresses.size;
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const query = supabase
+        .from("emails")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+
+      if (folderId) {
+        query.eq("folder_id", folderId);
+      }
+
+      const { error } = await query;
+
+      if (error) throw error;
+
+      toast({
+        title: "All emails marked as read",
+      });
+
+      // Refresh the email list
+      fetchEmails();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error marking emails as read",
+        description: error.message,
+      });
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const query = supabase
+        .from("emails")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (folderId) {
+        query.eq("folder_id", folderId);
+      }
+
+      const { error } = await query;
+
+      if (error) throw error;
+
+      toast({
+        title: "All emails deleted",
+      });
+
+      // Refresh the email list
+      fetchEmails();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error deleting emails",
+        description: error.message,
+      });
+    }
   };
 
   if (loading) {
@@ -280,8 +354,37 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
     );
   }
 
+  const hasUnreadEmails = threads.some(thread => thread.unread_count > 0);
+
   return (
     <div className="divide-y">
+      <div className="flex items-center justify-between p-4 border-b bg-muted/20">
+        <div className="text-sm font-medium">
+          {threads.length} conversation{threads.length !== 1 ? 's' : ''}
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              Bulk Actions
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {hasUnreadEmails && (
+              <DropdownMenuItem onClick={handleMarkAllAsRead}>
+                <CheckCheck className="h-4 w-4 mr-2" />
+                Mark all as read
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem 
+              onClick={handleDeleteAll}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete all
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       {threads.map((thread) => {
         const email = thread.latest_email;
         const participantCount = getParticipantCount(email);

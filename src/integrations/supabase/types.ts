@@ -16,30 +16,44 @@ export type Database = {
     Tables: {
       email_addresses: {
         Row: {
+          alias_for_id: string | null
           created_at: string
           full_email: string | null
           id: string
+          is_alias: boolean
           is_primary: boolean
           local_part: string
           user_id: string
         }
         Insert: {
+          alias_for_id?: string | null
           created_at?: string
           full_email?: string | null
           id?: string
+          is_alias?: boolean
           is_primary?: boolean
           local_part: string
           user_id: string
         }
         Update: {
+          alias_for_id?: string | null
           created_at?: string
           full_email?: string | null
           id?: string
+          is_alias?: boolean
           is_primary?: boolean
           local_part?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_addresses_alias_for_id_fkey"
+            columns: ["alias_for_id"]
+            isOneToOne: false
+            referencedRelation: "email_addresses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_templates: {
         Row: {

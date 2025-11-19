@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 
 interface EmailComposerProps {
-  fromAddress: string;
+  fromAddress?: string;
   onClose: () => void;
   replyTo?: {
     to: string;
@@ -39,7 +39,8 @@ interface Attachment {
   path: string;
 }
 
-export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerProps) => {
+export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }: EmailComposerProps) => {
+  const [fromAddress, setFromAddress] = useState(propFromAddress || "");
   const [to, setTo] = useState(replyTo?.to || "");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
@@ -57,9 +58,37 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
   const { toast } = useToast();
 
   useEffect(() => {
+    fetchPrimaryEmail();
     fetchUserSettings();
     fetchTemplates();
   }, []);
+
+  const fetchPrimaryEmail = async () => {
+    if (propFromAddress) return; // Use provided address if available
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("email_addresses")
+        .select("full_email")
+        .eq("user_id", user.id)
+        .eq("is_primary", true)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching primary email:", error);
+        return;
+      }
+
+      if (data) {
+        setFromAddress(data.full_email);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
 
   const fetchUserSettings = async () => {
     try {

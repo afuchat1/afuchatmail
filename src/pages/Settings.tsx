@@ -27,6 +27,8 @@ interface EmailAddress {
   local_part: string;
   full_email: string;
   is_primary: boolean;
+  is_alias: boolean;
+  alias_for_id: string | null;
   created_at: string;
 }
 
@@ -43,6 +45,9 @@ const Settings = () => {
   const [emails, setEmails] = useState<EmailAddress[]>([]);
   const [newEmail, setNewEmail] = useState("");
   const [creatingEmail, setCreatingEmail] = useState(false);
+  const [newAlias, setNewAlias] = useState("");
+  const [selectedAliasTarget, setSelectedAliasTarget] = useState<string>("");
+  const [creatingAlias, setCreatingAlias] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -91,6 +96,7 @@ const Settings = () => {
       .from("email_addresses")
       .select("*")
       .eq("user_id", userId)
+      .order("is_primary", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -138,8 +144,80 @@ const Settings = () => {
     }
   };
 
+  const handleSetPrimary = async (emailId: string) => {
+    if (!user) return;
+
+    try {
+      // First, unset all primary flags
+      await supabase
+        .from("email_addresses")
+        .update({ is_primary: false })
+        .eq("user_id", user.id);
+
+      // Then set the selected one as primary
+      const { error } = await supabase
+        .from("email_addresses")
+        .update({ is_primary: true })
+        .eq("id", emailId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Primary email updated!",
+        description: "This email will be used as the default 'from' address.",
+      });
+      fetchEmails(user.id);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error setting primary email",
+        description: error.message,
+      });
+    }
+  };
+
+  const handleCreateAlias = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedAliasTarget) return;
+
+    setCreatingAlias(true);
+
+    try {
+      const { error } = await supabase
+        .from("email_addresses")
+        .insert({
+          user_id: user.id,
+          local_part: newAlias.toLowerCase(),
+          is_alias: true,
+          alias_for_id: selectedAliasTarget,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Alias created!",
+        description: `${newAlias}@afuchat.com will forward to your main address.`,
+      });
+
+      setNewAlias("");
+      setSelectedAliasTarget("");
+      fetchEmails(user.id);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error creating alias",
+        description: error.message,
+      });
+    } finally {
+      setCreatingAlias(false);
+    }
+  };
+
   const handleDeleteEmail = async (id: string) => {
     if (!user) return;
+
+    const emailToDelete = emails.find(e => e.id === id);
+    if (!emailToDelete) return;
 
     const { error } = await supabase
       .from("email_addresses")
@@ -154,8 +232,8 @@ const Settings = () => {
       });
     } else {
       toast({
-        title: "Email deleted",
-        description: "Your email address has been removed.",
+        title: "Email deleted!",
+        description: `${emailToDelete.full_email} has been removed.`,
       });
       fetchEmails(user.id);
     }

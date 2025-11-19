@@ -94,10 +94,10 @@ const handler = async (req: Request): Promise<Response> => {
     // Extract recipient email address
     const toEmail = (Array.isArray(payload.to) ? payload.to[0] : payload.to).toLowerCase();
     
-    // Find the user who owns this email address
+    // Find the email address or alias
     const { data: emailAddress, error: emailError } = await supabaseAdmin
       .from("email_addresses")
-      .select("id, user_id")
+      .select("id, user_id, is_alias, alias_for_id")
       .eq("full_email", toEmail)
       .single();
 
@@ -116,6 +116,13 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("Found email address for user:", emailAddress.user_id);
+
+    // If this is an alias, get the target email address
+    let targetEmailAddressId = emailAddress.id;
+    if (emailAddress.is_alias && emailAddress.alias_for_id) {
+      console.log("Email is an alias, forwarding to:", emailAddress.alias_for_id);
+      targetEmailAddressId = emailAddress.alias_for_id;
+    }
 
     // Get the Inbox folder for this user
     const { data: inboxFolder, error: folderError } = await supabaseAdmin
@@ -183,7 +190,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from("emails")
       .insert({
         user_id: emailAddress.user_id,
-        email_address_id: emailAddress.id,
+        email_address_id: targetEmailAddressId,
         folder_id: inboxFolder.id,
         from_address: payload.from,
         to_addresses: Array.isArray(payload.to) ? payload.to : [payload.to],
