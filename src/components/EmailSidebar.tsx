@@ -60,11 +60,6 @@ export const EmailSidebar = ({ onCompose, onFolderSelect, selectedFolderId }: Em
 
   return (
     <div className="w-64 border-r bg-card p-4 flex flex-col gap-4">
-      <Button onClick={onCompose} className="w-full">
-        <PenSquare className="h-4 w-4 mr-2" />
-        Compose
-      </Button>
-
       <nav className="space-y-1">
         {folders.map((folder) => {
           const Icon = getIcon(folder.icon);

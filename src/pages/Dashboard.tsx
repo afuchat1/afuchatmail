@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, LogOut, Plus, Trash2, Copy, Settings as SettingsIcon, Menu, Search, Edit, User as UserIcon } from "lucide-react";
+import { Mail, LogOut, Plus, Trash2, Copy, Settings as SettingsIcon, Menu, Search, Edit, User as UserIcon, ArrowLeft } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { EmailSidebar } from "@/components/EmailSidebar";
 import { EmailList } from "@/components/EmailList";
@@ -46,6 +46,9 @@ const Dashboard = () => {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -57,6 +60,7 @@ const Dashboard = () => {
       } else {
         setUser(session.user);
         fetchEmails(session.user.id);
+        fetchUnreadCount(session.user.id);
       }
     });
 
@@ -70,6 +74,31 @@ const Dashboard = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // Real-time subscription for unread count updates
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('unread-count-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'emails',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchUnreadCount(user.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const fetchEmails = async (userId: string) => {
     const { data, error } = await supabase
@@ -86,6 +115,18 @@ const Dashboard = () => {
       });
     } else {
       setEmails(data || []);
+    }
+  };
+
+  const fetchUnreadCount = async (userId: string) => {
+    const { count, error } = await supabase
+      .from("emails")
+      .select("*", { count: 'exact', head: true })
+      .eq("user_id", userId)
+      .eq("is_read", false);
+
+    if (!error && count !== null) {
+      setUnreadCount(count);
     }
   };
 
@@ -148,7 +189,7 @@ const Dashboard = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigate("/");
+    navigate("/auth");
   };
 
   return (
@@ -174,12 +215,12 @@ const Dashboard = () => {
             </SheetContent>
           </Sheet>
           
-          <div className="flex-1 bg-muted/50 rounded-full px-4 py-2 flex items-center gap-2">
+          <div 
+            className="flex-1 bg-muted/50 rounded-full px-4 py-2 flex items-center gap-2 cursor-pointer"
+            onClick={() => setShowSearch(true)}
+          >
             <Search className="h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search in mail" 
-              className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground"
-            />
+            <span className="text-sm text-muted-foreground">Search in mail</span>
           </div>
           
           <Avatar className="h-10 w-10">
@@ -212,18 +253,70 @@ const Dashboard = () => {
       </header>
 
       <main className="container mx-auto px-0 md:px-4 py-0 md:py-8 max-w-7xl">
-        <Tabs defaultValue="inbox" className="w-full">
-          <TabsList className="hidden md:grid w-full max-w-md grid-cols-2 mb-6">
-            <TabsTrigger value="inbox">Inbox</TabsTrigger>
-            <TabsTrigger value="settings">Email Settings</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="inbox" className="space-y-0 mt-0">
-            {/* Mobile View */}
-            <div className="md:hidden">
+        {/* Mobile View */}
+        <div className="md:hidden">
+          {showSearch ? (
+            <div className="fixed inset-0 bg-background z-50">
+              <div className="flex items-center gap-3 px-4 py-3 border-b">
+                <Button variant="ghost" size="icon" onClick={() => setShowSearch(false)}>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <Input
+                  placeholder="Search emails..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1"
+                  autoFocus
+                />
+              </div>
+              <EmailList
+                folderId={selectedFolder}
+                onEmailSelect={(email) => {
+                  setSelectedEmail(email);
+                  setShowSearch(false);
+                }}
+                refreshTrigger={refreshTrigger}
+                searchQuery={searchQuery}
+              />
+            </div>
+          ) : selectedEmail ? (
+            <EmailViewer
+              email={selectedEmail}
+              onBack={() => {
+                setSelectedEmail(null);
+                setRefreshTrigger(prev => prev + 1);
+              }}
+              onReply={() => {
+                setShowComposer(true);
+              }}
+            />
+          ) : (
+            <>
               <div className="px-4 py-2 text-sm font-medium text-muted-foreground">
                 Primary
               </div>
+              <EmailList
+                folderId={selectedFolder}
+                onEmailSelect={setSelectedEmail}
+                refreshTrigger={refreshTrigger}
+              />
+            </>
+          )}
+        </div>
+
+        {/* Desktop View */}
+        <Card className="hidden md:block border-blue-200 shadow-lg">
+          <div className="flex h-[calc(100vh-16rem)]">
+            <EmailSidebar
+              onCompose={() => setShowComposer(true)}
+              onFolderSelect={(folderId) => {
+                setSelectedFolder(folderId);
+                setSelectedEmail(null);
+              }}
+              selectedFolderId={selectedFolder}
+            />
+            
+            <div className="flex-1 flex flex-col">
               {selectedEmail ? (
                 <EmailViewer
                   email={selectedEmail}
@@ -243,143 +336,8 @@ const Dashboard = () => {
                 />
               )}
             </div>
-
-            {/* Desktop View */}
-            <Card className="hidden md:block border-blue-200 shadow-lg">
-              <div className="flex h-[calc(100vh-16rem)]">
-                <EmailSidebar
-                  onCompose={() => setShowComposer(true)}
-                  onFolderSelect={(folderId) => {
-                    setSelectedFolder(folderId);
-                    setSelectedEmail(null);
-                  }}
-                  selectedFolderId={selectedFolder}
-                />
-                
-                <div className="flex-1 flex flex-col">
-                  {selectedEmail ? (
-                    <EmailViewer
-                      email={selectedEmail}
-                      onBack={() => {
-                        setSelectedEmail(null);
-                        setRefreshTrigger(prev => prev + 1);
-                      }}
-                      onReply={() => {
-                        setShowComposer(true);
-                      }}
-                    />
-                  ) : (
-                    <EmailList
-                      folderId={selectedFolder}
-                      onEmailSelect={setSelectedEmail}
-                      refreshTrigger={refreshTrigger}
-                    />
-                  )}
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="settings" className="space-y-8">
-            <Card className="border-blue-200 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-blue-900">Create New Email Address</CardTitle>
-                <CardDescription>Choose your unique @afuchat.com email address</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCreateEmail} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="newEmail">Email Address</Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Input
-                          id="newEmail"
-                          placeholder="yourname"
-                          value={newEmail}
-                          onChange={(e) => setNewEmail(e.target.value.toLowerCase())}
-                          pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]"
-                          minLength={3}
-                          maxLength={30}
-                          required
-                          className="pr-32"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                          @afuchat.com
-                        </span>
-                      </div>
-                      <Button type="submit" disabled={loading}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      3-30 characters, lowercase letters, numbers, dots, hyphens, and underscores
-                    </p>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card className="border-blue-200 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-blue-900">Your Email Addresses</CardTitle>
-                <CardDescription>
-                  You have {emails.length} email address{emails.length !== 1 ? "es" : ""}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {emails.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No email addresses yet. Create your first one above!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {emails.map((email) => (
-                      <div
-                        key={email.id}
-                        className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Mail className="h-5 w-5 text-blue-600" />
-                          <div>
-                            <p className="font-medium text-blue-900">{email.full_email}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Created {new Date(email.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              navigator.clipboard.writeText(email.full_email);
-                              toast({
-                                title: "Copied!",
-                                description: "Email address copied to clipboard",
-                              });
-                            }}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteEmail(email.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </Card>
       </main>
 
       {/* Floating Compose Button - Mobile Only */}
@@ -396,13 +354,17 @@ const Dashboard = () => {
         <div className="flex justify-around items-center py-3">
           <Button variant="ghost" size="icon" className="relative">
             <Mail className="h-5 w-5" />
-            {emails.length > 0 && (
+            {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                23
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate("/settings")}
+          >
             <UserIcon className="h-5 w-5" />
           </Button>
         </div>
