@@ -20,6 +20,7 @@ interface Email {
   is_starred: boolean;
   sent_at: string;
   received_at: string;
+  thread_id: string | null;
 }
 
 interface EmailListProps {

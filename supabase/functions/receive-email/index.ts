@@ -153,6 +153,31 @@ const handler = async (req: Request): Promise<Response> => {
       ? (Array.isArray(payload.bcc) ? payload.bcc : payload.bcc.split(",").map(e => e.trim())) 
       : [];
 
+    // Check if this is a reply to an existing thread
+    let threadId = null;
+    const isReply = payload.subject.toLowerCase().startsWith('re:');
+    
+    if (isReply) {
+      // Extract the original subject by removing "Re:" prefix
+      const originalSubject = payload.subject.replace(/^re:\s*/i, '').trim();
+      
+      // Try to find an existing thread with matching subject and participants
+      const { data: existingEmail } = await supabaseAdmin
+        .from("emails")
+        .select("thread_id, id")
+        .eq("user_id", emailAddress.user_id)
+        .or(`from_address.eq.${payload.from},to_addresses.cs.{${payload.from}}`)
+        .ilike("subject", `%${originalSubject}%`)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (existingEmail) {
+        // Use the existing thread_id, or use the email's id as the new thread_id
+        threadId = existingEmail.thread_id || existingEmail.id;
+      }
+    }
+
     // Store the received email in the database
     const { data: insertedEmail, error: insertError } = await supabaseAdmin
       .from("emails")
@@ -172,6 +197,7 @@ const handler = async (req: Request): Promise<Response> => {
         received_at: new Date().toISOString(),
         is_read: false,
         is_draft: false,
+        thread_id: threadId,
       })
       .select()
       .single();

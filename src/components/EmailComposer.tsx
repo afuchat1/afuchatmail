@@ -20,6 +20,8 @@ interface EmailComposerProps {
   replyTo?: {
     to: string;
     subject: string;
+    threadId?: string;
+    originalEmailId?: string;
   };
 }
 
@@ -242,6 +244,8 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
           body_text: fullBody,
           reply_to: defaultReplyTo || undefined,
           attachments: attachmentData,
+          thread_id: replyTo?.threadId || undefined,
+          in_reply_to: replyTo?.originalEmailId || undefined,
         },
       });
 

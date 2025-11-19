@@ -18,6 +18,8 @@ interface SendEmailRequest {
   body_html: string;
   body_text: string;
   reply_to?: string;
+  thread_id?: string;
+  in_reply_to?: string;
   attachments?: Array<{
     name: string;
     size: number;
@@ -93,6 +95,32 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sent folder:", sentFolder);
     console.log("Email address:", emailAddress);
 
+    // Determine thread_id for threading
+    let finalThreadId = emailData.thread_id;
+    
+    // If this is a reply (has in_reply_to) but no thread_id, fetch the original email
+    if (emailData.in_reply_to && !finalThreadId) {
+      const { data: originalEmail } = await supabaseAdmin
+        .from("emails")
+        .select("id, thread_id")
+        .eq("id", emailData.in_reply_to)
+        .eq("user_id", user.id)
+        .single();
+      
+      if (originalEmail) {
+        // Use existing thread_id or create new one from original email's id
+        finalThreadId = originalEmail.thread_id || originalEmail.id;
+        
+        // If original email doesn't have thread_id, update it
+        if (!originalEmail.thread_id) {
+          await supabaseAdmin
+            .from("emails")
+            .update({ thread_id: finalThreadId })
+            .eq("id", originalEmail.id);
+        }
+      }
+    }
+
     // Store in database using admin client with explicit user_id
     const { data: insertedEmail, error: insertError } = await supabaseAdmin
       .from("emails")
@@ -111,6 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
         attachments: emailData.attachments || [],
         sent_at: new Date().toISOString(),
         is_read: true,
+        thread_id: finalThreadId,
       })
       .select()
       .single();

@@ -35,6 +35,7 @@ interface Email {
   is_starred: boolean;
   sent_at: string;
   received_at: string;
+  thread_id: string | null;
 }
 
 const Dashboard = () => {
@@ -380,7 +381,9 @@ const Dashboard = () => {
           }}
           replyTo={selectedEmail ? {
             to: selectedEmail.from_address,
-            subject: selectedEmail.subject
+            subject: selectedEmail.subject,
+            threadId: selectedEmail.thread_id || undefined,
+            originalEmailId: selectedEmail.id,
           } : undefined}
         />
       )}
