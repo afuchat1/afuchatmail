@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, ArrowLeft, Save } from "lucide-react";
 import { User } from "@supabase/supabase-js";
+import { EmailTemplates } from "@/components/EmailTemplates";
 
 interface UserSettings {
   id?: string;
@@ -122,15 +124,21 @@ const Settings = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="space-y-6">
-          <Card className="border-blue-200 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-blue-900">Email Settings</CardTitle>
-              <CardDescription>
-                Configure your email signature and default reply-to address
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        <Tabs defaultValue="preferences" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            <TabsTrigger value="templates">Templates</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="preferences" className="space-y-6">
+            <Card className="border-blue-200 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-blue-900">Email Settings</CardTitle>
+                <CardDescription>
+                  Configure your email signature and default reply-to address
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="signature">Email Signature</Label>
                 <Textarea
@@ -253,13 +261,18 @@ const Settings = () => {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={loading} size="lg">
-              <Save className="h-4 w-4 mr-2" />
-              {loading ? "Saving..." : "Save Settings"}
-            </Button>
-          </div>
-        </div>
+            <div className="flex justify-end">
+              <Button onClick={handleSave} disabled={loading} size="lg">
+                <Save className="h-4 w-4 mr-2" />
+                {loading ? "Saving..." : "Save Settings"}
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="templates">
+            <EmailTemplates />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

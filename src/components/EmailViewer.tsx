@@ -1,9 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Reply, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
+
+interface Attachment {
+  name: string;
+  size: number;
+  path: string;
+}
 
 interface Email {
   id: string;
@@ -16,6 +22,7 @@ interface Email {
   is_starred: boolean;
   sent_at: string;
   received_at: string;
+  attachments?: Attachment[];
 }
 
 interface EmailViewerProps {
@@ -91,6 +98,37 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
     }
   };
 
+  const handleDownloadAttachment = async (attachment: Attachment) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("email-attachments")
+        .download(attachment.path);
+
+      if (error) throw error;
+
+      // Create a download link
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = attachment.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Downloaded",
+        description: `${attachment.name} downloaded successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Download failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="border-b p-4 flex items-center justify-between bg-gradient-to-r from-primary/5 to-cyan-500/5">
@@ -138,6 +176,42 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
             <pre className="whitespace-pre-wrap font-sans">{email.body_text}</pre>
           )}
         </div>
+
+        {/* Attachments Section */}
+        {email.attachments && email.attachments.length > 0 && (
+          <div className="mt-6 border-t pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Paperclip className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-semibold">{email.attachments.length} Attachment{email.attachments.length > 1 ? 's' : ''}</h3>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              {email.attachments.map((attachment, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{attachment.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(attachment.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="flex-shrink-0"
+                    onClick={() => handleDownloadAttachment(attachment)}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

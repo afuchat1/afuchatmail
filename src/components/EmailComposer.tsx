@@ -1,11 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { X, Send, Paperclip } from "lucide-react";
+import { X, Send, Paperclip, FileText, Download, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface EmailComposerProps {
   fromAddress: string;
@@ -14,6 +21,20 @@ interface EmailComposerProps {
     to: string;
     subject: string;
   };
+}
+
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body_text: string;
+}
+
+interface Attachment {
+  id: string;
+  name: string;
+  size: number;
+  path: string;
 }
 
 export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerProps) => {
@@ -27,10 +48,15 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
   const [showBcc, setShowBcc] = useState(false);
   const [signature, setSignature] = useState("");
   const [defaultReplyTo, setDefaultReplyTo] = useState("");
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchUserSettings();
+    fetchTemplates();
   }, []);
 
   const fetchUserSettings = async () => {
@@ -55,6 +81,107 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
       }
     } catch (error) {
       console.error("Error:", error);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("email_templates")
+        .select("id, name, subject, body_text")
+        .order("name");
+
+      if (error) throw error;
+      setTemplates(data || []);
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+    }
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+      setSubject(template.subject);
+      setBody(template.body_text);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const uploadedAttachments: Attachment[] = [];
+
+      for (const file of Array.from(files)) {
+        // Check file size (10MB limit)
+        if (file.size > 10485760) {
+          toast({
+            title: "File too large",
+            description: `${file.name} exceeds 10MB limit`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        const { data, error } = await supabase.storage
+          .from("email-attachments")
+          .upload(fileName, file);
+
+        if (error) throw error;
+
+        uploadedAttachments.push({
+          id: data.path,
+          name: file.name,
+          size: file.size,
+          path: data.path,
+        });
+      }
+
+      setAttachments([...attachments, ...uploadedAttachments]);
+      toast({
+        title: "Files uploaded",
+        description: `${uploadedAttachments.length} file(s) attached`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveAttachment = async (attachment: Attachment) => {
+    try {
+      const { error } = await supabase.storage
+        .from("email-attachments")
+        .remove([attachment.path]);
+
+      if (error) throw error;
+
+      setAttachments(attachments.filter(a => a.id !== attachment.id));
+      toast({
+        title: "Attachment removed",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to remove attachment",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -83,6 +210,12 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
         ? `<p>${body.replace(/\n/g, "<br>")}</p><br><p>${signature.replace(/\n/g, "<br>")}</p>`
         : `<p>${body.replace(/\n/g, "<br>")}</p>`;
 
+      const attachmentData = attachments.map(att => ({
+        name: att.name,
+        size: att.size,
+        path: att.path,
+      }));
+
       const { error } = await supabase.functions.invoke("send-email", {
         body: {
           from_address: fromAddress,
@@ -93,6 +226,7 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
           body_html: fullBodyHtml,
           body_text: fullBody,
           reply_to: defaultReplyTo || undefined,
+          attachments: attachmentData,
         },
       });
 
@@ -124,6 +258,27 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
             <X className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Template Selector */}
+        {templates.length > 0 && (
+          <div className="px-6 pt-4">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <Select onValueChange={handleTemplateSelect}>
+                <SelectTrigger className="w-[250px]">
+                  <SelectValue placeholder="Use a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
 
         <div className="p-6 space-y-4">
           <div className="space-y-2">
@@ -203,12 +358,56 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
               onChange={(e) => setBody(e.target.value)}
             />
           </div>
+
+          {/* Attachments Display */}
+          {attachments.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Attachments ({attachments.length})</p>
+              <div className="flex flex-wrap gap-2">
+                {attachments.map((attachment) => (
+                  <div
+                    key={attachment.id}
+                    className="flex items-center gap-2 bg-muted px-3 py-2 rounded-md text-sm"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                    <span className="max-w-[200px] truncate">{attachment.name}</span>
+                    <span className="text-muted-foreground">
+                      ({(attachment.size / 1024).toFixed(1)}KB)
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={() => handleRemoveAttachment(attachment)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between p-4 border-t bg-muted/50">
-          <Button variant="ghost" size="icon">
-            <Paperclip className="h-4 w-4" />
-          </Button>
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>
               Cancel
