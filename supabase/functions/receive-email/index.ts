@@ -1,7 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Webhook } from "https://esm.sh/svix@1.15.0";
-import { Resend } from "https://esm.sh/resend@2.0.0";
+import { Resend } from "https://esm.sh/resend@4.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,19 +83,20 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log("Received email webhook - full payload:", JSON.stringify(webhookData, null, 2));
     
-    // For Resend inbound emails, the body content may not be in the webhook
-    // We need to fetch it using the email ID from the webhook
+    // For Resend inbound emails, the body content is NOT in the webhook payload
+    // We need to fetch it using Resend's Retrieve Received Email API
     let emailHtml = webhookData.html || "";
     let emailText = webhookData.text || "";
     
-    // If no body content in webhook, try to fetch from Resend API
+    // If no body content in webhook, fetch from Resend API
     if (!emailHtml && !emailText && webhookData.email_id) {
       try {
         const resendApiKey = Deno.env.get("RESEND_API_KEY");
         console.log("Fetching email content for ID:", webhookData.email_id);
         
+        // Use the Retrieve Received Email API endpoint
         const emailResponse = await fetch(
-          `https://api.resend.com/emails/${webhookData.email_id}`,
+          `https://api.resend.com/emails/${webhookData.email_id}/received`,
           {
             method: "GET",
             headers: {
