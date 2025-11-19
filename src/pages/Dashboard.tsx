@@ -52,9 +52,18 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedEmailAddressId, setSelectedEmailAddressId] = useState<string | null>(null);
+  const [selectedEmailAddressId, setSelectedEmailAddressId] = useState<string | null>(() => {
+    return localStorage.getItem('selectedEmailAddressId');
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Persist selected email address to localStorage
+  useEffect(() => {
+    if (selectedEmailAddressId) {
+      localStorage.setItem('selectedEmailAddressId', selectedEmailAddressId);
+    }
+  }, [selectedEmailAddressId]);
 
   useEffect(() => {
     // Check authentication

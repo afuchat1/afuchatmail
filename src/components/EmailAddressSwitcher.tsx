@@ -50,10 +50,15 @@ export const EmailAddressSwitcher = ({
 
       setEmailAddresses(data || []);
 
-      // Auto-select primary email if nothing is selected
+      // Auto-select primary email only if nothing is selected and no saved selection
       if (data && data.length > 0 && !selectedEmailAddressId) {
-        const primaryEmail = data.find((e) => e.is_primary) || data[0];
-        onEmailAddressChange(primaryEmail.id);
+        const savedEmailAddressId = localStorage.getItem('selectedEmailAddressId');
+        if (savedEmailAddressId && data.find(e => e.id === savedEmailAddressId)) {
+          onEmailAddressChange(savedEmailAddressId);
+        } else {
+          const primaryEmail = data.find((e) => e.is_primary) || data[0];
+          onEmailAddressChange(primaryEmail.id);
+        }
       }
     } catch (error) {
       console.error("Error fetching email addresses:", error);
