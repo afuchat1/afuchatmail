@@ -25,6 +25,7 @@ interface Email {
   is_starred: boolean;
   sent_at: string;
   received_at: string;
+  folder_id?: string;
   thread_id?: string | null;
   attachments?: Attachment[];
   created_at?: string;
@@ -123,17 +124,54 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
 
   const deleteEmail = async () => {
     try {
-      const { error } = await supabase
-        .from("emails")
-        .delete()
-        .eq("id", email.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      if (error) throw error;
+      // Get trash folder
+      const { data: trashFolder } = await supabase
+        .from("folders")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("type", "trash")
+        .single();
+
+      if (!trashFolder) {
+        throw new Error("Trash folder not found");
+      }
+
+      const isInTrash = email.folder_id === trashFolder.id;
+
+      if (isInTrash) {
+        // Permanently delete if already in trash
+        const { error } = await supabase
+          .from("emails")
+          .delete()
+          .eq("id", email.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Permanently deleted",
+          description: "Email permanently removed",
+        });
+      } else {
+        // Move to trash and set deleted_at
+        const { error } = await supabase
+          .from("emails")
+          .update({ 
+            folder_id: trashFolder.id,
+            deleted_at: new Date().toISOString()
+          })
+          .eq("id", email.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Moved to trash",
+          description: "Email will be permanently deleted after 7 days",
+        });
+      }
       
-      toast({
-        title: "Deleted",
-        description: "Email moved to trash",
-      });
       onBack();
     } catch (error: any) {
       toast({

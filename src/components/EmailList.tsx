@@ -228,18 +228,57 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
 
   const deleteEmail = async (emailId: string) => {
     try {
-      const { error } = await supabase
-        .from("emails")
-        .delete()
-        .eq("id", emailId);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      if (error) throw error;
+      // Get trash folder
+      const { data: trashFolder } = await supabase
+        .from("folders")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("type", "trash")
+        .single();
+
+      if (!trashFolder) {
+        throw new Error("Trash folder not found");
+      }
+
+      // Get the email to check if it's already in trash
+      const email = emails.find(e => e.id === emailId);
+      const isInTrash = email?.folder_id === trashFolder.id;
+
+      if (isInTrash) {
+        // Permanently delete if already in trash
+        const { error } = await supabase
+          .from("emails")
+          .delete()
+          .eq("id", emailId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Permanently deleted",
+          description: "Email permanently removed",
+        });
+      } else {
+        // Move to trash and set deleted_at
+        const { error } = await supabase
+          .from("emails")
+          .update({ 
+            folder_id: trashFolder.id,
+            deleted_at: new Date().toISOString()
+          })
+          .eq("id", emailId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Moved to trash",
+          description: "Email will be permanently deleted after 7 days",
+        });
+      }
       
       setEmails(emails.filter(email => email.id !== emailId));
-      toast({
-        title: "Deleted",
-        description: "Email moved to trash",
-      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -314,22 +353,57 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const query = supabase
-        .from("emails")
-        .delete()
-        .eq("user_id", user.id);
+      // Get trash folder
+      const { data: trashFolder } = await supabase
+        .from("folders")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("type", "trash")
+        .single();
 
-      if (folderId) {
-        query.eq("folder_id", folderId);
+      if (!trashFolder) {
+        throw new Error("Trash folder not found");
       }
 
-      const { error } = await query;
+      const isInTrash = folderId === trashFolder.id;
 
-      if (error) throw error;
+      if (isInTrash) {
+        // Permanently delete all emails in trash
+        const { error } = await supabase
+          .from("emails")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("folder_id", folderId);
 
-      toast({
-        title: "All emails deleted",
-      });
+        if (error) throw error;
+
+        toast({
+          title: "Permanently deleted",
+          description: "All emails permanently removed",
+        });
+      } else {
+        // Move all emails to trash
+        const query = supabase
+          .from("emails")
+          .update({ 
+            folder_id: trashFolder.id,
+            deleted_at: new Date().toISOString()
+          })
+          .eq("user_id", user.id);
+
+        if (folderId) {
+          query.eq("folder_id", folderId);
+        }
+
+        const { error } = await query;
+
+        if (error) throw error;
+
+        toast({
+          title: "Moved to trash",
+          description: "All emails will be permanently deleted after 7 days",
+        });
+      }
 
       // Refresh the email list
       fetchEmails();

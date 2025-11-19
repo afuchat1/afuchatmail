@@ -102,6 +102,7 @@ export type Database = {
           body_text: string | null
           cc_addresses: string[] | null
           created_at: string
+          deleted_at: string | null
           email_address_id: string | null
           folder_id: string | null
           from_address: string
@@ -126,6 +127,7 @@ export type Database = {
           body_text?: string | null
           cc_addresses?: string[] | null
           created_at?: string
+          deleted_at?: string | null
           email_address_id?: string | null
           folder_id?: string | null
           from_address: string
@@ -150,6 +152,7 @@ export type Database = {
           body_text?: string | null
           cc_addresses?: string[] | null
           created_at?: string
+          deleted_at?: string | null
           email_address_id?: string | null
           folder_id?: string | null
           from_address?: string
@@ -276,6 +279,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_trash_emails: { Args: never; Returns: undefined }
       unsnooze_emails: { Args: never; Returns: undefined }
     }
     Enums: {
