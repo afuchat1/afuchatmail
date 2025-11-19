@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { SnoozeDialog } from "./SnoozeDialog";
 import DOMPurify from "dompurify";
+import { linkifyText } from "@/lib/linkify";
 
 interface Attachment {
   name: string;
@@ -426,9 +427,28 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                   <div className="px-4 pb-4">
                     <div className="prose prose-sm max-w-none mb-4">
                       {threadEmail.body_html ? (
-                        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(threadEmail.body_html) }} />
+                        <div 
+                          dangerouslySetInnerHTML={{ 
+                            __html: DOMPurify.sanitize(threadEmail.body_html, {
+                              ADD_ATTR: ['target'],
+                              ALLOWED_TAGS: ['a', 'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'div', 'span', 'img'],
+                              ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class']
+                            }) 
+                          }} 
+                          onClick={(e) => {
+                            // Make all links open in new tab with security attributes
+                            const target = e.target as HTMLElement;
+                            if (target.tagName === 'A') {
+                              const link = target as HTMLAnchorElement;
+                              link.target = '_blank';
+                              link.rel = 'noopener noreferrer';
+                            }
+                          }}
+                        />
                       ) : (
-                        <pre className="whitespace-pre-wrap font-sans">{threadEmail.body_text}</pre>
+                        <div className="whitespace-pre-wrap font-sans">
+                          {linkifyText(threadEmail.body_text || '')}
+                        </div>
                       )}
                     </div>
 
