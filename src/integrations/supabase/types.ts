@@ -107,11 +107,13 @@ export type Database = {
           from_address: string
           id: string
           is_draft: boolean
+          is_important: boolean
           is_read: boolean
           is_starred: boolean
           received_at: string | null
           reply_to: string | null
           sent_at: string | null
+          snoozed_until: string | null
           subject: string
           thread_id: string | null
           to_addresses: string[]
@@ -129,11 +131,13 @@ export type Database = {
           from_address: string
           id?: string
           is_draft?: boolean
+          is_important?: boolean
           is_read?: boolean
           is_starred?: boolean
           received_at?: string | null
           reply_to?: string | null
           sent_at?: string | null
+          snoozed_until?: string | null
           subject: string
           thread_id?: string | null
           to_addresses: string[]
@@ -151,11 +155,13 @@ export type Database = {
           from_address?: string
           id?: string
           is_draft?: boolean
+          is_important?: boolean
           is_read?: boolean
           is_starred?: boolean
           received_at?: string | null
           reply_to?: string | null
           sent_at?: string | null
+          snoozed_until?: string | null
           subject?: string
           thread_id?: string | null
           to_addresses?: string[]
@@ -270,7 +276,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      unsnooze_emails: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

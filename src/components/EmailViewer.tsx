@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText } from "lucide-react";
+import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { SnoozeDialog } from "./SnoozeDialog";
 
 interface Attachment {
   name: string;
@@ -38,6 +39,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
   const { toast } = useToast();
   const [threadEmails, setThreadEmails] = useState<Email[]>([]);
   const [loadingThread, setLoadingThread] = useState(false);
+  const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
 
   useEffect(() => {
     if (!email.is_read) {
@@ -178,6 +180,9 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex gap-2">
+          <Button variant="ghost" size="icon" onClick={() => setShowSnoozeDialog(true)}>
+            <Clock className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={toggleStar}>
             <Star
               className={`h-4 w-4 ${
@@ -193,6 +198,13 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
           </Button>
         </div>
       </div>
+
+      <SnoozeDialog
+        open={showSnoozeDialog}
+        onOpenChange={setShowSnoozeDialog}
+        emailId={email.id}
+        onSnooze={onBack}
+      />
 
       <div className="flex-1 overflow-y-auto p-6">
         <h1 className="text-2xl font-bold mb-4">{email.subject}</h1>

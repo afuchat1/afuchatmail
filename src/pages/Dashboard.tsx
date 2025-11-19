@@ -15,6 +15,7 @@ import { EmailComposer } from "@/components/EmailComposer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 interface EmailAddress {
   id: string;
@@ -395,6 +396,8 @@ const Dashboard = () => {
           } : undefined}
         />
       )}
+
+      <PWAInstallPrompt />
     </div>
   );
 };

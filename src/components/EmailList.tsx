@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Trash2, Mail, MailOpen, CheckCheck } from "lucide-react";
+import { Star, Trash2, Mail, MailOpen, CheckCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 
 interface Email {
   id: string;
@@ -25,6 +26,8 @@ interface Email {
   body_text: string;
   is_read: boolean;
   is_starred: boolean;
+  is_important: boolean;
+  snoozed_until: string | null;
   sent_at: string;
   received_at: string;
   thread_id: string | null;
@@ -412,22 +415,30 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
             <div className="flex-1 min-w-0">
               {/* Sender and Time */}
               <div className="flex items-baseline justify-between gap-2 mb-1">
-                <span className={cn(
-                  "text-sm truncate",
-                  thread.unread_count > 0 ? "font-bold text-foreground" : "font-normal text-foreground"
-                )}>
-                  {senderName}, {toAddresses}
-                  {participantCount > 2 && (
-                    <span className="ml-1 text-muted-foreground font-normal">
-                      {participantCount}
-                    </span>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className={cn(
+                    "text-sm truncate",
+                    thread.unread_count > 0 ? "font-bold text-foreground" : "font-normal text-foreground"
+                  )}>
+                    {senderName}, {toAddresses}
+                    {participantCount > 2 && (
+                      <span className="ml-1 text-muted-foreground font-normal">
+                        {participantCount}
+                      </span>
+                    )}
+                    {hasMultipleEmails && (
+                      <span className="ml-2 text-xs text-muted-foreground font-normal">
+                        ({thread.emails.length})
+                      </span>
+                    )}
+                  </span>
+                  {email.is_important && (
+                    <Badge variant="destructive" className="h-5 px-1.5 text-xs flex-shrink-0">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Important
+                    </Badge>
                   )}
-                  {hasMultipleEmails && (
-                    <span className="ml-2 text-xs text-muted-foreground font-normal">
-                      ({thread.emails.length})
-                    </span>
-                  )}
-                </span>
+                </div>
                 <span className="text-xs text-muted-foreground flex-shrink-0">
                   {formatTime(email.received_at || email.sent_at)}
                 </span>
