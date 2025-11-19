@@ -84,7 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Received email webhook - full payload:", JSON.stringify(webhookData, null, 2));
     
     // For Resend inbound emails, the body content is NOT in the webhook payload
-    // We need to fetch it using Resend's Retrieve Received Email API
+    // We need to fetch it using Resend's API
     let emailHtml = webhookData.html || "";
     let emailText = webhookData.text || "";
     
@@ -94,14 +94,13 @@ const handler = async (req: Request): Promise<Response> => {
         const resendApiKey = Deno.env.get("RESEND_API_KEY");
         console.log("Fetching email content for ID:", webhookData.email_id);
         
-        // Use the Retrieve Received Email API endpoint
+        // Use the correct Resend API endpoint (without /received suffix)
         const emailResponse = await fetch(
-          `https://api.resend.com/emails/${webhookData.email_id}/received`,
+          `https://api.resend.com/emails/${webhookData.email_id}`,
           {
             method: "GET",
             headers: {
               "Authorization": `Bearer ${resendApiKey}`,
-              "Content-Type": "application/json",
             },
           }
         );
@@ -112,7 +111,8 @@ const handler = async (req: Request): Promise<Response> => {
           emailHtml = emailData.html || "";
           emailText = emailData.text || "";
         } else {
-          console.error("Failed to fetch email:", emailResponse.status, await emailResponse.text());
+          const errorText = await emailResponse.text();
+          console.error("Failed to fetch email:", emailResponse.status, errorText);
         }
       } catch (fetchError) {
         console.error("Error fetching email content:", fetchError);
