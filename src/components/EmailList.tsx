@@ -7,6 +7,8 @@ import { formatDistanceToNow } from "date-fns";
 
 interface Email {
   id: string;
+  user_id: string;
+  folder_id: string;
   from_address: string;
   to_addresses: string[];
   subject: string;
@@ -32,6 +34,45 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger }: EmailList
   useEffect(() => {
     fetchEmails();
   }, [folderId, refreshTrigger]);
+
+  // Real-time subscription for new emails
+  useEffect(() => {
+    const channel = supabase
+      .channel('emails-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'emails'
+        },
+        async (payload) => {
+          const newEmail = payload.new as Email;
+          
+          // Get current user to filter emails
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user || newEmail.user_id !== user.id) return;
+          
+          // Only add email if it matches current folder or no folder is selected
+          if (!folderId || newEmail.folder_id === folderId) {
+            setEmails(prevEmails => [newEmail, ...prevEmails]);
+            
+            // Show toast notification for new inbox emails
+            if (newEmail.folder_id === folderId) {
+              toast({
+                title: "New Email",
+                description: `From: ${newEmail.from_address}`,
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [folderId, toast]);
 
   const fetchEmails = async () => {
     setLoading(true);
