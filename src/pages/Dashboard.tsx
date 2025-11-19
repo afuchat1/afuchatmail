@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, LogOut, Plus, Trash2, Copy, Settings as SettingsIcon } from "lucide-react";
+import { Mail, LogOut, Plus, Trash2, Copy, Settings as SettingsIcon, Menu, Search, Edit, User as UserIcon } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { EmailSidebar } from "@/components/EmailSidebar";
 import { EmailList } from "@/components/EmailList";
 import { EmailViewer } from "@/components/EmailViewer";
 import { EmailComposer } from "@/components/EmailComposer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface EmailAddress {
   id: string;
@@ -150,8 +152,46 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100">
-      <header className="bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-10">
+    <div className="min-h-screen bg-background">
+      {/* Mobile Header - Gmail Style */}
+      <header className="md:hidden bg-background border-b sticky top-0 z-50">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-10 w-10">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-[280px]">
+              <EmailSidebar
+                onCompose={() => setShowComposer(true)}
+                onFolderSelect={(folderId) => {
+                  setSelectedFolder(folderId);
+                  setSelectedEmail(null);
+                }}
+                selectedFolderId={selectedFolder}
+              />
+            </SheetContent>
+          </Sheet>
+          
+          <div className="flex-1 bg-muted/50 rounded-full px-4 py-2 flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search in mail" 
+              className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground"
+            />
+          </div>
+          
+          <Avatar className="h-10 w-10">
+            <AvatarFallback className="bg-primary text-primary-foreground">
+              {user?.email?.[0].toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+      </header>
+
+      {/* Desktop Header */}
+      <header className="hidden md:block bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Mail className="h-8 w-8 text-blue-600" />
@@ -171,15 +211,41 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
+      <main className="container mx-auto px-0 md:px-4 py-0 md:py-8 max-w-7xl">
         <Tabs defaultValue="inbox" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+          <TabsList className="hidden md:grid w-full max-w-md grid-cols-2 mb-6">
             <TabsTrigger value="inbox">Inbox</TabsTrigger>
             <TabsTrigger value="settings">Email Settings</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="inbox" className="space-y-0">
-            <Card className="border-blue-200 shadow-lg">
+          <TabsContent value="inbox" className="space-y-0 mt-0">
+            {/* Mobile View */}
+            <div className="md:hidden">
+              <div className="px-4 py-2 text-sm font-medium text-muted-foreground">
+                Primary
+              </div>
+              {selectedEmail ? (
+                <EmailViewer
+                  email={selectedEmail}
+                  onBack={() => {
+                    setSelectedEmail(null);
+                    setRefreshTrigger(prev => prev + 1);
+                  }}
+                  onReply={() => {
+                    setShowComposer(true);
+                  }}
+                />
+              ) : (
+                <EmailList
+                  folderId={selectedFolder}
+                  onEmailSelect={setSelectedEmail}
+                  refreshTrigger={refreshTrigger}
+                />
+              )}
+            </div>
+
+            {/* Desktop View */}
+            <Card className="hidden md:block border-blue-200 shadow-lg">
               <div className="flex h-[calc(100vh-16rem)]">
                 <EmailSidebar
                   onCompose={() => setShowComposer(true)}
@@ -316,6 +382,33 @@ const Dashboard = () => {
         </Tabs>
       </main>
 
+      {/* Floating Compose Button - Mobile Only */}
+      <Button
+        onClick={() => setShowComposer(true)}
+        className="md:hidden fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 z-40"
+        size="icon"
+      >
+        <Edit className="h-5 w-5" />
+      </Button>
+
+      {/* Bottom Navigation - Mobile Only */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">
+        <div className="flex justify-around items-center py-3">
+          <Button variant="ghost" size="icon" className="relative">
+            <Mail className="h-5 w-5" />
+            {emails.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                23
+              </span>
+            )}
+          </Button>
+          <Button variant="ghost" size="icon">
+            <UserIcon className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Email Composer */}
       {showComposer && emails.length > 0 && (
         <EmailComposer
           fromAddress={emails[0].full_email}
