@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText, Clock, ChevronDown, ChevronUp, Undo2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,7 @@ interface Email {
   sent_at: string;
   received_at: string;
   folder_id?: string;
+  original_folder_id?: string | null;
   thread_id?: string | null;
   attachments?: Attachment[];
   created_at?: string;
@@ -43,6 +44,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
   const [loadingThread, setLoadingThread] = useState(false);
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set([email.id]));
+  const [isTrashFolder, setIsTrashFolder] = useState(false);
 
   useEffect(() => {
     if (!email.is_read) {
@@ -53,7 +55,30 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
     } else {
       setThreadEmails([email]);
     }
+    checkIfTrashFolder();
   }, [email.id]);
+
+  const checkIfTrashFolder = async () => {
+    if (!email.folder_id) {
+      setIsTrashFolder(false);
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: folder } = await supabase
+        .from("folders")
+        .select("type")
+        .eq("id", email.folder_id)
+        .single();
+
+      setIsTrashFolder(folder?.type === "trash");
+    } catch (error) {
+      console.error("Error checking folder type:", error);
+    }
+  };
 
   const fetchThreadEmails = async () => {
     if (!email.thread_id) return;
@@ -155,11 +180,12 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
           description: "Email permanently removed",
         });
       } else {
-        // Move to trash and set deleted_at
+        // Move to trash and save original folder for restore
         const { error } = await supabase
           .from("emails")
           .update({ 
             folder_id: trashFolder.id,
+            original_folder_id: email.folder_id,
             deleted_at: new Date().toISOString()
           })
           .eq("id", email.id);
@@ -177,6 +203,63 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
       toast({
         title: "Error",
         description: "Failed to delete email",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const restoreEmail = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (!email.original_folder_id) {
+        // If no original folder, restore to inbox
+        const { data: inboxFolder } = await supabase
+          .from("folders")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("type", "inbox")
+          .single();
+
+        if (!inboxFolder) {
+          throw new Error("Inbox folder not found");
+        }
+
+        const { error } = await supabase
+          .from("emails")
+          .update({ 
+            folder_id: inboxFolder.id,
+            deleted_at: null,
+            original_folder_id: null
+          })
+          .eq("id", email.id);
+
+        if (error) throw error;
+      } else {
+        // Restore to original folder
+        const { error } = await supabase
+          .from("emails")
+          .update({ 
+            folder_id: email.original_folder_id,
+            deleted_at: null,
+            original_folder_id: null
+          })
+          .eq("id", email.id);
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Restored",
+        description: "Email restored successfully",
+      });
+      
+      onBack();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to restore email",
         variant: "destructive",
       });
     }
@@ -235,17 +318,32 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
           <Button variant="ghost" size="icon" onClick={() => setShowSnoozeDialog(true)}>
             <Clock className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={toggleStar}>
-            <Star
-              className={`h-4 w-4 ${
-                email.is_starred ? "fill-yellow-500 text-yellow-500" : ""
-              }`}
-            />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={onReply}>
-            <Reply className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={deleteEmail}>
+          {!isTrashFolder && (
+            <>
+              <Button variant="ghost" size="icon" onClick={toggleStar}>
+                <Star
+                  className={`h-4 w-4 ${
+                    email.is_starred ? "fill-yellow-500 text-yellow-500" : ""
+                  }`}
+                />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onReply}>
+                <Reply className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {isTrashFolder && (
+            <Button variant="ghost" size="icon" onClick={restoreEmail} title="Restore">
+              <Undo2 className="h-4 w-4" />
+            </Button>
+          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={deleteEmail}
+            className={isTrashFolder ? "text-destructive hover:text-destructive" : ""}
+            title={isTrashFolder ? "Delete permanently" : "Move to trash"}
+          >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>

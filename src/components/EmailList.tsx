@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Trash2, Mail, MailOpen, CheckCheck, AlertCircle } from "lucide-react";
+import { Star, Trash2, Mail, MailOpen, CheckCheck, AlertCircle, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
@@ -18,6 +18,7 @@ interface Email {
   id: string;
   user_id: string;
   folder_id: string;
+  original_folder_id?: string | null;
   from_address: string;
   to_addresses: string[];
   cc_addresses?: string[] | null;
@@ -52,11 +53,35 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
   const [emails, setEmails] = useState<Email[]>([]);
   const [threads, setThreads] = useState<EmailThread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isTrashFolder, setIsTrashFolder] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchEmails();
+    checkIfTrashFolder();
   }, [folderId, refreshTrigger, searchQuery]);
+
+  const checkIfTrashFolder = async () => {
+    if (!folderId) {
+      setIsTrashFolder(false);
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: folder } = await supabase
+        .from("folders")
+        .select("type")
+        .eq("id", folderId)
+        .single();
+
+      setIsTrashFolder(folder?.type === "trash");
+    } catch (error) {
+      console.error("Error checking folder type:", error);
+    }
+  };
 
   useEffect(() => {
     // Group emails into threads
@@ -261,11 +286,12 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
           description: "Email permanently removed",
         });
       } else {
-        // Move to trash and set deleted_at
+        // Move to trash and save original folder for restore
         const { error } = await supabase
           .from("emails")
           .update({ 
             folder_id: trashFolder.id,
+            original_folder_id: email?.folder_id,
             deleted_at: new Date().toISOString()
           })
           .eq("id", emailId);
@@ -283,6 +309,66 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
       toast({
         title: "Error",
         description: "Failed to delete email",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const restoreEmail = async (emailId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get the email to find its original folder
+      const email = emails.find(e => e.id === emailId);
+      
+      if (!email?.original_folder_id) {
+        // If no original folder, restore to inbox
+        const { data: inboxFolder } = await supabase
+          .from("folders")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("type", "inbox")
+          .single();
+
+        if (!inboxFolder) {
+          throw new Error("Inbox folder not found");
+        }
+
+        const { error } = await supabase
+          .from("emails")
+          .update({ 
+            folder_id: inboxFolder.id,
+            deleted_at: null,
+            original_folder_id: null
+          })
+          .eq("id", emailId);
+
+        if (error) throw error;
+      } else {
+        // Restore to original folder
+        const { error } = await supabase
+          .from("emails")
+          .update({ 
+            folder_id: email.original_folder_id,
+            deleted_at: null,
+            original_folder_id: null
+          })
+          .eq("id", emailId);
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Restored",
+        description: "Email restored successfully",
+      });
+      
+      setEmails(emails.filter(e => e.id !== emailId));
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to restore email",
         variant: "destructive",
       });
     }
@@ -382,22 +468,24 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
           description: "All emails permanently removed",
         });
       } else {
-        // Move all emails to trash
-        const query = supabase
-          .from("emails")
-          .update({ 
-            folder_id: trashFolder.id,
-            deleted_at: new Date().toISOString()
-          })
-          .eq("user_id", user.id);
+        // Move all emails to trash with original folder saved
+        const emailsToUpdate = emails.map(email => ({
+          id: email.id,
+          folder_id: trashFolder.id,
+          original_folder_id: email.folder_id,
+          deleted_at: new Date().toISOString()
+        }));
 
-        if (folderId) {
-          query.eq("folder_id", folderId);
+        for (const emailUpdate of emailsToUpdate) {
+          await supabase
+            .from("emails")
+            .update({
+              folder_id: emailUpdate.folder_id,
+              original_folder_id: emailUpdate.original_folder_id,
+              deleted_at: emailUpdate.deleted_at
+            })
+            .eq("id", emailUpdate.id);
         }
-
-        const { error } = await query;
-
-        if (error) throw error;
 
         toast({
           title: "Moved to trash",
@@ -534,22 +622,53 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery
               </div>
             </div>
             
-            {/* Star Icon */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleStar(email.id, email.is_starred);
-              }}
-              className="h-8 w-8 flex-shrink-0"
-            >
-              <Star
-                className={`h-4 w-4 ${
-                  email.is_starred ? "fill-yellow-500 text-yellow-500" : ""
-                }`}
-              />
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {isTrashFolder ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      restoreEmail(email.id);
+                    }}
+                    className="h-8 w-8"
+                    title="Restore"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteEmail(email.id);
+                    }}
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    title="Delete permanently"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleStar(email.id, email.is_starred);
+                  }}
+                  className="h-8 w-8"
+                >
+                  <Star
+                    className={`h-4 w-4 ${
+                      email.is_starred ? "fill-yellow-500 text-yellow-500" : ""
+                    }`}
+                  />
+                </Button>
+              )}
+            </div>
           </div>
         );
       })}
