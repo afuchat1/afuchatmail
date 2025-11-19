@@ -26,16 +26,17 @@ interface EmailListProps {
   folderId: string | null;
   onEmailSelect: (email: Email) => void;
   refreshTrigger: number;
+  searchQuery?: string;
 }
 
-export const EmailList = ({ folderId, onEmailSelect, refreshTrigger }: EmailListProps) => {
+export const EmailList = ({ folderId, onEmailSelect, refreshTrigger, searchQuery }: EmailListProps) => {
   const [emails, setEmails] = useState<Email[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchEmails();
-  }, [folderId, refreshTrigger]);
+  }, [folderId, refreshTrigger, searchQuery]);
 
   // Real-time subscription for new emails
   useEffect(() => {
@@ -95,7 +96,21 @@ export const EmailList = ({ folderId, onEmailSelect, refreshTrigger }: EmailList
       const { data, error } = await query;
 
       if (error) throw error;
-      setEmails(data || []);
+      
+      let filteredEmails = data || [];
+      
+      // Apply search filter if searchQuery exists
+      if (searchQuery && searchQuery.trim()) {
+        const searchLower = searchQuery.toLowerCase();
+        filteredEmails = filteredEmails.filter(email => 
+          email.subject.toLowerCase().includes(searchLower) ||
+          email.from_address.toLowerCase().includes(searchLower) ||
+          email.body_text?.toLowerCase().includes(searchLower) ||
+          email.to_addresses.some((addr: string) => addr.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      setEmails(filteredEmails);
     } catch (error: any) {
       console.error("Error fetching emails:", error);
       toast({
