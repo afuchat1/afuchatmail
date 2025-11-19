@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Webhook } from "https://esm.sh/svix@1.15.0";
-import { Resend } from "https://esm.sh/resend@4.0.0";
+import { Resend } from "https://esm.sh/resend@6.0.3";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -83,8 +83,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log("Received email webhook - full payload:", JSON.stringify(webhookData, null, 2));
     
-    // For Resend inbound emails, the body content is NOT in the webhook payload
-    // We need to fetch it using Resend's API
+    // For Resend inbound emails, use the receiving API endpoint
     let emailHtml = webhookData.html || "";
     let emailText = webhookData.text || "";
     
@@ -94,9 +93,9 @@ const handler = async (req: Request): Promise<Response> => {
         const resendApiKey = Deno.env.get("RESEND_API_KEY");
         console.log("Fetching email content for ID:", webhookData.email_id);
         
-        // Use the correct Resend API endpoint (without /received suffix)
+        // Use the correct REST API endpoint for received emails
         const emailResponse = await fetch(
-          `https://api.resend.com/emails/${webhookData.email_id}`,
+          `https://api.resend.com/emails/receiving/${webhookData.email_id}`,
           {
             method: "GET",
             headers: {
@@ -107,7 +106,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (emailResponse.ok) {
           const emailData = await emailResponse.json();
-          console.log("Fetched email data:", JSON.stringify(emailData, null, 2));
+          console.log("Fetched email data successfully");
           emailHtml = emailData.html || "";
           emailText = emailData.text || "";
         } else {
