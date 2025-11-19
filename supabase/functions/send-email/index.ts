@@ -18,6 +18,11 @@ interface SendEmailRequest {
   body_html: string;
   body_text: string;
   reply_to?: string;
+  attachments?: Array<{
+    name: string;
+    size: number;
+    path: string;
+  }>;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -31,29 +36,25 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing authorization header");
     }
 
-    // Extract JWT token from Bearer header
-    const token = authHeader.replace("Bearer ", "");
-    console.log("Token received:", token.substring(0, 20) + "...");
-
-    // Create client with ANON key
+    // Create Supabase client with user's auth context for RLS
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
     );
 
-    console.log("Getting user with JWT...");
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+    console.log("Getting user...");
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     console.log("User result:", { user: user?.id, error: userError?.message });
     
     if (userError || !user) {
       throw new Error(`Auth failed: ${userError?.message || "No user found"}`);
     }
 
-    // Create admin client with service role for database operations
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
 
     const emailData: SendEmailRequest = await req.json();
     console.log("Sending email from:", emailData.from_address, "to:", emailData.to_addresses);
@@ -80,16 +81,18 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("user_id", user.id)
       .single();
 
-    // Get the Sent folder (using user client with RLS)
+    // Get the Sent folder
     const { data: sentFolder } = await supabaseClient
       .from("folders")
       .select("id")
-      .eq("user_id", user.id)
       .eq("type", "sent")
-      .single();
+      .maybeSingle();
 
-    // Store in database (using user client with RLS)
-    const { error: insertError } = await supabaseClient
+    console.log("Sent folder:", sentFolder);
+    console.log("Email address:", emailAddress);
+
+    // Store in database - RLS will automatically use auth.uid() from the client
+    const { data: insertedEmail, error: insertError } = await supabaseClient
       .from("emails")
       .insert({
         user_id: user.id,
@@ -103,15 +106,25 @@ const handler = async (req: Request): Promise<Response> => {
         body_html: emailData.body_html,
         body_text: emailData.body_text,
         reply_to: emailData.reply_to,
+        attachments: emailData.attachments || [],
         sent_at: new Date().toISOString(),
         is_read: true,
-      });
+      })
+      .select()
+      .single();
 
     if (insertError) {
-      console.error("Error storing email:", insertError);
+      console.error("Error storing email in database:", insertError);
+      throw new Error(`Failed to store email: ${insertError.message}`);
     }
 
-    return new Response(JSON.stringify({ success: true, data: emailResponse }), {
+    console.log("Email stored successfully:", insertedEmail?.id);
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      email_sent: emailResponse,
+      email_stored: insertedEmail 
+    }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
