@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { SnoozeDialog } from "./SnoozeDialog";
+import DOMPurify from "dompurify";
 
 interface Attachment {
   name: string;
@@ -225,7 +226,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
 
         <div className="prose prose-sm max-w-none">
           {email.body_html ? (
-            <div dangerouslySetInnerHTML={{ __html: email.body_html }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.body_html) }} />
           ) : (
             <pre className="whitespace-pre-wrap font-sans">{email.body_text}</pre>
           )}
