@@ -41,6 +41,7 @@ interface Attachment {
 
 export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }: EmailComposerProps) => {
   const [fromAddress, setFromAddress] = useState(propFromAddress || "");
+  const [userEmails, setUserEmails] = useState<Array<{ id: string; full_email: string }>>([]);
   const [to, setTo] = useState(replyTo?.to || "");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
@@ -58,32 +59,37 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchPrimaryEmail();
+    fetchUserEmails();
     fetchUserSettings();
     fetchTemplates();
   }, []);
 
-  const fetchPrimaryEmail = async () => {
-    if (propFromAddress) return; // Use provided address if available
-
+  const fetchUserEmails = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data, error } = await supabase
         .from("email_addresses")
-        .select("full_email")
+        .select("id, full_email, is_primary")
         .eq("user_id", user.id)
-        .eq("is_primary", true)
-        .maybeSingle();
+        .eq("is_alias", false)
+        .order("is_primary", { ascending: false });
 
       if (error) {
-        console.error("Error fetching primary email:", error);
+        console.error("Error fetching email addresses:", error);
         return;
       }
 
-      if (data) {
-        setFromAddress(data.full_email);
+      if (data && data.length > 0) {
+        setUserEmails(data);
+        // Set fromAddress to provided prop, or primary, or first available
+        if (propFromAddress) {
+          setFromAddress(propFromAddress);
+        } else {
+          const primaryEmail = data.find(e => e.is_primary);
+          setFromAddress(primaryEmail?.full_email || data[0].full_email);
+        }
       }
     } catch (error) {
       console.error("Error:", error);
@@ -333,7 +339,18 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }
         <div className="p-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="from">From</Label>
-            <Input id="from" value={fromAddress} disabled className="bg-muted" />
+            <Select value={fromAddress} onValueChange={setFromAddress}>
+              <SelectTrigger id="from" className="w-full">
+                <SelectValue placeholder="Select email address" />
+              </SelectTrigger>
+              <SelectContent>
+                {userEmails.map((email) => (
+                  <SelectItem key={email.id} value={email.full_email}>
+                    {email.full_email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
