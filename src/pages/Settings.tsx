@@ -13,6 +13,7 @@ import { Mail, ArrowLeft, Save, Plus, Trash2, Copy } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { EmailTemplates } from "@/components/EmailTemplates";
 import { EmailAddressSwitcher } from "@/components/EmailAddressSwitcher";
+import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
 interface UserSettings {
   id?: string;
@@ -444,6 +445,16 @@ const Settings = () => {
                   }
                   disabled={!settings.notifications_enabled}
                 />
+              </div>
+
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-medium mb-4">Push Notifications</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Enable push notifications to receive alerts even when the app is closed
+                </p>
+                {selectedEmailAddressId && (
+                  <PushNotificationToggle emailAddressId={selectedEmailAddressId} />
+                )}
               </div>
             </CardContent>
           </Card>

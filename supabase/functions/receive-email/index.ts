@@ -319,6 +319,34 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Failed to send notification email:", notificationError);
     }
 
+    // Send push notifications
+    try {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      
+      const notificationResponse = await fetch(`${SUPABASE_URL}/functions/v1/send-push-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({
+          email_address_id: targetEmailAddressId,
+          email_id: insertedEmail.id,
+          from_address: payload.from,
+          subject: payload.subject,
+        }),
+      });
+
+      if (notificationResponse.ok) {
+        console.log('Push notification sent successfully');
+      } else {
+        console.error('Failed to send push notification:', await notificationResponse.text());
+      }
+    } catch (pushError) {
+      console.error('Error sending push notification:', pushError);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
