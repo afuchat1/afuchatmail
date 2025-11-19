@@ -32,17 +32,19 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    console.log("Headers received:", {
-      authorization: authHeader,
-      allHeaders: Object.fromEntries(req.headers.entries())
-    });
     
     if (!authHeader) {
       throw new Error("Missing authorization header");
     }
 
-    // Create Supabase client with user's auth context for RLS
-    const supabaseClient = createClient(
+    // Create Supabase client with service role for database operations
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // Create client with user's JWT to verify authentication
+    const supabaseUser = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
@@ -52,13 +54,15 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
-    console.log("Getting user...");
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    console.log("User result:", { user: user?.id, error: userError?.message });
+    // Verify the JWT and get user
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     
     if (userError || !user) {
-      throw new Error(`Auth failed: ${userError?.message || "No user found"}`);
+      console.error("Auth error:", userError);
+      throw new Error(`Authentication failed: ${userError?.message || "Invalid token"}`);
     }
+
+    console.log("Authenticated user:", user.id);
 
 
     const emailData: SendEmailRequest = await req.json();
@@ -78,26 +82,27 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Email sent successfully:", emailResponse);
 
-    // Get the email_address_id (using user client with RLS)
-    const { data: emailAddress } = await supabaseClient
+    // Get the email_address_id
+    const { data: emailAddress } = await supabaseAdmin
       .from("email_addresses")
       .select("id")
       .eq("full_email", emailData.from_address)
       .eq("user_id", user.id)
       .single();
 
-    // Get the Sent folder
-    const { data: sentFolder } = await supabaseClient
+    // Get the Sent folder for this user
+    const { data: sentFolder } = await supabaseAdmin
       .from("folders")
       .select("id")
       .eq("type", "sent")
+      .eq("user_id", user.id)
       .maybeSingle();
 
     console.log("Sent folder:", sentFolder);
     console.log("Email address:", emailAddress);
 
-    // Store in database - RLS will automatically use auth.uid() from the client
-    const { data: insertedEmail, error: insertError } = await supabaseClient
+    // Store in database using admin client with explicit user_id
+    const { data: insertedEmail, error: insertError } = await supabaseAdmin
       .from("emails")
       .insert({
         user_id: user.id,
