@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { Webhook } from "https://esm.sh/svix@1.15.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature",
 };
 
 interface InboundEmailPayload {
@@ -29,19 +30,62 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Create admin client to bypass RLS
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    // Get webhook secret
+    const webhookSecret = Deno.env.get("RESEND_WEBHOOK_SECRET");
+    
+    if (!webhookSecret) {
+      console.error("RESEND_WEBHOOK_SECRET not configured");
+      return new Response(
+        JSON.stringify({ error: "Webhook secret not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
-    const payload: InboundEmailPayload = await req.json();
+    // Get webhook headers for signature verification
+    const svixId = req.headers.get("svix-id");
+    const svixTimestamp = req.headers.get("svix-timestamp");
+    const svixSignature = req.headers.get("svix-signature");
+
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      console.error("Missing webhook signature headers");
+      return new Response(
+        JSON.stringify({ error: "Missing webhook signature" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Get raw body for signature verification
+    const body = await req.text();
+    
+    // Verify webhook signature
+    const wh = new Webhook(webhookSecret);
+    let payload: InboundEmailPayload;
+    
+    try {
+      payload = wh.verify(body, {
+        "svix-id": svixId,
+        "svix-timestamp": svixTimestamp,
+        "svix-signature": svixSignature,
+      }) as InboundEmailPayload;
+    } catch (err) {
+      console.error("Webhook signature verification failed:", err);
+      return new Response(
+        JSON.stringify({ error: "Invalid webhook signature" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
     
     console.log("Received email:", {
       from: payload.from,
       to: payload.to,
       subject: payload.subject,
     });
+
+    // Create admin client to bypass RLS
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
 
     // Extract recipient email address
     const toEmail = payload.to.toLowerCase();
