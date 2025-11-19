@@ -81,12 +81,42 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log("Received email webhook - full payload:", JSON.stringify(webhookData, null, 2));
     
-    // Extract email body - Resend inbound emails have the body in the payload
-    // The fields might be 'html' and 'text' or nested in other properties
-    const emailHtml = webhookData.html || webhookData.body_html || webhookData.Html || "";
-    const emailText = webhookData.text || webhookData.body_text || webhookData.Text || "";
+    // For Resend inbound emails, the body content may not be in the webhook
+    // We need to fetch it using the email ID from the webhook
+    let emailHtml = webhookData.html || "";
+    let emailText = webhookData.text || "";
     
-    console.log("Extracted email body:", {
+    // If no body content in webhook, try to fetch from Resend API
+    if (!emailHtml && !emailText && webhookData.email_id) {
+      try {
+        const resendApiKey = Deno.env.get("RESEND_API_KEY");
+        console.log("Fetching email content for ID:", webhookData.email_id);
+        
+        const emailResponse = await fetch(
+          `https://api.resend.com/emails/${webhookData.email_id}`,
+          {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${resendApiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (emailResponse.ok) {
+          const emailData = await emailResponse.json();
+          console.log("Fetched email data:", JSON.stringify(emailData, null, 2));
+          emailHtml = emailData.html || "";
+          emailText = emailData.text || "";
+        } else {
+          console.error("Failed to fetch email:", emailResponse.status, await emailResponse.text());
+        }
+      } catch (fetchError) {
+        console.error("Error fetching email content:", fetchError);
+      }
+    }
+    
+    console.log("Final email body:", {
       hasHtml: !!emailHtml,
       hasText: !!emailText,
       htmlLength: emailHtml?.length || 0,
