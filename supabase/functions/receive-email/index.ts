@@ -14,8 +14,8 @@ interface InboundEmailPayload {
   html: string;
   text: string;
   reply_to?: string;
-  cc?: string;
-  bcc?: string;
+  cc?: string | string[];
+  bcc?: string | string[];
   attachments?: Array<{
     filename: string;
     content: string;
@@ -145,8 +145,12 @@ const handler = async (req: Request): Promise<Response> => {
     })) || [];
 
     // Parse CC and BCC if present
-    const ccAddresses = payload.cc ? payload.cc.split(",").map(e => e.trim()) : [];
-    const bccAddresses = payload.bcc ? payload.bcc.split(",").map(e => e.trim()) : [];
+    const ccAddresses = payload.cc 
+      ? (Array.isArray(payload.cc) ? payload.cc : payload.cc.split(",").map(e => e.trim())) 
+      : [];
+    const bccAddresses = payload.bcc 
+      ? (Array.isArray(payload.bcc) ? payload.bcc : payload.bcc.split(",").map(e => e.trim())) 
+      : [];
 
     // Store the received email in the database
     const { data: insertedEmail, error: insertError } = await supabaseAdmin
