@@ -197,6 +197,19 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
 
     setSending(true);
     try {
+      // Verify we have an active session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      console.log("Current session:", { 
+        hasSession: !!session, 
+        userId: session?.user?.id,
+        accessToken: session?.access_token ? "present" : "missing"
+      });
+
+      if (sessionError || !session) {
+        throw new Error("You must be logged in to send emails. Please refresh the page and try again.");
+      }
+
       const toAddresses = to.split(",").map(email => email.trim());
       const ccAddresses = cc ? cc.split(",").map(email => email.trim()) : [];
       const bccAddresses = bcc ? bcc.split(",").map(email => email.trim()) : [];
@@ -216,7 +229,9 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
         path: att.path,
       }));
 
-      const { error } = await supabase.functions.invoke("send-email", {
+      console.log("Calling send-email function...");
+
+      const { data, error } = await supabase.functions.invoke("send-email", {
         body: {
           from_address: fromAddress,
           to_addresses: toAddresses,
@@ -229,6 +244,8 @@ export const EmailComposer = ({ fromAddress, onClose, replyTo }: EmailComposerPr
           attachments: attachmentData,
         },
       });
+
+      console.log("Send email response:", { data, error });
 
       if (error) throw error;
 

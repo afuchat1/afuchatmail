@@ -32,6 +32,11 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const authHeader = req.headers.get("Authorization");
+    console.log("Headers received:", {
+      authorization: authHeader,
+      allHeaders: Object.fromEntries(req.headers.entries())
+    });
+    
     if (!authHeader) {
       throw new Error("Missing authorization header");
     }
