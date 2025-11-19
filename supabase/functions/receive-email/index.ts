@@ -268,16 +268,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Email stored successfully:", insertedEmail.id);
 
-    // Send notification email if user has notifications enabled
+    // Send notification email if user has notifications enabled for this email address
     try {
       const { data: userSettings } = await supabaseAdmin
         .from("user_settings")
         .select("notifications_enabled, notification_new_email")
-        .eq("user_id", emailAddress.user_id)
-        .single();
+        .eq("email_address_id", targetEmailAddressId)
+        .maybeSingle();
 
       if (userSettings?.notifications_enabled && userSettings?.notification_new_email) {
-        // Get user's email from email_addresses table to send notification
+        // Get user's primary email to send notification
         const { data: primaryEmail } = await supabaseAdmin
           .from("email_addresses")
           .select("full_email")
@@ -298,6 +298,7 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #1a1a1a;">You have a new email!</h2>
                 <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 5px 0;"><strong>To:</strong> ${toEmail}</p>
                   <p style="margin: 5px 0;"><strong>From:</strong> ${payload.from}</p>
                   <p style="margin: 5px 0;"><strong>Subject:</strong> ${payload.subject}</p>
                   <p style="margin: 15px 0 5px 0;"><strong>Preview:</strong></p>

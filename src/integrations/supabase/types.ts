@@ -252,6 +252,7 @@ export type Database = {
         Row: {
           created_at: string
           default_reply_to: string | null
+          email_address_id: string | null
           email_signature: string | null
           id: string
           notification_new_email: boolean
@@ -263,6 +264,7 @@ export type Database = {
         Insert: {
           created_at?: string
           default_reply_to?: string | null
+          email_address_id?: string | null
           email_signature?: string | null
           id?: string
           notification_new_email?: boolean
@@ -274,6 +276,7 @@ export type Database = {
         Update: {
           created_at?: string
           default_reply_to?: string | null
+          email_address_id?: string | null
           email_signature?: string | null
           id?: string
           notification_new_email?: boolean
@@ -282,7 +285,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_email_address_id_fkey"
+            columns: ["email_address_id"]
+            isOneToOne: true
+            referencedRelation: "email_addresses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

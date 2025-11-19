@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Mail, ArrowLeft, Save, Plus, Trash2, Copy } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { EmailTemplates } from "@/components/EmailTemplates";
+import { EmailAddressSwitcher } from "@/components/EmailAddressSwitcher";
 
 interface UserSettings {
   id?: string;
@@ -20,6 +21,7 @@ interface UserSettings {
   notifications_enabled: boolean;
   notification_new_email: boolean;
   notification_replies: boolean;
+  email_address_id?: string;
 }
 
 interface EmailAddress {
@@ -35,6 +37,7 @@ interface EmailAddress {
 const Settings = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedEmailAddressId, setSelectedEmailAddressId] = useState<string | null>(null);
   const [settings, setSettings] = useState<UserSettings>({
     email_signature: "",
     default_reply_to: "",
@@ -57,7 +60,6 @@ const Settings = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        fetchSettings(session.user.id);
         fetchEmails(session.user.id);
       }
     });
@@ -73,14 +75,21 @@ const Settings = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const fetchSettings = async (userId: string) => {
+  // Fetch settings when email address changes
+  useEffect(() => {
+    if (selectedEmailAddressId) {
+      fetchSettings(selectedEmailAddressId);
+    }
+  }, [selectedEmailAddressId]);
+
+  const fetchSettings = async (emailAddressId: string) => {
     const { data, error } = await supabase
       .from("user_settings")
       .select("*")
-      .eq("user_id", userId)
-      .single();
+      .eq("email_address_id", emailAddressId)
+      .maybeSingle();
 
-    if (error && error.code !== "PGRST116") {
+    if (error) {
       toast({
         variant: "destructive",
         title: "Error fetching settings",
@@ -88,6 +97,16 @@ const Settings = () => {
       });
     } else if (data) {
       setSettings(data);
+    } else {
+      // No settings exist for this email address, reset to defaults
+      setSettings({
+        email_signature: "",
+        default_reply_to: "",
+        notifications_enabled: true,
+        notification_new_email: true,
+        notification_replies: true,
+        email_address_id: emailAddressId,
+      });
     }
   };
 
@@ -240,7 +259,7 @@ const Settings = () => {
   };
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || !selectedEmailAddressId) return;
 
     setLoading(true);
     try {
@@ -248,6 +267,7 @@ const Settings = () => {
         .from("user_settings")
         .upsert({
           user_id: user.id,
+          email_address_id: selectedEmailAddressId,
           email_signature: settings.email_signature,
           default_reply_to: settings.default_reply_to,
           notifications_enabled: settings.notifications_enabled,
@@ -259,7 +279,7 @@ const Settings = () => {
 
       toast({
         title: "Settings saved!",
-        description: "Your preferences have been updated.",
+        description: "Your preferences have been updated for this account.",
       });
     } catch (error: any) {
       toast({
@@ -289,6 +309,13 @@ const Settings = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="mb-6">
+          <EmailAddressSwitcher
+            selectedEmailAddressId={selectedEmailAddressId}
+            onEmailAddressChange={setSelectedEmailAddressId}
+          />
+        </div>
+
         <Tabs defaultValue="preferences" className="space-y-6">
           <TabsList>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
@@ -327,7 +354,7 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle className="text-blue-900">Email Settings</CardTitle>
                 <CardDescription>
-                  Configure your email signature and default reply-to address
+                  Configure email signature and default reply-to for {emails.find(e => e.id === selectedEmailAddressId)?.full_email || "this account"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -361,13 +388,13 @@ const Settings = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-blue-200 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-blue-900">Notification Preferences</CardTitle>
-              <CardDescription>
-                Choose which notifications you want to receive
-              </CardDescription>
-            </CardHeader>
+            <Card className="border-blue-200 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-blue-900">Notification Preferences</CardTitle>
+                <CardDescription>
+                  Choose which notifications you want to receive for {emails.find(e => e.id === selectedEmailAddressId)?.full_email || "this account"}
+                </CardDescription>
+              </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -454,7 +481,11 @@ const Settings = () => {
           </Card>
 
             <div className="flex justify-end">
-              <Button onClick={handleSave} disabled={loading} size="lg">
+              <Button 
+                onClick={handleSave} 
+                disabled={loading || !selectedEmailAddressId} 
+                size="lg"
+              >
                 <Save className="h-4 w-4 mr-2" />
                 {loading ? "Saving..." : "Save Settings"}
               </Button>

@@ -101,11 +101,21 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Get the email address ID from the fromAddress
+      const { data: emailAddresses } = await supabase
+        .from("email_addresses")
+        .select("id")
+        .eq("full_email", fromAddress)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!emailAddresses) return;
+
       const { data, error } = await supabase
         .from("user_settings")
         .select("email_signature, default_reply_to")
-        .eq("user_id", user.id)
-        .single();
+        .eq("email_address_id", emailAddresses.id)
+        .maybeSingle();
 
       if (error && error.code !== "PGRST116") {
         console.error("Error fetching settings:", error);
