@@ -267,25 +267,23 @@ const Index = () => {
           <div>
             <h4 className="font-semibold mb-4">Product</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><button onClick={() => navigate("/auth")} className="hover:text-foreground transition-colors">Features</button></li>
-              <li><button onClick={() => navigate("/auth")} className="hover:text-foreground transition-colors">Pricing</button></li>
-              <li><button onClick={() => navigate("/auth")} className="hover:text-foreground transition-colors">Security</button></li>
+              <li><button onClick={() => navigate("/features")} className="hover:text-foreground transition-colors">Features</button></li>
+              <li><button onClick={() => navigate("/security")} className="hover:text-foreground transition-colors">Security</button></li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><button onClick={() => navigate("/auth")} className="hover:text-foreground transition-colors">About</button></li>
-              <li><button onClick={() => navigate("/auth")} className="hover:text-foreground transition-colors">Blog</button></li>
-              <li><button onClick={() => navigate("/auth")} className="hover:text-foreground transition-colors">Contact</button></li>
+              <li><button onClick={() => navigate("/about")} className="hover:text-foreground transition-colors">About</button></li>
+              <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Contact</button></li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><button onClick={() => navigate("/auth")} className="hover:text-foreground transition-colors">Privacy</button></li>
-              <li><button onClick={() => navigate("/auth")} className="hover:text-foreground transition-colors">Terms</button></li>
-              <li><button onClick={() => navigate("/auth")} className="hover:text-foreground transition-colors">Security</button></li>
+              <li><button onClick={() => navigate("/privacy")} className="hover:text-foreground transition-colors">Privacy</button></li>
+              <li><button onClick={() => navigate("/terms")} className="hover:text-foreground transition-colors">Terms</button></li>
+              <li><button onClick={() => navigate("/security")} className="hover:text-foreground transition-colors">Security</button></li>
             </ul>
           </div>
         </div>
