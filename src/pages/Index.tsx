@@ -322,9 +322,6 @@ const Index = () => {
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button size="lg" variant="outline" className="text-lg px-10 py-6" onClick={() => navigate("/auth")}>
-                View Demo
-              </Button>
             </div>
             <p className="text-sm text-muted-foreground mt-6">
               Free forever plan • No credit card required • Setup in 60 seconds
