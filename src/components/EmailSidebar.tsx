@@ -69,13 +69,15 @@ export const EmailSidebar = ({
   };
 
   return (
-    <div className="w-64 border-r bg-card p-4 flex flex-col gap-4">
-      <EmailAddressSwitcher
-        selectedEmailAddressId={selectedEmailAddressId}
-        onEmailAddressChange={onEmailAddressChange}
-      />
+    <div className="w-64 border-r bg-card p-4 flex flex-col gap-4 h-full">
+      <div className="flex-shrink-0">
+        <EmailAddressSwitcher
+          selectedEmailAddressId={selectedEmailAddressId}
+          onEmailAddressChange={onEmailAddressChange}
+        />
+      </div>
       
-      <nav className="space-y-1">
+      <nav className="space-y-1 flex-1 overflow-y-auto">
         {folders.map((folder) => {
           const Icon = getIcon(folder.icon);
           return (
@@ -88,8 +90,8 @@ export const EmailSidebar = ({
                   : "hover:bg-accent text-muted-foreground"
               }`}
             >
-              <Icon className="h-4 w-4" />
-              {folder.name}
+              <Icon className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">{folder.name}</span>
             </button>
           );
         })}

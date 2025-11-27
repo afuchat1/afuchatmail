@@ -539,8 +539,8 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
   const hasUnreadEmails = threads.some(thread => thread.unread_count > 0);
 
   return (
-    <div className="divide-y">
-      <div className="flex items-center justify-between p-4 border-b bg-muted/20">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 border-b bg-muted/20 flex-shrink-0">
         <div className="text-sm font-medium">
           {threads.length} conversation{threads.length !== 1 ? 's' : ''}
         </div>
@@ -550,7 +550,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
               Bulk Actions
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="bg-popover">
             {hasUnreadEmails && (
               <DropdownMenuItem onClick={handleMarkAllAsRead}>
                 <CheckCheck className="h-4 w-4 mr-2" />
@@ -567,126 +567,128 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {threads.map((thread) => {
-        const email = thread.latest_email;
-        const participantCount = getParticipantCount(email);
-        const senderName = email.from_address.split('@')[0];
-        const toAddresses = email.to_addresses.map(addr => addr.split('@')[0]).join(', ');
-        const hasMultipleEmails = thread.emails.length > 1;
-        
-        return (
-          <div
-            key={thread.thread_id}
-            onClick={() => onEmailSelect(email)}
-            className={cn(
-              "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-accent/50",
-              thread.unread_count > 0 && "bg-accent/20"
-            )}
-          >
-            {/* Avatar */}
-            <Avatar className="h-10 w-10 flex-shrink-0">
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                {getInitials(email.from_address)}
-              </AvatarFallback>
-            </Avatar>
-            
-            {/* Email Content */}
-            <div className="flex-1 min-w-0">
-              {/* Sender and Time */}
-              <div className="flex items-baseline justify-between gap-2 mb-1">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className={cn(
-                    "text-sm truncate",
-                    thread.unread_count > 0 ? "font-bold text-foreground" : "font-normal text-foreground"
-                  )}>
-                    {senderName}, {toAddresses}
-                    {participantCount > 2 && (
-                      <span className="ml-1 text-muted-foreground font-normal">
-                        {participantCount}
-                      </span>
+      <div className="flex-1 overflow-y-auto divide-y">
+        {threads.map((thread) => {
+          const email = thread.latest_email;
+          const participantCount = getParticipantCount(email);
+          const senderName = email.from_address.split('@')[0];
+          const toAddresses = email.to_addresses.map(addr => addr.split('@')[0]).join(', ');
+          const hasMultipleEmails = thread.emails.length > 1;
+          
+          return (
+            <div
+              key={thread.thread_id}
+              onClick={() => onEmailSelect(email)}
+              className={cn(
+                "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-accent/50",
+                thread.unread_count > 0 && "bg-accent/20"
+              )}
+            >
+              {/* Avatar */}
+              <Avatar className="h-10 w-10 flex-shrink-0">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                  {getInitials(email.from_address)}
+                </AvatarFallback>
+              </Avatar>
+              
+              {/* Email Content */}
+              <div className="flex-1 min-w-0 overflow-hidden">
+                {/* Sender and Time */}
+                <div className="flex items-baseline justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
+                    <span className={cn(
+                      "text-sm truncate",
+                      thread.unread_count > 0 ? "font-bold text-foreground" : "font-normal text-foreground"
+                    )}>
+                      {senderName}, {toAddresses}
+                      {participantCount > 2 && (
+                        <span className="ml-1 text-muted-foreground font-normal">
+                          {participantCount}
+                        </span>
+                      )}
+                      {hasMultipleEmails && (
+                        <span className="ml-2 text-xs text-muted-foreground font-normal">
+                          ({thread.emails.length})
+                        </span>
+                      )}
+                    </span>
+                    {email.is_important && (
+                      <Badge variant="destructive" className="h-5 px-1.5 text-xs flex-shrink-0">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Important
+                      </Badge>
                     )}
-                    {hasMultipleEmails && (
-                      <span className="ml-2 text-xs text-muted-foreground font-normal">
-                        ({thread.emails.length})
-                      </span>
-                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {formatTime(email.received_at || email.sent_at)}
                   </span>
-                  {email.is_important && (
-                    <Badge variant="destructive" className="h-5 px-1.5 text-xs flex-shrink-0">
-                      <AlertCircle className="h-3 w-3 mr-1" />
-                      Important
-                    </Badge>
-                  )}
                 </div>
-                <span className="text-xs text-muted-foreground flex-shrink-0">
-                  {formatTime(email.received_at || email.sent_at)}
-                </span>
+                
+                {/* Subject */}
+                <div className={cn(
+                  "text-sm mb-1 truncate",
+                  thread.unread_count > 0 ? "font-medium text-foreground" : "text-muted-foreground"
+                )}>
+                  {email.subject}
+                </div>
+                
+                {/* Preview */}
+                <div className="text-sm text-muted-foreground truncate">
+                  {email.body_text?.substring(0, 100) || 'No preview available'}
+                </div>
               </div>
               
-              {/* Subject */}
-              <div className={cn(
-                "text-sm mb-1 truncate",
-                thread.unread_count > 0 ? "font-medium text-foreground" : "text-muted-foreground"
-              )}>
-                {email.subject}
-              </div>
-              
-              {/* Preview */}
-              <div className="text-sm text-muted-foreground truncate">
-                {email.body_text?.substring(0, 100) || 'No preview available'}
-              </div>
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {isTrashFolder ? (
-                <>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {isTrashFolder ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        restoreEmail(email.id);
+                      }}
+                      className="h-8 w-8"
+                      title="Restore"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteEmail(email.id);
+                      }}
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      title="Delete permanently"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={(e) => {
                       e.stopPropagation();
-                      restoreEmail(email.id);
+                      toggleStar(email.id, email.is_starred);
                     }}
                     className="h-8 w-8"
-                    title="Restore"
                   >
-                    <Undo2 className="h-4 w-4" />
+                    <Star
+                      className={`h-4 w-4 ${
+                        email.is_starred ? "fill-yellow-500 text-yellow-500" : ""
+                      }`}
+                    />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteEmail(email.id);
-                    }}
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    title="Delete permanently"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleStar(email.id, email.is_starred);
-                  }}
-                  className="h-8 w-8"
-                >
-                  <Star
-                    className={`h-4 w-4 ${
-                      email.is_starred ? "fill-yellow-500 text-yellow-500" : ""
-                    }`}
-                  />
-                </Button>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 };
