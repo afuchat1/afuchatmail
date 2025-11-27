@@ -264,15 +264,15 @@ const Dashboard = () => {
       </header>
 
       {/* Desktop Header */}
-      <header className="hidden md:block bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-10">
+      <header className="hidden md:block bg-card/80 backdrop-blur-sm border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Mail className="h-8 w-8 text-blue-600" />
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+          <div className="flex items-center gap-3 min-w-0">
+            <Mail className="h-8 w-8 text-primary flex-shrink-0" />
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent truncate">
               AfuChat Email
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
               <SettingsIcon className="h-5 w-5" />
             </Button>
@@ -286,10 +286,10 @@ const Dashboard = () => {
 
       <main className="container mx-auto px-0 md:px-4 py-0 md:py-8 max-w-7xl">
         {/* Mobile View */}
-        <div className="md:hidden">
+        <div className="md:hidden flex flex-col h-[calc(100vh-8rem)]">
           {showSearch ? (
-            <div className="fixed inset-0 bg-background z-50">
-              <div className="flex items-center gap-3 px-4 py-3 border-b">
+            <div className="fixed inset-0 bg-background z-50 flex flex-col">
+              <div className="flex items-center gap-3 px-4 py-3 border-b flex-shrink-0">
                 <Button variant="ghost" size="icon" onClick={() => setShowSearch(false)}>
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -301,76 +301,88 @@ const Dashboard = () => {
                   autoFocus
                 />
               </div>
-              <EmailList
-                folderId={selectedFolder}
-                emailAddressId={selectedEmailAddressId}
-                onEmailSelect={(email) => {
-                  setSelectedEmail(email);
-                  setShowSearch(false);
-                }}
-                refreshTrigger={refreshTrigger}
-                searchQuery={searchQuery}
-              />
+              <div className="flex-1 overflow-y-auto">
+                <EmailList
+                  folderId={selectedFolder}
+                  emailAddressId={selectedEmailAddressId}
+                  onEmailSelect={(email) => {
+                    setSelectedEmail(email);
+                    setShowSearch(false);
+                  }}
+                  refreshTrigger={refreshTrigger}
+                  searchQuery={searchQuery}
+                />
+              </div>
             </div>
           ) : selectedEmail ? (
-            <EmailViewer
-              email={selectedEmail}
-              onBack={() => {
-                setSelectedEmail(null);
-                setRefreshTrigger(prev => prev + 1);
-              }}
-              onReply={() => {
-                setShowComposer(true);
-              }}
-            />
+            <div className="flex-1 overflow-y-auto">
+              <EmailViewer
+                email={selectedEmail}
+                onBack={() => {
+                  setSelectedEmail(null);
+                  setRefreshTrigger(prev => prev + 1);
+                }}
+                onReply={() => {
+                  setShowComposer(true);
+                }}
+              />
+            </div>
           ) : (
-            <>
-              <div className="px-4 py-2 text-sm font-medium text-muted-foreground">
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <div className="px-4 py-2 text-sm font-medium text-muted-foreground flex-shrink-0">
                 Primary
               </div>
-              <EmailList
-                folderId={selectedFolder}
-                emailAddressId={selectedEmailAddressId}
-                onEmailSelect={setSelectedEmail}
-                refreshTrigger={refreshTrigger}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Desktop View */}
-        <Card className="hidden md:block border-blue-200 shadow-lg">
-          <div className="flex h-[calc(100vh-16rem)]">
-            <EmailSidebar
-              onCompose={() => setShowComposer(true)}
-              onFolderSelect={(folderId) => {
-                setSelectedFolder(folderId);
-                setSelectedEmail(null);
-              }}
-              selectedFolderId={selectedFolder}
-              selectedEmailAddressId={selectedEmailAddressId}
-              onEmailAddressChange={setSelectedEmailAddressId}
-            />
-            
-            <div className="flex-1 flex flex-col">
-              {selectedEmail ? (
-                <EmailViewer
-                  email={selectedEmail}
-                  onBack={() => {
-                    setSelectedEmail(null);
-                    setRefreshTrigger(prev => prev + 1);
-                  }}
-                  onReply={() => {
-                    setShowComposer(true);
-                  }}
-                />
-              ) : (
+              <div className="flex-1 overflow-y-auto">
                 <EmailList
                   folderId={selectedFolder}
                   emailAddressId={selectedEmailAddressId}
                   onEmailSelect={setSelectedEmail}
                   refreshTrigger={refreshTrigger}
                 />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop View */}
+        <Card className="hidden md:block border-border shadow-lg">
+          <div className="flex h-[calc(100vh-12rem)] min-h-[500px]">
+            <div className="flex-shrink-0 overflow-y-auto">
+              <EmailSidebar
+                onCompose={() => setShowComposer(true)}
+                onFolderSelect={(folderId) => {
+                  setSelectedFolder(folderId);
+                  setSelectedEmail(null);
+                }}
+                selectedFolderId={selectedFolder}
+                selectedEmailAddressId={selectedEmailAddressId}
+                onEmailAddressChange={setSelectedEmailAddressId}
+              />
+            </div>
+            
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+              {selectedEmail ? (
+                <div className="flex-1 overflow-y-auto">
+                  <EmailViewer
+                    email={selectedEmail}
+                    onBack={() => {
+                      setSelectedEmail(null);
+                      setRefreshTrigger(prev => prev + 1);
+                    }}
+                    onReply={() => {
+                      setShowComposer(true);
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto">
+                  <EmailList
+                    folderId={selectedFolder}
+                    emailAddressId={selectedEmailAddressId}
+                    onEmailSelect={setSelectedEmail}
+                    refreshTrigger={refreshTrigger}
+                  />
+                </div>
               )}
             </div>
           </div>
