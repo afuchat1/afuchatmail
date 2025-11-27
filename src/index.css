@@ -85,4 +85,35 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Email content link styling */
+  .prose a {
+    color: hsl(221 83% 53%);
+  }
+
+  .prose a:hover {
+    text-decoration: underline;
+  }
+
+  .dark .prose a {
+    color: hsl(189 92% 55%);
+  }
+
+  .dark .prose {
+    color: hsl(0 0% 98%);
+  }
+
+  .dark .prose strong,
+  .dark .prose b {
+    color: hsl(0 0% 98%);
+  }
+
+  .dark .prose h1,
+  .dark .prose h2,
+  .dark .prose h3,
+  .dark .prose h4,
+  .dark .prose h5,
+  .dark .prose h6 {
+    color: hsl(0 0% 98%);
+  }
 }
