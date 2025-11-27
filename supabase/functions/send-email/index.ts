@@ -160,16 +160,15 @@ const handler = async (req: Request): Promise<Response> => {
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
-    console.error("Error in send-email function:", error);
-    console.error("Error details:", {
+    console.error("Error in send-email function:", {
       message: error.message,
       stack: error.stack,
       name: error.name
     });
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        details: error.toString()
+        error: "Failed to send email",
+        code: "EMAIL_SEND_ERROR"
       }),
       {
         status: 500,

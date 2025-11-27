@@ -359,11 +359,15 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error("Error in receive-email function:", error);
+    console.error("Error in receive-email function:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        details: error.toString()
+        error: "Failed to process email",
+        code: "EMAIL_RECEIVE_ERROR"
       }),
       {
         status: 500,
