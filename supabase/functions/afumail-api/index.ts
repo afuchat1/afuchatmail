@@ -150,10 +150,36 @@ function parsePath(url: URL): { route: string; params: Record<string, string> } 
 
 // OAuth Token Exchange Handler
 async function handleTokenExchange(req: Request) {
-  const formData = await req.formData();
-  const grantType = formData.get("grant_type") as string;
-  const clientId = formData.get("client_id") as string;
-  const clientSecret = formData.get("client_secret") as string;
+  let formData: FormData;
+  let grantType: string;
+  let clientId: string;
+  let clientSecret: string;
+
+  // Try to parse body as form data or JSON
+  const contentType = req.headers.get("content-type") || "";
+  
+  if (contentType.includes("application/json")) {
+    const body = await req.json();
+    grantType = body.grant_type;
+    clientId = body.client_id;
+    clientSecret = body.client_secret;
+    formData = new FormData();
+    Object.entries(body).forEach(([key, value]) => {
+      if (value) formData.append(key, String(value));
+    });
+  } else {
+    formData = await req.formData();
+    grantType = formData.get("grant_type") as string;
+    clientId = formData.get("client_id") as string;
+    clientSecret = formData.get("client_secret") as string;
+  }
+
+  console.log("[Token Exchange] Received request:", {
+    grantType,
+    clientId,
+    hasClientSecret: !!clientSecret,
+    clientSecretLength: clientSecret?.length,
+  });
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -166,6 +192,11 @@ async function handleTokenExchange(req: Request) {
     .maybeSingle();
 
   if (appError || !app) {
+    console.error("[Token Exchange] Client validation failed:", {
+      clientId,
+      appError,
+      hasApp: !!app,
+    });
     return errorResponse("Invalid client credentials", 401, "invalid_client");
   }
 
