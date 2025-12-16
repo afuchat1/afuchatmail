@@ -24,12 +24,28 @@ const errorResponse = (message: string, status = 400, code?: string) =>
 
 // Validate OAuth token and return user context
 async function validateToken(req: Request) {
+  const url = new URL(req.url);
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
+
+  // Accept tokens from:
+  // - Authorization: Bearer <token>
+  // - Authorization: <token> (some clients omit Bearer)
+  // - ?access_token=<token> (common for userinfo-style calls)
+  let token: string | null = null;
+
+  if (authHeader) {
+    const trimmed = authHeader.trim();
+    const bearerMatch = /^bearer\s+(.+)$/i.exec(trimmed);
+    token = (bearerMatch?.[1] ?? trimmed).trim();
+  } else {
+    token = (url.searchParams.get("access_token") || url.searchParams.get("token"))?.trim() ?? null;
+  }
+
+  if (!token) {
+    console.warn("[Auth] Missing access token");
     return null;
   }
 
-  const token = authHeader.substring(7);
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   const { data: tokenData, error } = await supabase
@@ -41,6 +57,10 @@ async function validateToken(req: Request) {
     .maybeSingle();
 
   if (error || !tokenData) {
+    console.warn("[Auth] Invalid or expired token", {
+      hasError: !!error,
+      tokenPrefix: `${token.slice(0, 8)}…`,
+    });
     return null;
   }
 
@@ -115,6 +135,8 @@ function parsePath(url: URL): { route: string; params: Record<string, string> } 
     if (parts[1] === "token") return { route: "oauth-token", params: {} };
     if (parts[1] === "authorize") return { route: "oauth-authorize", params: {} };
     if (parts[1] === "revoke") return { route: "oauth-revoke", params: {} };
+    // OpenID Connect style userinfo
+    if (parts[1] === "userinfo") return { route: "user-me", params: {} };
   }
 
   // Match routes
@@ -373,13 +395,14 @@ async function handleUserMe(context: { userId: string; emailAddressId: string; s
 
   // Include mailbox-specific info if read:mailbox scope is present
   if (hasScope(context.scopes, "read:mailbox")) {
-    // Get all email accounts
+    // Keep userinfo payload small (and consistent with MAX_ACCOUNTS_PER_USER)
     const { data: accounts } = await supabase
       .from("email_addresses")
       .select("id, local_part, full_email, is_primary, is_alias, created_at")
       .eq("user_id", context.userId)
       .eq("is_alias", false)
-      .order("created_at");
+      .order("created_at")
+      .limit(MAX_ACCOUNTS_PER_USER);
 
     response.accounts = accounts?.map(acc => ({
       id: acc.id,
