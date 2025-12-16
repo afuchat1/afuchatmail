@@ -94,15 +94,55 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
       }
       
       // Get user's primary email address
-      const { data: emailAddresses, error: emailError } = await supabase
+      let { data: emailAddress, error: emailError } = await supabase
         .from("email_addresses")
         .select("id")
         .eq("user_id", session.user.id)
         .eq("is_primary", true)
         .single();
       
-      if (emailError || !emailAddresses) {
-        throw new Error("No email address found");
+      // If no email address exists, create one from auth email
+      if (emailError || !emailAddress) {
+        const authEmail = session.user.email;
+        if (!authEmail) {
+          throw new Error("No email found in session");
+        }
+        
+        // Generate username from auth email (part before @)
+        const baseUsername = authEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+        let username = baseUsername;
+        let suffix = 1;
+        
+        // Check if username exists, add suffix if needed
+        while (true) {
+          const { data: existing } = await supabase
+            .from("email_addresses")
+            .select("id")
+            .eq("local_part", username)
+            .single();
+          
+          if (!existing) break;
+          username = `${baseUsername}${suffix}`;
+          suffix++;
+        }
+        
+        // Create the email address
+        const { data: newEmail, error: createError } = await supabase
+          .from("email_addresses")
+          .insert({
+            user_id: session.user.id,
+            local_part: username,
+            is_primary: true,
+            is_alias: false,
+          })
+          .select("id")
+          .single();
+        
+        if (createError || !newEmail) {
+          throw new Error("Failed to create email address");
+        }
+        
+        emailAddress = newEmail;
       }
       
       // Get the OAuth application by client_id
@@ -122,7 +162,7 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
         .insert({
           application_id: app.id,
           user_id: session.user.id,
-          email_address_id: emailAddresses.id,
+          email_address_id: emailAddress.id,
           redirect_uri: oauthParams.redirectUri,
           scopes: scopes,
         })
