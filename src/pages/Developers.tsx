@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Copy, Trash2, Key, Book, Shield } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface OAuthApp {
   id: string;
@@ -21,12 +22,25 @@ interface OAuthApp {
   created_at: string;
 }
 
+const AVAILABLE_SCOPES = [
+  { id: "openid", label: "OpenID Connect", description: "Enable OpenID authentication" },
+  { id: "profile", label: "Profile", description: "Access user profile information" },
+  { id: "email", label: "Email", description: "Access user's email address" },
+  { id: "read:mailbox", label: "Read Mailbox", description: "Access mailbox info and folder list" },
+  { id: "read:messages", label: "Read Messages", description: "Read email messages" },
+  { id: "read:folders", label: "Read Folders", description: "Access folder structure" },
+  { id: "search", label: "Search", description: "Search through emails" },
+  { id: "write:messages", label: "Write Messages", description: "Send emails on behalf of user" },
+  { id: "write:drafts", label: "Write Drafts", description: "Create, edit, and delete drafts" },
+];
+
 const Developers = () => {
   const navigate = useNavigate();
   const [apps, setApps] = useState<OAuthApp[]>([]);
   const [loading, setLoading] = useState(true);
   const [newAppName, setNewAppName] = useState("");
   const [newAppRedirectUri, setNewAppRedirectUri] = useState("");
+  const [selectedScopes, setSelectedScopes] = useState<string[]>(["read:mailbox", "read:messages"]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
 
@@ -74,7 +88,7 @@ const Developers = () => {
         user_id: session.user.id,
         name: newAppName.trim(),
         redirect_uris: redirectUris,
-        scopes: ["read:mailbox", "read:messages"],
+        scopes: selectedScopes,
       });
 
     if (error) {
@@ -84,9 +98,18 @@ const Developers = () => {
       toast.success("Application created successfully");
       setNewAppName("");
       setNewAppRedirectUri("");
+      setSelectedScopes(["read:mailbox", "read:messages"]);
       setDialogOpen(false);
       fetchApps();
     }
+  };
+
+  const toggleScope = (scopeId: string) => {
+    setSelectedScopes(prev => 
+      prev.includes(scopeId) 
+        ? prev.filter(s => s !== scopeId)
+        : [...prev, scopeId]
+    );
   };
 
   const deleteApp = async (id: string) => {
@@ -177,6 +200,31 @@ const Developers = () => {
                         value={newAppRedirectUri}
                         onChange={(e) => setNewAppRedirectUri(e.target.value)}
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Scopes</Label>
+                      <div className="grid gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
+                        {AVAILABLE_SCOPES.map((scope) => (
+                          <div key={scope.id} className="flex items-start space-x-2">
+                            <Checkbox
+                              id={scope.id}
+                              checked={selectedScopes.includes(scope.id)}
+                              onCheckedChange={() => toggleScope(scope.id)}
+                            />
+                            <div className="grid gap-0.5 leading-none">
+                              <label
+                                htmlFor={scope.id}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                              >
+                                {scope.label}
+                              </label>
+                              <p className="text-xs text-muted-foreground">
+                                {scope.description}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   <DialogFooter>
@@ -396,22 +444,18 @@ grant_type=refresh_token
 
             <Card>
               <CardHeader>
-                <CardTitle>Scopes</CardTitle>
+                <CardTitle>Available Scopes</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <Badge variant="outline">read:mailbox</Badge>
-                    <span className="text-sm text-muted-foreground">
-                      Access mailbox info and folder list
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Badge variant="outline">read:messages</Badge>
-                    <span className="text-sm text-muted-foreground">
-                      Read email messages and search
-                    </span>
-                  </div>
+                  {AVAILABLE_SCOPES.map((scope) => (
+                    <div key={scope.id} className="flex items-start gap-3">
+                      <Badge variant="outline">{scope.id}</Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {scope.description}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
