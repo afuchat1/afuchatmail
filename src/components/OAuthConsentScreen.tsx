@@ -93,29 +93,42 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
         throw new Error("Not authenticated");
       }
       
-      // Get user's primary email address
-      let { data: emailAddress, error: emailError } = await supabase
+      // Get user's primary email address (or any email if no primary)
+      let { data: emailAddress } = await supabase
         .from("email_addresses")
         .select("id")
         .eq("user_id", session.user.id)
         .eq("is_primary", true)
-        .single();
+        .maybeSingle();
       
-      // If no email address exists, create one from auth email
-      if (emailError || !emailAddress) {
+      // If no primary, try to get any email address
+      if (!emailAddress) {
+        const { data: anyEmail } = await supabase
+          .from("email_addresses")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .eq("is_alias", false)
+          .limit(1)
+          .maybeSingle();
+        
+        emailAddress = anyEmail;
+      }
+      
+      // If still no email address, create one
+      if (!emailAddress) {
         const authEmail = session.user.email;
         if (!authEmail) {
           throw new Error("No email found in session");
         }
         
-        // Generate username from auth email (part before @)
+        // Generate username from auth email
         const baseUsername = authEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
         let username = baseUsername;
         let suffix = 1;
         
-        // Check if username exists, add suffix if needed
-        while (true) {
-        const { data: existing } = await supabase
+        // Find available username
+        while (suffix < 100) {
+          const { data: existing } = await supabase
             .from("email_addresses")
             .select("id")
             .eq("local_part", username)
@@ -126,7 +139,7 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
           suffix++;
         }
         
-        // Create the email address
+        // Try to create, handle race condition gracefully
         const { data: newEmail, error: createError } = await supabase
           .from("email_addresses")
           .insert({
@@ -138,11 +151,32 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
           .select("id")
           .single();
         
-        if (createError || !newEmail) {
-          throw new Error("Failed to create email address");
+        if (createError) {
+          // If duplicate key error, try to fetch existing again
+          if (createError.code === "23505") {
+            const { data: existingEmail } = await supabase
+              .from("email_addresses")
+              .select("id")
+              .eq("user_id", session.user.id)
+              .eq("is_alias", false)
+              .limit(1)
+              .maybeSingle();
+            
+            if (existingEmail) {
+              emailAddress = existingEmail;
+            } else {
+              throw new Error("Failed to create or find email address");
+            }
+          } else {
+            throw new Error("Failed to create email address");
+          }
+        } else {
+          emailAddress = newEmail;
         }
-        
-        emailAddress = newEmail;
+      }
+      
+      if (!emailAddress) {
+        throw new Error("No email address available");
       }
       
       // Get the OAuth application by client_id
