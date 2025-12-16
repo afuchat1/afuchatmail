@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, Mail, Inbox, Search, FolderOpen, CheckCircle, XCircle } from "lucide-react";
+import { Shield, Mail, Inbox, Search, FolderOpen, CheckCircle, XCircle, User, Key } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,6 +34,23 @@ const CLIENT_APP_NAMES: Record<string, string> = {
 
 // Scope descriptions
 const SCOPE_INFO: Record<string, { label: string; description: string; icon: React.ReactNode }> = {
+  // OpenID Connect scopes for authentication
+  openid: {
+    label: "OpenID authentication",
+    description: "Verify your identity and authenticate you",
+    icon: <Key className="h-4 w-4" />,
+  },
+  profile: {
+    label: "View your profile",
+    description: "Access your name and profile information",
+    icon: <User className="h-4 w-4" />,
+  },
+  email: {
+    label: "View your email address",
+    description: "Access your email address",
+    icon: <Mail className="h-4 w-4" />,
+  },
+  // AfuMail-specific scopes
   "read:mailbox": {
     label: "View mailbox info",
     description: "Access your mailbox details and storage usage",

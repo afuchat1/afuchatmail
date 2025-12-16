@@ -302,48 +302,68 @@ async function handleTokenRevoke(req: Request) {
   return jsonResponse({ revoked: true });
 }
 
-// User Info Handler (GET /api/user/me)
-async function handleUserMe(context: { userId: string; emailAddressId: string }) {
+// User Info Handler (GET /api/user/me) - OpenID Connect UserInfo endpoint
+async function handleUserMe(context: { userId: string; emailAddressId: string; scopes: string[] }) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Get user profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, full_name, created_at")
-    .eq("id", context.userId)
-    .single();
+  // Base response - always include sub (user ID) for openid
+  const response: Record<string, unknown> = {
+    sub: context.userId,
+  };
 
-  // Get primary email address
-  const { data: primaryEmail } = await supabase
-    .from("email_addresses")
-    .select("id, local_part, full_email, is_primary")
-    .eq("user_id", context.userId)
-    .eq("is_primary", true)
-    .maybeSingle();
+  // Get user profile if profile scope is present
+  if (hasScope(context.scopes, "profile") || hasScope(context.scopes, "openid")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, full_name, created_at")
+      .eq("id", context.userId)
+      .single();
 
-  // Get all email accounts
-  const { data: accounts } = await supabase
-    .from("email_addresses")
-    .select("id, local_part, full_email, is_primary, is_alias, created_at")
-    .eq("user_id", context.userId)
-    .eq("is_alias", false)
-    .order("created_at");
+    if (profile) {
+      response.name = profile.full_name || null;
+      response.created_at = profile.created_at;
+    }
+  }
 
-  return jsonResponse({
-    id: context.userId,
-    email: primaryEmail?.full_email || `${primaryEmail?.local_part}@afuchat.com`,
-    name: profile?.full_name || null,
-    avatar: null, // Could be extended to include avatar_url
-    created_at: profile?.created_at,
-    accounts: accounts?.map(acc => ({
+  // Get email if email scope is present
+  if (hasScope(context.scopes, "email") || hasScope(context.scopes, "openid")) {
+    const { data: primaryEmail } = await supabase
+      .from("email_addresses")
+      .select("id, local_part, full_email, is_primary")
+      .eq("user_id", context.userId)
+      .eq("is_primary", true)
+      .maybeSingle();
+
+    if (primaryEmail) {
+      response.email = primaryEmail.full_email || `${primaryEmail.local_part}@afuchat.com`;
+      response.email_verified = true; // AfuMail emails are verified by default
+    }
+  }
+
+  // Include mailbox-specific info if read:mailbox scope is present
+  if (hasScope(context.scopes, "read:mailbox")) {
+    // Get all email accounts
+    const { data: accounts } = await supabase
+      .from("email_addresses")
+      .select("id, local_part, full_email, is_primary, is_alias, created_at")
+      .eq("user_id", context.userId)
+      .eq("is_alias", false)
+      .order("created_at");
+
+    response.accounts = accounts?.map(acc => ({
       id: acc.id,
       email: acc.full_email || `${acc.local_part}@afuchat.com`,
       username: acc.local_part,
       is_primary: acc.is_primary,
       created_at: acc.created_at,
-    })) || [],
-    account_limit: MAX_ACCOUNTS_PER_USER,
-  });
+    })) || [];
+    response.account_limit = MAX_ACCOUNTS_PER_USER;
+  }
+
+  // For backwards compatibility, include id field
+  response.id = context.userId;
+
+  return jsonResponse(response);
 }
 
 // List Accounts Handler (GET /api/accounts)
@@ -1309,7 +1329,7 @@ serve(async (req) => {
         authorization_url: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/auth?oauth=true&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri || '')}&scope=${encodeURIComponent(scope)}&state=${state || ''}`,
         required_params: ["client_id", "redirect_uri", "response_type", "scope"],
         optional_params: ["state"],
-        supported_scopes: ["read:mailbox", "read:messages", "write:messages", "write:drafts"],
+        supported_scopes: ["openid", "profile", "email", "read:mailbox", "read:messages", "read:folders", "search", "write:messages", "write:drafts"],
         note: "Redirect users to authorization_url to begin OAuth flow",
       });
     }
