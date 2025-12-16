@@ -227,6 +227,153 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_applications: {
+        Row: {
+          client_id: string
+          client_secret: string
+          created_at: string
+          id: string
+          name: string
+          redirect_uris: string[]
+          scopes: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string
+          client_secret?: string
+          created_at?: string
+          id?: string
+          name: string
+          redirect_uris?: string[]
+          scopes?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          client_secret?: string
+          created_at?: string
+          id?: string
+          name?: string
+          redirect_uris?: string[]
+          scopes?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      oauth_authorization_codes: {
+        Row: {
+          application_id: string
+          code: string
+          created_at: string
+          email_address_id: string
+          expires_at: string
+          id: string
+          redirect_uri: string
+          scopes: string[]
+          used: boolean
+          user_id: string
+        }
+        Insert: {
+          application_id: string
+          code?: string
+          created_at?: string
+          email_address_id: string
+          expires_at?: string
+          id?: string
+          redirect_uri: string
+          scopes: string[]
+          used?: boolean
+          user_id: string
+        }
+        Update: {
+          application_id?: string
+          code?: string
+          created_at?: string
+          email_address_id?: string
+          expires_at?: string
+          id?: string
+          redirect_uri?: string
+          scopes?: string[]
+          used?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oauth_authorization_codes_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "oauth_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oauth_authorization_codes_email_address_id_fkey"
+            columns: ["email_address_id"]
+            isOneToOne: false
+            referencedRelation: "email_addresses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oauth_tokens: {
+        Row: {
+          access_token: string
+          application_id: string
+          created_at: string
+          email_address_id: string
+          expires_at: string
+          id: string
+          refresh_expires_at: string
+          refresh_token: string
+          revoked: boolean
+          scopes: string[]
+          user_id: string
+        }
+        Insert: {
+          access_token?: string
+          application_id: string
+          created_at?: string
+          email_address_id: string
+          expires_at?: string
+          id?: string
+          refresh_expires_at?: string
+          refresh_token?: string
+          revoked?: boolean
+          scopes: string[]
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          application_id?: string
+          created_at?: string
+          email_address_id?: string
+          expires_at?: string
+          id?: string
+          refresh_expires_at?: string
+          refresh_token?: string
+          revoked?: boolean
+          scopes?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oauth_tokens_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "oauth_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oauth_tokens_email_address_id_fkey"
+            columns: ["email_address_id"]
+            isOneToOne: false
+            referencedRelation: "email_addresses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
