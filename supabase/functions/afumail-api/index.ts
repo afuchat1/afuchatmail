@@ -94,8 +94,28 @@ function isValidUsername(username: string): { valid: boolean; error?: string } {
 
 // Parse URL path
 function parsePath(url: URL): { route: string; params: Record<string, string> } {
-  const pathname = url.pathname.replace("/afumail-api", "");
+  const functionName = "afumail-api";
+
+  // In production, url.pathname can look like:
+  // - /functions/v1/afumail-api/api/user/me
+  // - /afumail-api/api/user/me
+  // In local dev, it may look like:
+  // - /api/user/me
+  let pathname = url.pathname;
+
+  // Normalize common prefixes
+  pathname = pathname.replace(`/functions/v1/${functionName}`, "");
+  pathname = pathname.replace(`/${functionName}`, "");
+  if (!pathname.startsWith("/")) pathname = `/${pathname}`;
+
   const parts = pathname.split("/").filter(Boolean);
+
+  // Support OAuth routes both with and without /api prefix
+  if (parts[0] === "oauth") {
+    if (parts[1] === "token") return { route: "oauth-token", params: {} };
+    if (parts[1] === "authorize") return { route: "oauth-authorize", params: {} };
+    if (parts[1] === "revoke") return { route: "oauth-revoke", params: {} };
+  }
 
   // Match routes
   if (parts[0] === "api") {
