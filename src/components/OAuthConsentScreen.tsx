@@ -89,8 +89,10 @@ const WHITELISTED_URIS = ["https://afuchat.com/auth/afumail/callback"];
 
 const isRedirectUriWhitelisted = (uri: string): boolean => {
   if (WHITELISTED_URIS.includes(uri)) return true;
+  // Allow lovableproject.com and vercel.app subdomains
   const lovablePattern = /^https:\/\/[a-zA-Z0-9-]+\.lovableproject\.com\/auth\/afumail\/callback$/;
-  return lovablePattern.test(uri);
+  const vercelPattern = /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app\/auth\/afumail\/callback$/;
+  return lovablePattern.test(uri) || vercelPattern.test(uri);
 };
 
 const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps) => {
