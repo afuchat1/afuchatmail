@@ -173,15 +173,9 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
         );
 
         setMailboxes(enriched);
-
-        // Default: mailbox with most emails, else primary, else first
-        if (enriched.length > 0) {
-          const byCount = [...enriched].sort((a, b) => b.emailCount - a.emailCount);
-          const best = byCount[0].emailCount > 0 ? byCount[0] : enriched.find((m) => m.isPrimary) || enriched[0];
-          setSelectedMailboxId(best.id);
-        } else {
-          setSelectedMailboxId(undefined);
-        }
+        
+        // Do NOT auto-select - user must manually choose which mailbox to authorize
+        setSelectedMailboxId(undefined);
       } catch (err: any) {
         console.error("Failed to load data:", err);
         toast({
@@ -373,9 +367,16 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
                 })}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">This is the mailbox {appName} will access.</p>
+            <p className="text-xs text-muted-foreground">
+              {selectedMailboxId 
+                ? `This is the mailbox ${appName} will access.`
+                : `Select which mailbox ${appName} will be able to access.`}
+            </p>
             {mailboxes.length === 0 && (
               <p className="text-xs text-destructive">No mailboxes found. Create an @afuchat.com email address first.</p>
+            )}
+            {mailboxes.length > 0 && !selectedMailboxId && (
+              <p className="text-xs text-amber-500">Please select a mailbox to continue.</p>
             )}
           </div>
 
