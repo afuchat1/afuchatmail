@@ -111,6 +111,12 @@ function parsePath(url: URL): { route: string; params: Record<string, string> } 
       if (parts[2] === "messages") return { route: "messages", params: {} };
       if (parts[2] === "message" && parts[3]) return { route: "message", params: { id: parts[3] } };
       if (parts[2] === "search") return { route: "search", params: {} };
+      if (parts[2] === "send") return { route: "send", params: {} };
+      if (parts[2] === "draft") {
+        if (parts[3]) return { route: "draft-detail", params: { id: parts[3] } };
+        return { route: "draft", params: {} };
+      }
+      if (parts[2] === "action") return { route: "action", params: {} };
     }
     if (parts[1] === "oauth") {
       if (parts[2] === "token") return { route: "oauth-token", params: {} };
@@ -752,6 +758,504 @@ async function handleSearch(
   });
 }
 
+// Send Email Handler (POST /api/mail/send)
+async function handleSendEmail(
+  req: Request,
+  context: { userId: string; emailAddressId: string }
+) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  let body: {
+    to: string[];
+    cc?: string[];
+    bcc?: string[];
+    subject: string;
+    body_text?: string;
+    body_html?: string;
+    reply_to_message_id?: string;
+  };
+
+  try {
+    body = await req.json();
+  } catch {
+    return errorResponse("Invalid request body", 400);
+  }
+
+  // Validate required fields
+  if (!body.to || !Array.isArray(body.to) || body.to.length === 0) {
+    return errorResponse("At least one recipient is required", 400, "missing_recipients");
+  }
+
+  if (!body.subject) {
+    return errorResponse("Subject is required", 400, "missing_subject");
+  }
+
+  // Get sender's email address
+  const { data: senderEmail } = await supabase
+    .from("email_addresses")
+    .select("local_part, full_email")
+    .eq("id", context.emailAddressId)
+    .single();
+
+  if (!senderEmail) {
+    return errorResponse("Sender email not found", 404);
+  }
+
+  const fromAddress = senderEmail.full_email || `${senderEmail.local_part}@afuchat.com`;
+
+  // Get sent folder
+  const { data: sentFolder } = await supabase
+    .from("folders")
+    .select("id")
+    .eq("user_id", context.userId)
+    .eq("type", "sent")
+    .maybeSingle();
+
+  // Determine thread_id if this is a reply
+  let threadId = null;
+  if (body.reply_to_message_id) {
+    const { data: originalEmail } = await supabase
+      .from("emails")
+      .select("thread_id, id")
+      .eq("id", body.reply_to_message_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+
+    if (originalEmail) {
+      threadId = originalEmail.thread_id || originalEmail.id;
+    }
+  }
+
+  // Create the email record
+  const { data: email, error: emailError } = await supabase
+    .from("emails")
+    .insert({
+      user_id: context.userId,
+      email_address_id: context.emailAddressId,
+      folder_id: sentFolder?.id,
+      from_address: fromAddress,
+      to_addresses: body.to,
+      cc_addresses: body.cc || [],
+      bcc_addresses: body.bcc || [],
+      subject: body.subject,
+      body_text: body.body_text || "",
+      body_html: body.body_html || "",
+      is_read: true,
+      is_draft: false,
+      sent_at: new Date().toISOString(),
+      thread_id: threadId,
+    })
+    .select()
+    .single();
+
+  if (emailError) {
+    console.error("Send email error:", emailError);
+    return errorResponse("Failed to send email", 500, "send_failed");
+  }
+
+  // TODO: Actually send the email via Resend or other provider
+  // For now, we just store it in the database
+
+  return jsonResponse({
+    success: true,
+    message_id: email.id,
+    from: fromAddress,
+    to: body.to,
+    subject: body.subject,
+    sent_at: email.sent_at,
+  }, 201);
+}
+
+// Create Draft Handler (POST /api/mail/draft)
+async function handleCreateDraft(
+  req: Request,
+  context: { userId: string; emailAddressId: string }
+) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  let body: {
+    to?: string[];
+    cc?: string[];
+    bcc?: string[];
+    subject?: string;
+    body_text?: string;
+    body_html?: string;
+    reply_to_message_id?: string;
+  };
+
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
+
+  // Get sender's email address
+  const { data: senderEmail } = await supabase
+    .from("email_addresses")
+    .select("local_part, full_email")
+    .eq("id", context.emailAddressId)
+    .single();
+
+  if (!senderEmail) {
+    return errorResponse("Sender email not found", 404);
+  }
+
+  const fromAddress = senderEmail.full_email || `${senderEmail.local_part}@afuchat.com`;
+
+  // Get drafts folder
+  const { data: draftsFolder } = await supabase
+    .from("folders")
+    .select("id")
+    .eq("user_id", context.userId)
+    .eq("type", "drafts")
+    .maybeSingle();
+
+  // Determine thread_id if this is a reply
+  let threadId = null;
+  if (body.reply_to_message_id) {
+    const { data: originalEmail } = await supabase
+      .from("emails")
+      .select("thread_id, id")
+      .eq("id", body.reply_to_message_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+
+    if (originalEmail) {
+      threadId = originalEmail.thread_id || originalEmail.id;
+    }
+  }
+
+  // Create the draft
+  const { data: draft, error: draftError } = await supabase
+    .from("emails")
+    .insert({
+      user_id: context.userId,
+      email_address_id: context.emailAddressId,
+      folder_id: draftsFolder?.id,
+      from_address: fromAddress,
+      to_addresses: body.to || [],
+      cc_addresses: body.cc || [],
+      bcc_addresses: body.bcc || [],
+      subject: body.subject || "",
+      body_text: body.body_text || "",
+      body_html: body.body_html || "",
+      is_read: true,
+      is_draft: true,
+      thread_id: threadId,
+    })
+    .select()
+    .single();
+
+  if (draftError) {
+    console.error("Create draft error:", draftError);
+    return errorResponse("Failed to create draft", 500, "draft_creation_failed");
+  }
+
+  return jsonResponse({
+    success: true,
+    draft: {
+      id: draft.id,
+      from: fromAddress,
+      to: draft.to_addresses,
+      cc: draft.cc_addresses,
+      bcc: draft.bcc_addresses,
+      subject: draft.subject,
+      body_text: draft.body_text,
+      body_html: draft.body_html,
+      created_at: draft.created_at,
+    },
+  }, 201);
+}
+
+// Update Draft Handler (PUT /api/mail/draft/{id})
+async function handleUpdateDraft(
+  req: Request,
+  draftId: string,
+  context: { userId: string }
+) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Verify draft exists and belongs to user
+  const { data: existingDraft } = await supabase
+    .from("emails")
+    .select("id, is_draft")
+    .eq("id", draftId)
+    .eq("user_id", context.userId)
+    .eq("is_draft", true)
+    .maybeSingle();
+
+  if (!existingDraft) {
+    return errorResponse("Draft not found", 404, "draft_not_found");
+  }
+
+  let body: {
+    to?: string[];
+    cc?: string[];
+    bcc?: string[];
+    subject?: string;
+    body_text?: string;
+    body_html?: string;
+  };
+
+  try {
+    body = await req.json();
+  } catch {
+    return errorResponse("Invalid request body", 400);
+  }
+
+  // Update the draft
+  const updateData: Record<string, unknown> = {};
+  if (body.to !== undefined) updateData.to_addresses = body.to;
+  if (body.cc !== undefined) updateData.cc_addresses = body.cc;
+  if (body.bcc !== undefined) updateData.bcc_addresses = body.bcc;
+  if (body.subject !== undefined) updateData.subject = body.subject;
+  if (body.body_text !== undefined) updateData.body_text = body.body_text;
+  if (body.body_html !== undefined) updateData.body_html = body.body_html;
+
+  const { data: updatedDraft, error: updateError } = await supabase
+    .from("emails")
+    .update(updateData)
+    .eq("id", draftId)
+    .select()
+    .single();
+
+  if (updateError) {
+    console.error("Update draft error:", updateError);
+    return errorResponse("Failed to update draft", 500, "draft_update_failed");
+  }
+
+  return jsonResponse({
+    success: true,
+    draft: {
+      id: updatedDraft.id,
+      from: updatedDraft.from_address,
+      to: updatedDraft.to_addresses,
+      cc: updatedDraft.cc_addresses,
+      bcc: updatedDraft.bcc_addresses,
+      subject: updatedDraft.subject,
+      body_text: updatedDraft.body_text,
+      body_html: updatedDraft.body_html,
+      updated_at: new Date().toISOString(),
+    },
+  });
+}
+
+// Delete Draft Handler (DELETE /api/mail/draft/{id})
+async function handleDeleteDraft(
+  draftId: string,
+  context: { userId: string }
+) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Verify draft exists and belongs to user
+  const { data: existingDraft } = await supabase
+    .from("emails")
+    .select("id, is_draft")
+    .eq("id", draftId)
+    .eq("user_id", context.userId)
+    .eq("is_draft", true)
+    .maybeSingle();
+
+  if (!existingDraft) {
+    return errorResponse("Draft not found", 404, "draft_not_found");
+  }
+
+  // Delete the draft
+  const { error: deleteError } = await supabase
+    .from("emails")
+    .delete()
+    .eq("id", draftId);
+
+  if (deleteError) {
+    console.error("Delete draft error:", deleteError);
+    return errorResponse("Failed to delete draft", 500, "draft_deletion_failed");
+  }
+
+  return jsonResponse({ success: true, deleted: draftId });
+}
+
+// Email Action Handler (POST /api/mail/action)
+async function handleEmailAction(
+  req: Request,
+  context: { userId: string }
+) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  let body: {
+    action: "mark_read" | "mark_unread" | "star" | "unstar" | "move" | "delete" | "restore" | "mark_important" | "mark_not_important";
+    message_ids: string[];
+    folder_id?: string; // Required for "move" action
+  };
+
+  try {
+    body = await req.json();
+  } catch {
+    return errorResponse("Invalid request body", 400);
+  }
+
+  if (!body.action) {
+    return errorResponse("Action is required", 400, "missing_action");
+  }
+
+  if (!body.message_ids || !Array.isArray(body.message_ids) || body.message_ids.length === 0) {
+    return errorResponse("At least one message_id is required", 400, "missing_message_ids");
+  }
+
+  // Verify all messages belong to user
+  const { data: existingEmails, error: fetchError } = await supabase
+    .from("emails")
+    .select("id, folder_id")
+    .eq("user_id", context.userId)
+    .in("id", body.message_ids);
+
+  if (fetchError) {
+    return errorResponse("Failed to fetch messages", 500);
+  }
+
+  const validIds = existingEmails?.map(e => e.id) || [];
+  if (validIds.length !== body.message_ids.length) {
+    return errorResponse("Some messages not found or access denied", 404, "messages_not_found");
+  }
+
+  let updateData: Record<string, unknown> = {};
+  let affectedCount = 0;
+
+  switch (body.action) {
+    case "mark_read":
+      updateData = { is_read: true };
+      break;
+
+    case "mark_unread":
+      updateData = { is_read: false };
+      break;
+
+    case "star":
+      updateData = { is_starred: true };
+      break;
+
+    case "unstar":
+      updateData = { is_starred: false };
+      break;
+
+    case "mark_important":
+      updateData = { is_important: true };
+      break;
+
+    case "mark_not_important":
+      updateData = { is_important: false };
+      break;
+
+    case "move":
+      if (!body.folder_id) {
+        return errorResponse("folder_id is required for move action", 400, "missing_folder_id");
+      }
+      // Verify folder exists and belongs to user
+      const { data: targetFolder } = await supabase
+        .from("folders")
+        .select("id")
+        .eq("id", body.folder_id)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+
+      if (!targetFolder) {
+        return errorResponse("Target folder not found", 404, "folder_not_found");
+      }
+      updateData = { folder_id: body.folder_id };
+      break;
+
+    case "delete":
+      // Get trash folder
+      const { data: trashFolder } = await supabase
+        .from("folders")
+        .select("id")
+        .eq("user_id", context.userId)
+        .eq("type", "trash")
+        .maybeSingle();
+
+      // Store original folder before moving to trash
+      const originalFolders = existingEmails?.reduce((acc, e) => {
+        acc[e.id] = e.folder_id;
+        return acc;
+      }, {} as Record<string, string>);
+
+      // Move to trash and set deleted_at
+      for (const emailId of body.message_ids) {
+        await supabase
+          .from("emails")
+          .update({
+            folder_id: trashFolder?.id,
+            original_folder_id: originalFolders?.[emailId],
+            deleted_at: new Date().toISOString(),
+          })
+          .eq("id", emailId);
+        affectedCount++;
+      }
+
+      return jsonResponse({
+        success: true,
+        action: body.action,
+        affected_count: affectedCount,
+        message_ids: body.message_ids,
+      });
+
+    case "restore":
+      // Restore from trash to original folder
+      for (const email of existingEmails || []) {
+        const { data: emailData } = await supabase
+          .from("emails")
+          .select("original_folder_id")
+          .eq("id", email.id)
+          .single();
+
+        // Get inbox as fallback
+        const { data: inboxFolder } = await supabase
+          .from("folders")
+          .select("id")
+          .eq("user_id", context.userId)
+          .eq("type", "inbox")
+          .maybeSingle();
+
+        await supabase
+          .from("emails")
+          .update({
+            folder_id: emailData?.original_folder_id || inboxFolder?.id,
+            original_folder_id: null,
+            deleted_at: null,
+          })
+          .eq("id", email.id);
+        affectedCount++;
+      }
+
+      return jsonResponse({
+        success: true,
+        action: body.action,
+        affected_count: affectedCount,
+        message_ids: body.message_ids,
+      });
+
+    default:
+      return errorResponse(`Unknown action: ${body.action}`, 400, "unknown_action");
+  }
+
+  // Apply update to all messages
+  const { error: updateError } = await supabase
+    .from("emails")
+    .update(updateData)
+    .in("id", body.message_ids);
+
+  if (updateError) {
+    console.error("Email action error:", updateError);
+    return errorResponse("Failed to perform action", 500, "action_failed");
+  }
+
+  return jsonResponse({
+    success: true,
+    action: body.action,
+    affected_count: body.message_ids.length,
+    message_ids: body.message_ids,
+  });
+}
+
 // Main handler
 serve(async (req) => {
   // Handle CORS preflight
@@ -853,6 +1357,46 @@ serve(async (req) => {
           return errorResponse("Insufficient scope", 403, "insufficient_scope");
         }
         return await handleSearch(url, context);
+
+      // Write endpoints
+      case "send":
+        if (req.method === "POST") {
+          if (!hasScope(context.scopes, "write:messages")) {
+            return errorResponse("Insufficient scope", 403, "insufficient_scope");
+          }
+          return await handleSendEmail(req, context);
+        }
+        return errorResponse("Method not allowed", 405);
+
+      case "draft":
+        if (req.method === "POST") {
+          if (!hasScope(context.scopes, "write:drafts")) {
+            return errorResponse("Insufficient scope", 403, "insufficient_scope");
+          }
+          return await handleCreateDraft(req, context);
+        }
+        return errorResponse("Method not allowed", 405);
+
+      case "draft-detail":
+        if (!hasScope(context.scopes, "write:drafts")) {
+          return errorResponse("Insufficient scope", 403, "insufficient_scope");
+        }
+        if (req.method === "PUT") {
+          return await handleUpdateDraft(req, params.id, context);
+        }
+        if (req.method === "DELETE") {
+          return await handleDeleteDraft(params.id, context);
+        }
+        return errorResponse("Method not allowed", 405);
+
+      case "action":
+        if (req.method === "POST") {
+          if (!hasScope(context.scopes, "write:messages")) {
+            return errorResponse("Insufficient scope", 403, "insufficient_scope");
+          }
+          return await handleEmailAction(req, context);
+        }
+        return errorResponse("Method not allowed", 405);
 
       default:
         return errorResponse("Not found", 404, "not_found");
