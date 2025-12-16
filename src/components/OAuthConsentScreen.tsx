@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, Mail, Inbox, Search, FolderOpen, CheckCircle, XCircle, User, Key } from "lucide-react";
+import { Shield, Mail, Inbox, Search, FolderOpen, CheckCircle, XCircle, User, Key, Send, FileEdit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -70,6 +70,17 @@ const SCOPE_INFO: Record<string, { label: string; description: string; icon: Rea
     label: "Search emails",
     description: "Search through your email messages",
     icon: <Search className="h-4 w-4" />,
+  },
+  // Write scopes
+  "write:messages": {
+    label: "Send emails",
+    description: "Send emails on your behalf",
+    icon: <Send className="h-4 w-4" />,
+  },
+  "write:drafts": {
+    label: "Manage drafts",
+    description: "Create, edit, and delete email drafts",
+    icon: <FileEdit className="h-4 w-4" />,
   },
 };
 
