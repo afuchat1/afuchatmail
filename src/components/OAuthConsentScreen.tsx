@@ -1,7 +1,8 @@
-import { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Shield, Mail, Inbox, Search, FolderOpen, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -19,10 +20,16 @@ interface OAuthConsentScreenProps {
   userEmail: string;
 }
 
+type MailboxOption = {
+  id: string;
+  email: string;
+  isPrimary: boolean;
+  emailCount: number;
+};
+
 // Map client IDs to app names
 const CLIENT_APP_NAMES: Record<string, string> = {
-  "afuchat_prod_001": "AfuChat",
-  // Add more as needed
+  afuchat_prod_001: "AfuChat",
 };
 
 // Scope descriptions
@@ -50,31 +57,99 @@ const SCOPE_INFO: Record<string, { label: string; description: string; icon: Rea
 };
 
 // Whitelisted redirect URIs
-const WHITELISTED_URIS = [
-  "https://afuchat.com/auth/afumail/callback",
-];
+const WHITELISTED_URIS = ["https://afuchat.com/auth/afumail/callback"];
 
 const isRedirectUriWhitelisted = (uri: string): boolean => {
-  // Check exact matches
   if (WHITELISTED_URIS.includes(uri)) return true;
-  
-  // Check lovableproject.com pattern for development
   const lovablePattern = /^https:\/\/[a-zA-Z0-9-]+\.lovableproject\.com\/auth\/afumail\/callback$/;
-  if (lovablePattern.test(uri)) return true;
-  
-  return false;
+  return lovablePattern.test(uri);
 };
 
 const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps) => {
   const [loading, setLoading] = useState(false);
+  const [mailboxLoading, setMailboxLoading] = useState(true);
+  const [mailboxes, setMailboxes] = useState<MailboxOption[]>([]);
+  const [selectedMailboxId, setSelectedMailboxId] = useState<string | undefined>(undefined);
   const { toast } = useToast();
-  
+
   const appName = CLIENT_APP_NAMES[oauthParams.clientId] || oauthParams.clientId;
   const scopes = oauthParams.scope.split(" ").filter(Boolean);
-  
+
   // Validate redirect URI
   const isValidRedirectUri = isRedirectUriWhitelisted(oauthParams.redirectUri);
-  
+
+  const selectedMailbox = useMemo(
+    () => mailboxes.find((m) => m.id === selectedMailboxId),
+    [mailboxes, selectedMailboxId],
+  );
+
+  useEffect(() => {
+    const loadMailboxes = async () => {
+      setMailboxLoading(true);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) {
+          setMailboxes([]);
+          setSelectedMailboxId(undefined);
+          return;
+        }
+
+        const { data: accounts, error } = await supabase
+          .from("email_addresses")
+          .select("id, local_part, full_email, is_primary, is_alias, created_at")
+          .eq("user_id", session.user.id)
+          .eq("is_alias", false)
+          .order("is_primary", { ascending: false })
+          .order("created_at", { ascending: true });
+
+        if (error) {
+          throw error;
+        }
+
+        const enriched: MailboxOption[] = await Promise.all(
+          (accounts ?? []).map(async (acc) => {
+            const { count } = await supabase
+              .from("emails")
+              .select("*", { count: "exact", head: true })
+              .eq("email_address_id", acc.id)
+              .is("deleted_at", null);
+
+            return {
+              id: acc.id,
+              email: acc.full_email || `${acc.local_part}@afuchat.com`,
+              isPrimary: !!acc.is_primary,
+              emailCount: count ?? 0,
+            };
+          }),
+        );
+
+        setMailboxes(enriched);
+
+        // Default: mailbox with most emails, else primary, else first
+        if (enriched.length > 0) {
+          const byCount = [...enriched].sort((a, b) => b.emailCount - a.emailCount);
+          const best = byCount[0].emailCount > 0 ? byCount[0] : enriched.find((m) => m.isPrimary) || enriched[0];
+          setSelectedMailboxId(best.id);
+        } else {
+          setSelectedMailboxId(undefined);
+        }
+      } catch (err: any) {
+        console.error("Failed to load mailboxes:", err);
+        toast({
+          variant: "destructive",
+          title: "Authorization failed",
+          description: err?.message || "Failed to load mailboxes",
+        });
+      } finally {
+        setMailboxLoading(false);
+      }
+    };
+
+    loadMailboxes();
+  }, [toast]);
+
   const handleAuthorize = async () => {
     if (!isValidRedirectUri) {
       toast({
@@ -84,148 +159,85 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
       });
       return;
     }
-    
+
+    if (!selectedMailboxId) {
+      toast({
+        variant: "destructive",
+        title: "No mailbox selected",
+        description: "Please select which mailbox to authorize.",
+      });
+      return;
+    }
+
     setLoading(true);
-    
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         throw new Error("Not authenticated");
       }
-      
-      // Get user's primary email address (or any email if no primary)
-      let { data: emailAddress } = await supabase
+
+      // Verify selected mailbox belongs to user
+      const { data: mailbox } = await supabase
         .from("email_addresses")
         .select("id")
+        .eq("id", selectedMailboxId)
         .eq("user_id", session.user.id)
-        .eq("is_primary", true)
         .maybeSingle();
-      
-      // If no primary, try to get any email address
-      if (!emailAddress) {
-        const { data: anyEmail } = await supabase
-          .from("email_addresses")
-          .select("id")
-          .eq("user_id", session.user.id)
-          .eq("is_alias", false)
-          .limit(1)
-          .maybeSingle();
-        
-        emailAddress = anyEmail;
+
+      if (!mailbox) {
+        throw new Error("Selected mailbox not found");
       }
-      
-      // If still no email address, create one
-      if (!emailAddress) {
-        const authEmail = session.user.email;
-        if (!authEmail) {
-          throw new Error("No email found in session");
-        }
-        
-        // Generate username from auth email
-        const baseUsername = authEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
-        let username = baseUsername;
-        let suffix = 1;
-        
-        // Find available username
-        while (suffix < 100) {
-          const { data: existing } = await supabase
-            .from("email_addresses")
-            .select("id")
-            .eq("local_part", username)
-            .maybeSingle();
-          
-          if (!existing) break;
-          username = `${baseUsername}${suffix}`;
-          suffix++;
-        }
-        
-        // Try to create, handle race condition gracefully
-        const { data: newEmail, error: createError } = await supabase
-          .from("email_addresses")
-          .insert({
-            user_id: session.user.id,
-            local_part: username,
-            is_primary: true,
-            is_alias: false,
-          })
-          .select("id")
-          .single();
-        
-        if (createError) {
-          // If duplicate key error, try to fetch existing again
-          if (createError.code === "23505") {
-            const { data: existingEmail } = await supabase
-              .from("email_addresses")
-              .select("id")
-              .eq("user_id", session.user.id)
-              .eq("is_alias", false)
-              .limit(1)
-              .maybeSingle();
-            
-            if (existingEmail) {
-              emailAddress = existingEmail;
-            } else {
-              throw new Error("Failed to create or find email address");
-            }
-          } else {
-            throw new Error("Failed to create email address");
-          }
-        } else {
-          emailAddress = newEmail;
-        }
-      }
-      
-      if (!emailAddress) {
-        throw new Error("No email address available");
-      }
-      
+
       // Get the OAuth application by client_id
       const { data: app, error: appError } = await supabase
         .from("oauth_applications")
         .select("id")
         .eq("client_id", oauthParams.clientId)
         .maybeSingle();
-      
+
       if (appError || !app) {
         throw new Error("Invalid client_id - application not found");
       }
-      
+
       // Create authorization code
       const { data: authCode, error: codeError } = await supabase
         .from("oauth_authorization_codes")
         .insert({
           application_id: app.id,
           user_id: session.user.id,
-          email_address_id: emailAddress.id,
+          email_address_id: selectedMailboxId,
           redirect_uri: oauthParams.redirectUri,
-          scopes: scopes,
+          scopes,
         })
         .select("code")
         .single();
-      
+
       if (codeError || !authCode) {
         throw new Error("Failed to create authorization code");
       }
-      
+
       // Redirect with authorization code
       const redirectUrl = new URL(oauthParams.redirectUri);
       redirectUrl.searchParams.set("code", authCode.code);
       if (oauthParams.state) {
         redirectUrl.searchParams.set("state", oauthParams.state);
       }
-      
+
       window.location.href = redirectUrl.toString();
     } catch (error: any) {
       console.error("Authorization error:", error);
       toast({
         variant: "destructive",
         title: "Authorization failed",
-        description: error.message,
+        description: error?.message || "Unknown error",
       });
       setLoading(false);
     }
   };
-  
+
   const handleDeny = () => {
     const redirectUrl = new URL(oauthParams.redirectUri);
     redirectUrl.searchParams.set("error", "access_denied");
@@ -234,7 +246,7 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
     }
     window.location.href = redirectUrl.toString();
   };
-  
+
   if (!isValidRedirectUri) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
@@ -244,20 +256,29 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
               <XCircle className="h-6 w-6 text-destructive" />
             </div>
             <CardTitle className="text-xl font-bold">Invalid Request</CardTitle>
-            <CardDescription>
-              The redirect URI is not authorized for this application.
-            </CardDescription>
+            <CardDescription>The redirect URI is not authorized for this application.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground text-center">
-              Please contact the application developer.
-            </p>
+            <p className="text-sm text-muted-foreground text-center">Please contact the application developer.</p>
           </CardContent>
         </Card>
       </div>
     );
   }
-  
+
+  if (mailboxLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground">Loading mailboxes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const canAuthorize = mailboxes.length > 0 && !!selectedMailboxId;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
       <Card className="w-full max-w-md">
@@ -276,7 +297,31 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
             <p className="text-sm text-muted-foreground">Signed in as</p>
             <p className="font-medium">{userEmail}</p>
           </div>
-          
+
+          {/* Mailbox selector */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Mailbox</p>
+            <Select value={selectedMailboxId} onValueChange={setSelectedMailboxId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select mailbox" />
+              </SelectTrigger>
+              <SelectContent>
+                {mailboxes.map((m) => {
+                  const label = `${m.email}${m.isPrimary ? " • primary" : ""}${m.emailCount > 0 ? ` • ${m.emailCount} emails` : ""}`;
+                  return (
+                    <SelectItem key={m.id} value={m.id}>
+                      {label}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">This is the mailbox {appName} will access.</p>
+            {mailboxes.length === 0 && (
+              <p className="text-xs text-destructive">No mailboxes found. Create an @afuchat.com email address first.</p>
+            )}
+          </div>
+
           {/* Requested permissions */}
           <div className="space-y-3">
             <p className="text-sm font-medium">This will allow {appName} to:</p>
@@ -296,7 +341,7 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
               })}
             </div>
           </div>
-          
+
           {/* Scope badges */}
           <div className="flex flex-wrap gap-1">
             {scopes.map((scope) => (
@@ -305,23 +350,14 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
               </Badge>
             ))}
           </div>
-          
+
           {/* Action buttons */}
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={handleDeny}
-              disabled={loading}
-            >
+            <Button variant="outline" className="flex-1" onClick={handleDeny} disabled={loading}>
               <XCircle className="h-4 w-4 mr-2" />
               Deny
             </Button>
-            <Button
-              className="flex-1"
-              onClick={handleAuthorize}
-              disabled={loading}
-            >
+            <Button className="flex-1" onClick={handleAuthorize} disabled={loading || !canAuthorize}>
               {loading ? (
                 "Authorizing..."
               ) : (
@@ -332,10 +368,10 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
               )}
             </Button>
           </div>
-          
+
           <p className="text-xs text-muted-foreground text-center">
-            By authorizing, you allow this app to access your data as specified above.
-            You can revoke access at any time from your AfuMail settings.
+            By authorizing, you allow this app to access your data as specified above. You can revoke access at any time
+            from your AfuMail settings.
           </p>
         </CardContent>
       </Card>
