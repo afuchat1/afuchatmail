@@ -1,12 +1,21 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Lock, User } from "lucide-react";
+import { Mail, Lock, User, Shield } from "lucide-react";
+import OAuthConsentScreen from "@/components/OAuthConsentScreen";
+
+interface OAuthParams {
+  clientId: string;
+  redirectUri: string;
+  scope: string;
+  state: string;
+  responseType: string;
+}
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -14,26 +23,88 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+
+  // Parse OAuth parameters
+  const isOAuthFlow = searchParams.get("oauth") === "true";
+  const oauthParams: OAuthParams | null = isOAuthFlow
+    ? {
+        clientId: searchParams.get("client_id") || "",
+        redirectUri: searchParams.get("redirect_uri") || "",
+        scope: searchParams.get("scope") || "read:mailbox read:messages",
+        state: searchParams.get("state") || "",
+        responseType: searchParams.get("response_type") || "code",
+      }
+    : null;
 
   useEffect(() => {
-    // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
       if (session) {
-        navigate("/dashboard");
+        setIsAuthenticated(true);
+        
+        // Get user's primary email address
+        const { data: emailAddresses } = await supabase
+          .from("email_addresses")
+          .select("full_email, local_part")
+          .eq("user_id", session.user.id)
+          .eq("is_primary", true)
+          .single();
+        
+        if (emailAddresses) {
+          setUserEmail(emailAddresses.full_email || `${emailAddresses.local_part}@afuchat.com`);
+        } else {
+          setUserEmail(session.user.email || "");
+        }
+        
+        // If not OAuth flow, redirect to dashboard
+        if (!isOAuthFlow) {
+          navigate("/dashboard");
+        }
       }
-    });
+      
+      setCheckingAuth(false);
+    };
+
+    checkSession();
 
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        navigate("/dashboard");
+        setIsAuthenticated(true);
+        
+        // Get user's primary email address
+        const { data: emailAddresses } = await supabase
+          .from("email_addresses")
+          .select("full_email, local_part")
+          .eq("user_id", session.user.id)
+          .eq("is_primary", true)
+          .single();
+        
+        if (emailAddresses) {
+          setUserEmail(emailAddresses.full_email || `${emailAddresses.local_part}@afuchat.com`);
+        } else {
+          setUserEmail(session.user.email || "");
+        }
+        
+        // If not OAuth flow, redirect to dashboard
+        if (!isOAuthFlow) {
+          navigate("/dashboard");
+        }
+      } else {
+        setIsAuthenticated(false);
+        setUserEmail(null);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, isOAuthFlow]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +116,9 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: isOAuthFlow 
+              ? `${window.location.origin}/auth?${searchParams.toString()}`
+              : `${window.location.origin}/dashboard`,
             data: {
               full_name: fullName,
             },
@@ -68,7 +141,9 @@ const Auth = () => {
 
         toast({
           title: "Welcome back!",
-          description: "You've successfully signed in.",
+          description: isOAuthFlow 
+            ? "Please review the authorization request."
+            : "You've successfully signed in.",
         });
       }
     } catch (error: any) {
@@ -82,15 +157,37 @@ const Auth = () => {
     }
   };
 
+  // Show loading state while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    );
+  }
+
+  // If OAuth flow and authenticated, show consent screen
+  if (isOAuthFlow && isAuthenticated && oauthParams && userEmail) {
+    return <OAuthConsentScreen oauthParams={oauthParams} userEmail={userEmail} />;
+  }
+
+  // Show login form (with OAuth context if applicable)
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          {isOAuthFlow && (
+            <div className="mx-auto w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+              <Shield className="h-5 w-5 text-primary" />
+            </div>
+          )}
           <CardTitle className="text-2xl font-bold text-center">
             {isSignUp ? "Create Account" : "Welcome Back"}
           </CardTitle>
           <CardDescription className="text-center">
-            {isSignUp
+            {isOAuthFlow
+              ? "Sign in to authorize the application"
+              : isSignUp
               ? "Sign up to create your @afuchat.com email"
               : "Sign in to manage your @afuchat.com emails"}
           </CardDescription>
