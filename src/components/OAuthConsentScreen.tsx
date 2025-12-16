@@ -85,7 +85,10 @@ const SCOPE_INFO: Record<string, { label: string; description: string; icon: Rea
 };
 
 // Whitelisted redirect URIs
-const WHITELISTED_URIS = ["https://afuchat.com/auth/afumail/callback"];
+const WHITELISTED_URIS = [
+  "https://afuchat.com/auth/afumail/callback",
+  "https://afuchatmail.vercel.app/auth/afumail/callback"
+];
 
 const isRedirectUriWhitelisted = (uri: string): boolean => {
   if (WHITELISTED_URIS.includes(uri)) return true;
