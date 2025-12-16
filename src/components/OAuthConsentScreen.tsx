@@ -70,9 +70,10 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
   const [mailboxLoading, setMailboxLoading] = useState(true);
   const [mailboxes, setMailboxes] = useState<MailboxOption[]>([]);
   const [selectedMailboxId, setSelectedMailboxId] = useState<string | undefined>(undefined);
+  const [oauthApp, setOauthApp] = useState<{ id: string; name: string } | null>(null);
+  const [appValidationError, setAppValidationError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const appName = CLIENT_APP_NAMES[oauthParams.clientId] || oauthParams.clientId;
   const scopes = oauthParams.scope.split(" ").filter(Boolean);
 
   // Validate redirect URI
@@ -83,8 +84,11 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
     [mailboxes, selectedMailboxId],
   );
 
+  // Use app name from database, fallback to client_id
+  const appName = oauthApp?.name || CLIENT_APP_NAMES[oauthParams.clientId] || oauthParams.clientId;
+
   useEffect(() => {
-    const loadMailboxes = async () => {
+    const loadData = async () => {
       setMailboxLoading(true);
       try {
         const {
@@ -96,6 +100,21 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
           return;
         }
 
+        // Validate OAuth application first
+        const { data: app, error: appError } = await supabase
+          .from("oauth_applications")
+          .select("id, name")
+          .eq("client_id", oauthParams.clientId)
+          .maybeSingle();
+
+        if (appError || !app) {
+          setAppValidationError("Invalid client_id - application not found");
+          return;
+        }
+
+        setOauthApp(app);
+
+        // Load mailboxes
         const { data: accounts, error } = await supabase
           .from("email_addresses")
           .select("id, local_part, full_email, is_primary, is_alias, created_at")
@@ -136,19 +155,19 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
           setSelectedMailboxId(undefined);
         }
       } catch (err: any) {
-        console.error("Failed to load mailboxes:", err);
+        console.error("Failed to load data:", err);
         toast({
           variant: "destructive",
           title: "Authorization failed",
-          description: err?.message || "Failed to load mailboxes",
+          description: err?.message || "Failed to load data",
         });
       } finally {
         setMailboxLoading(false);
       }
     };
 
-    loadMailboxes();
-  }, [toast]);
+    loadData();
+  }, [oauthParams.clientId, toast]);
 
   const handleAuthorize = async () => {
     if (!isValidRedirectUri) {
@@ -160,11 +179,11 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
       return;
     }
 
-    if (!selectedMailboxId) {
+    if (!selectedMailboxId || !oauthApp) {
       toast({
         variant: "destructive",
-        title: "No mailbox selected",
-        description: "Please select which mailbox to authorize.",
+        title: "Authorization failed",
+        description: !oauthApp ? "Invalid application" : "Please select which mailbox to authorize.",
       });
       return;
     }
@@ -191,22 +210,11 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
         throw new Error("Selected mailbox not found");
       }
 
-      // Get the OAuth application by client_id
-      const { data: app, error: appError } = await supabase
-        .from("oauth_applications")
-        .select("id")
-        .eq("client_id", oauthParams.clientId)
-        .maybeSingle();
-
-      if (appError || !app) {
-        throw new Error("Invalid client_id - application not found");
-      }
-
-      // Create authorization code
+      // Create authorization code using already validated app
       const { data: authCode, error: codeError } = await supabase
         .from("oauth_authorization_codes")
         .insert({
-          application_id: app.id,
+          application_id: oauthApp.id,
           user_id: session.user.id,
           email_address_id: selectedMailboxId,
           redirect_uri: oauthParams.redirectUri,
@@ -266,12 +274,33 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
     );
   }
 
+  if (appValidationError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1 text-center">
+            <div className="mx-auto w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mb-2">
+              <XCircle className="h-6 w-6 text-destructive" />
+            </div>
+            <CardTitle className="text-xl font-bold">Invalid Application</CardTitle>
+            <CardDescription>{appValidationError}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground text-center">
+              The client_id provided does not match any registered application.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (mailboxLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground">Loading mailboxes...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
