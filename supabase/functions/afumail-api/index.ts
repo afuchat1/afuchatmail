@@ -3,12 +3,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-account-id",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const MAX_ACCOUNTS_PER_USER = 3;
 
 // Helper to create JSON responses
 const jsonResponse = (data: unknown, status = 200) =>
@@ -17,8 +19,8 @@ const jsonResponse = (data: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const errorResponse = (message: string, status = 400) =>
-  jsonResponse({ error: message }, status);
+const errorResponse = (message: string, status = 400, code?: string) =>
+  jsonResponse({ error: message, code }, status);
 
 // Validate OAuth token and return user context
 async function validateToken(req: Request) {
@@ -42,9 +44,27 @@ async function validateToken(req: Request) {
     return null;
   }
 
+  // Check for X-Account-Id header to switch account context
+  const accountIdHeader = req.headers.get("X-Account-Id");
+  let emailAddressId = tokenData.email_address_id;
+
+  if (accountIdHeader) {
+    // Verify user owns this account
+    const { data: account } = await supabase
+      .from("email_addresses")
+      .select("id")
+      .eq("id", accountIdHeader)
+      .eq("user_id", tokenData.user_id)
+      .maybeSingle();
+
+    if (account) {
+      emailAddressId = account.id;
+    }
+  }
+
   return {
     userId: tokenData.user_id,
-    emailAddressId: tokenData.email_address_id,
+    emailAddressId: emailAddressId,
     scopes: tokenData.scopes as string[],
     applicationName: tokenData.oauth_applications?.name,
   };
@@ -55,6 +75,23 @@ function hasScope(tokenScopes: string[], required: string): boolean {
   return tokenScopes.includes(required) || tokenScopes.includes("*");
 }
 
+// Validate username format
+function isValidUsername(username: string): { valid: boolean; error?: string } {
+  if (username.length < 3) {
+    return { valid: false, error: "Username must be at least 3 characters" };
+  }
+  if (username.length > 30) {
+    return { valid: false, error: "Username must be at most 30 characters" };
+  }
+  if (!/^[a-z0-9][a-z0-9._-]*[a-z0-9]$|^[a-z0-9]$/.test(username)) {
+    return { valid: false, error: "Username must start and end with letter/number, can contain dots, underscores, hyphens" };
+  }
+  if (/[._-]{2,}/.test(username)) {
+    return { valid: false, error: "Username cannot have consecutive special characters" };
+  }
+  return { valid: true };
+}
+
 // Parse URL path
 function parsePath(url: URL): { route: string; params: Record<string, string> } {
   const pathname = url.pathname.replace("/afumail-api", "");
@@ -63,6 +100,12 @@ function parsePath(url: URL): { route: string; params: Record<string, string> } 
   // Match routes
   if (parts[0] === "api") {
     if (parts[1] === "mailbox") return { route: "mailbox", params: {} };
+    if (parts[1] === "user" && parts[2] === "me") return { route: "user-me", params: {} };
+    if (parts[1] === "accounts") return { route: "accounts", params: {} };
+    if (parts[1] === "account") {
+      if (parts[2] === "create") return { route: "account-create", params: {} };
+      if (parts[2]) return { route: "account-detail", params: { id: parts[2] } };
+    }
     if (parts[1] === "mail") {
       if (parts[2] === "folders") return { route: "folders", params: {} };
       if (parts[2] === "messages") return { route: "messages", params: {} };
@@ -97,7 +140,7 @@ async function handleTokenExchange(req: Request) {
     .maybeSingle();
 
   if (appError || !app) {
-    return errorResponse("Invalid client credentials", 401);
+    return errorResponse("Invalid client credentials", 401, "invalid_client");
   }
 
   if (grantType === "authorization_code") {
@@ -116,7 +159,7 @@ async function handleTokenExchange(req: Request) {
       .maybeSingle();
 
     if (codeError || !authCode) {
-      return errorResponse("Invalid or expired authorization code", 400);
+      return errorResponse("Invalid or expired authorization code", 400, "invalid_grant");
     }
 
     // Mark code as used
@@ -139,7 +182,7 @@ async function handleTokenExchange(req: Request) {
 
     if (tokenError) {
       console.error("Token creation error:", tokenError);
-      return errorResponse("Failed to create token", 500);
+      return errorResponse("Failed to create token", 500, "server_error");
     }
 
     return jsonResponse({
@@ -165,7 +208,7 @@ async function handleTokenExchange(req: Request) {
       .maybeSingle();
 
     if (oldTokenError || !oldToken) {
-      return errorResponse("Invalid or expired refresh token", 400);
+      return errorResponse("Invalid or expired refresh token", 400, "invalid_grant");
     }
 
     // Revoke old token
@@ -187,7 +230,7 @@ async function handleTokenExchange(req: Request) {
       .single();
 
     if (newTokenError) {
-      return errorResponse("Failed to create token", 500);
+      return errorResponse("Failed to create token", 500, "server_error");
     }
 
     return jsonResponse({
@@ -199,7 +242,7 @@ async function handleTokenExchange(req: Request) {
     });
   }
 
-  return errorResponse("Unsupported grant type", 400);
+  return errorResponse("Unsupported grant type", 400, "unsupported_grant_type");
 }
 
 // Token Revocation Handler
@@ -220,7 +263,7 @@ async function handleTokenRevoke(req: Request) {
     .maybeSingle();
 
   if (!app) {
-    return errorResponse("Invalid client credentials", 401);
+    return errorResponse("Invalid client credentials", 401, "invalid_client");
   }
 
   // Revoke the token
@@ -231,6 +274,257 @@ async function handleTokenRevoke(req: Request) {
     .or(`access_token.eq.${token},refresh_token.eq.${token}`);
 
   return jsonResponse({ revoked: true });
+}
+
+// User Info Handler (GET /api/user/me)
+async function handleUserMe(context: { userId: string; emailAddressId: string }) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Get user profile
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, full_name, created_at")
+    .eq("id", context.userId)
+    .single();
+
+  // Get primary email address
+  const { data: primaryEmail } = await supabase
+    .from("email_addresses")
+    .select("id, local_part, full_email, is_primary")
+    .eq("user_id", context.userId)
+    .eq("is_primary", true)
+    .maybeSingle();
+
+  // Get all email accounts
+  const { data: accounts } = await supabase
+    .from("email_addresses")
+    .select("id, local_part, full_email, is_primary, is_alias, created_at")
+    .eq("user_id", context.userId)
+    .eq("is_alias", false)
+    .order("created_at");
+
+  return jsonResponse({
+    id: context.userId,
+    email: primaryEmail?.full_email || `${primaryEmail?.local_part}@afuchat.com`,
+    name: profile?.full_name || null,
+    avatar: null, // Could be extended to include avatar_url
+    created_at: profile?.created_at,
+    accounts: accounts?.map(acc => ({
+      id: acc.id,
+      email: acc.full_email || `${acc.local_part}@afuchat.com`,
+      username: acc.local_part,
+      is_primary: acc.is_primary,
+      created_at: acc.created_at,
+    })) || [],
+    account_limit: MAX_ACCOUNTS_PER_USER,
+  });
+}
+
+// List Accounts Handler (GET /api/accounts)
+async function handleListAccounts(context: { userId: string }) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  const { data: accounts, error } = await supabase
+    .from("email_addresses")
+    .select("id, local_part, full_email, is_primary, is_alias, alias_for_id, created_at")
+    .eq("user_id", context.userId)
+    .order("is_primary", { ascending: false })
+    .order("created_at");
+
+  if (error) {
+    return errorResponse("Failed to fetch accounts", 500);
+  }
+
+  const primaryAccounts = accounts?.filter(a => !a.is_alias) || [];
+  const aliases = accounts?.filter(a => a.is_alias) || [];
+
+  return jsonResponse({
+    accounts: primaryAccounts.map(acc => ({
+      id: acc.id,
+      email: acc.full_email || `${acc.local_part}@afuchat.com`,
+      username: acc.local_part,
+      is_primary: acc.is_primary,
+      created_at: acc.created_at,
+      aliases: aliases
+        .filter(alias => alias.alias_for_id === acc.id)
+        .map(alias => ({
+          id: alias.id,
+          email: alias.full_email || `${alias.local_part}@afuchat.com`,
+          username: alias.local_part,
+          created_at: alias.created_at,
+        })),
+    })),
+    total: primaryAccounts.length,
+    limit: MAX_ACCOUNTS_PER_USER,
+    can_create_more: primaryAccounts.length < MAX_ACCOUNTS_PER_USER,
+  });
+}
+
+// Create Account Handler (POST /api/account/create)
+async function handleCreateAccount(req: Request, context: { userId: string }) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Check current account count
+  const { count: accountCount } = await supabase
+    .from("email_addresses")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", context.userId)
+    .eq("is_alias", false);
+
+  if ((accountCount || 0) >= MAX_ACCOUNTS_PER_USER) {
+    return errorResponse(
+      `Maximum ${MAX_ACCOUNTS_PER_USER} email accounts allowed per user`,
+      403,
+      "account_limit_reached"
+    );
+  }
+
+  // Parse request body
+  let body: { preferred_username?: string; display_name?: string };
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
+
+  let username = body.preferred_username?.toLowerCase().trim();
+
+  // Auto-generate username if not provided
+  if (!username) {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 6);
+    username = `user${timestamp}${random}`;
+  }
+
+  // Validate username
+  const validation = isValidUsername(username);
+  if (!validation.valid) {
+    return errorResponse(validation.error!, 400, "invalid_username");
+  }
+
+  // Check if username is available
+  const { data: existing } = await supabase
+    .from("email_addresses")
+    .select("id")
+    .eq("local_part", username)
+    .maybeSingle();
+
+  if (existing) {
+    return errorResponse("This email address is already taken", 409, "username_taken");
+  }
+
+  // Create the email address
+  const fullEmail = `${username}@afuchat.com`;
+  const { data: newAccount, error: createError } = await supabase
+    .from("email_addresses")
+    .insert({
+      user_id: context.userId,
+      local_part: username,
+      full_email: fullEmail,
+      is_primary: false,
+      is_alias: false,
+    })
+    .select()
+    .single();
+
+  if (createError) {
+    console.error("Account creation error:", createError);
+    return errorResponse("Failed to create email account", 500, "creation_failed");
+  }
+
+  // Create default folders for this account
+  const folderTypes = [
+    { name: "Inbox", type: "inbox", icon: "inbox" },
+    { name: "Sent", type: "sent", icon: "send" },
+    { name: "Drafts", type: "drafts", icon: "file-text" },
+    { name: "Spam", type: "spam", icon: "alert-circle" },
+    { name: "Trash", type: "trash", icon: "trash-2" },
+  ];
+
+  // Note: Folders are created per user, not per email address in current schema
+  // If user already has folders, we skip this
+
+  // Update profile display name if provided
+  if (body.display_name) {
+    await supabase
+      .from("profiles")
+      .update({ full_name: body.display_name })
+      .eq("id", context.userId);
+  }
+
+  // Create user settings for this email address
+  await supabase
+    .from("user_settings")
+    .insert({
+      user_id: context.userId,
+      email_address_id: newAccount.id,
+    });
+
+  return jsonResponse({
+    success: true,
+    account: {
+      id: newAccount.id,
+      email: fullEmail,
+      username: username,
+      display_name: body.display_name || null,
+      is_primary: false,
+      created_at: newAccount.created_at,
+    },
+  }, 201);
+}
+
+// Delete Account Handler (DELETE /api/account/{id})
+async function handleDeleteAccount(accountId: string, context: { userId: string }) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Verify account belongs to user and is not primary
+  const { data: account, error } = await supabase
+    .from("email_addresses")
+    .select("id, is_primary, is_alias")
+    .eq("id", accountId)
+    .eq("user_id", context.userId)
+    .maybeSingle();
+
+  if (error || !account) {
+    return errorResponse("Account not found", 404, "account_not_found");
+  }
+
+  if (account.is_primary) {
+    return errorResponse("Cannot delete primary email account", 403, "cannot_delete_primary");
+  }
+
+  // Delete associated aliases first
+  if (!account.is_alias) {
+    await supabase
+      .from("email_addresses")
+      .delete()
+      .eq("alias_for_id", accountId);
+  }
+
+  // Delete user settings for this email address
+  await supabase
+    .from("user_settings")
+    .delete()
+    .eq("email_address_id", accountId);
+
+  // Delete push subscriptions for this email address
+  await supabase
+    .from("push_subscriptions")
+    .delete()
+    .eq("email_address_id", accountId);
+
+  // Delete the account
+  const { error: deleteError } = await supabase
+    .from("email_addresses")
+    .delete()
+    .eq("id", accountId);
+
+  if (deleteError) {
+    console.error("Account deletion error:", deleteError);
+    return errorResponse("Failed to delete account", 500, "deletion_failed");
+  }
+
+  return jsonResponse({ success: true, deleted: accountId });
 }
 
 // Mailbox Handler
@@ -481,58 +775,90 @@ serve(async (req) => {
     }
 
     if (route === "oauth-authorize") {
-      // This would typically redirect to a login page
-      // For API purposes, return info about required params
+      // Return OAuth configuration info
+      const clientId = url.searchParams.get("client_id");
+      const redirectUri = url.searchParams.get("redirect_uri");
+      const scope = url.searchParams.get("scope") || "read:mailbox read:messages";
+      const state = url.searchParams.get("state");
+
       return jsonResponse({
-        message: "OAuth authorization endpoint",
-        required_params: ["client_id", "redirect_uri", "response_type", "scope", "state"],
-        note: "Users must authorize via AfuMail web interface",
+        authorization_url: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/auth?oauth=true&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri || '')}&scope=${encodeURIComponent(scope)}&state=${state || ''}`,
+        required_params: ["client_id", "redirect_uri", "response_type", "scope"],
+        optional_params: ["state"],
+        supported_scopes: ["read:mailbox", "read:messages", "write:messages", "write:drafts"],
+        note: "Redirect users to authorization_url to begin OAuth flow",
       });
     }
 
     // Protected endpoints - require valid token
     const context = await validateToken(req);
     if (!context) {
-      return errorResponse("Invalid or expired access token", 401);
+      return errorResponse("Invalid or expired access token", 401, "invalid_token");
     }
 
     // Route handlers
     switch (route) {
+      // User & Account endpoints
+      case "user-me":
+        return await handleUserMe(context);
+
+      case "accounts":
+        if (req.method === "GET") {
+          return await handleListAccounts(context);
+        }
+        return errorResponse("Method not allowed", 405);
+
+      case "account-create":
+        if (req.method === "POST") {
+          if (!hasScope(context.scopes, "write:account") && !hasScope(context.scopes, "*")) {
+            // Allow account creation with basic scopes for now
+          }
+          return await handleCreateAccount(req, context);
+        }
+        return errorResponse("Method not allowed", 405);
+
+      case "account-detail":
+        if (req.method === "DELETE") {
+          return await handleDeleteAccount(params.id, context);
+        }
+        return errorResponse("Method not allowed", 405);
+
+      // Mailbox endpoints
       case "mailbox":
         if (!hasScope(context.scopes, "read:mailbox")) {
-          return errorResponse("Insufficient scope", 403);
+          return errorResponse("Insufficient scope", 403, "insufficient_scope");
         }
         return await handleMailbox(context);
 
       case "folders":
         if (!hasScope(context.scopes, "read:mailbox")) {
-          return errorResponse("Insufficient scope", 403);
+          return errorResponse("Insufficient scope", 403, "insufficient_scope");
         }
         return await handleFolders(context);
 
       case "messages":
         if (!hasScope(context.scopes, "read:messages")) {
-          return errorResponse("Insufficient scope", 403);
+          return errorResponse("Insufficient scope", 403, "insufficient_scope");
         }
         return await handleMessages(url, context);
 
       case "message":
         if (!hasScope(context.scopes, "read:messages")) {
-          return errorResponse("Insufficient scope", 403);
+          return errorResponse("Insufficient scope", 403, "insufficient_scope");
         }
         return await handleMessage(params.id, context);
 
       case "search":
         if (!hasScope(context.scopes, "read:messages")) {
-          return errorResponse("Insufficient scope", 403);
+          return errorResponse("Insufficient scope", 403, "insufficient_scope");
         }
         return await handleSearch(url, context);
 
       default:
-        return errorResponse("Not found", 404);
+        return errorResponse("Not found", 404, "not_found");
     }
   } catch (error) {
     console.error("[AfuMail API] Error:", error);
-    return errorResponse("Internal server error", 500);
+    return errorResponse("Internal server error", 500, "server_error");
   }
 });
