@@ -433,7 +433,7 @@ const Admin = () => {
                       <div className="px-4 pb-4 pt-0 border-t bg-muted/30">
                         <p className="text-xs font-medium text-muted-foreground mb-2 pt-3">All Email Addresses:</p>
                         <div className="flex flex-wrap gap-2">
-                          {user.email_addresses.map((email, idx) => (
+                          {(user.email_addresses || []).map((email, idx) => (
                             <span
                               key={idx}
                               className="text-sm px-3 py-1.5 rounded-md bg-background border text-foreground"
