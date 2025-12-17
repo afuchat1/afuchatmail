@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       email_addresses: {
         Row: {
           alias_for_id: string | null
@@ -305,6 +332,13 @@ export type Database = {
             foreignKeyName: "oauth_authorization_codes_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "oauth_app_public_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oauth_authorization_codes_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "oauth_applications"
             referencedColumns: ["id"]
           },
@@ -358,6 +392,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "oauth_tokens_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "oauth_app_public_info"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "oauth_tokens_application_id_fkey"
             columns: ["application_id"]
@@ -504,7 +545,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      oauth_app_public_info: {
+        Row: {
+          client_id: string | null
+          id: string | null
+          name: string | null
+          redirect_uris: string[] | null
+          scopes: string[] | null
+        }
+        Insert: {
+          client_id?: string | null
+          id?: string | null
+          name?: string | null
+          redirect_uris?: string[] | null
+          scopes?: string[] | null
+        }
+        Update: {
+          client_id?: string | null
+          id?: string | null
+          name?: string | null
+          redirect_uris?: string[] | null
+          scopes?: string[] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_get_all_users: {

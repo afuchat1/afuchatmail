@@ -87,10 +87,33 @@ const SCOPE_INFO: Record<string, { label: string; description: string; icon: Rea
 // Whitelisted redirect URIs
 const WHITELISTED_URIS = ["https://afuchat.com/auth/afumail/callback"];
 
+// Valid OAuth scopes
+const VALID_SCOPES = [
+  "openid", "profile", "email",
+  "read:mailbox", "read:messages", "read:folders",
+  "search:messages", "write:messages", "write:drafts"
+];
+
 const isRedirectUriWhitelisted = (uri: string): boolean => {
+  // Validate URL format first
+  try {
+    const url = new URL(uri);
+    if (url.protocol !== "https:") return false;
+  } catch {
+    return false;
+  }
+  
   if (WHITELISTED_URIS.includes(uri)) return true;
-  const lovablePattern = /^https:\/\/[a-zA-Z0-9-]+\.lovableproject\.com\/auth\/afumail\/callback$/;
+  // Strict pattern for lovableproject.com subdomains
+  const lovablePattern = /^https:\/\/[a-z0-9][a-z0-9-]*[a-z0-9]\.lovableproject\.com\/auth\/afumail\/callback$/;
   return lovablePattern.test(uri);
+};
+
+const validateScopes = (scopeString: string): string[] => {
+  return scopeString
+    .split(" ")
+    .map(s => s.trim())
+    .filter(s => VALID_SCOPES.includes(s));
 };
 
 const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps) => {
@@ -102,7 +125,7 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
   const [appValidationError, setAppValidationError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const scopes = oauthParams.scope.split(" ").filter(Boolean);
+  const scopes = validateScopes(oauthParams.scope);
 
   // Validate redirect URI
   const isValidRedirectUri = isRedirectUriWhitelisted(oauthParams.redirectUri);

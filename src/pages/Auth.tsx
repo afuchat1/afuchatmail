@@ -31,13 +31,26 @@ const Auth = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
 
-  // Parse OAuth parameters
+  // Valid OAuth scopes - must match server-side validation
+  const VALID_SCOPES = [
+    "openid", "profile", "email",
+    "read:mailbox", "read:messages", "read:folders",
+    "search:messages", "write:messages", "write:drafts"
+  ];
+
+  // Parse and validate OAuth parameters
   const isOAuthFlow = searchParams.get("oauth") === "true";
+  const rawScope = searchParams.get("scope") || "";
+  const validatedScope = rawScope
+    .split(" ")
+    .filter(s => VALID_SCOPES.includes(s.trim()))
+    .join(" ") || "read:mailbox read:messages";
+    
   const oauthParams: OAuthParams | null = isOAuthFlow
     ? {
         clientId: searchParams.get("client_id") || "",
         redirectUri: searchParams.get("redirect_uri") || "",
-        scope: searchParams.get("scope") || "read:mailbox read:messages",
+        scope: validatedScope,
         state: searchParams.get("state") || "",
         responseType: searchParams.get("response_type") || "code",
       }
