@@ -92,6 +92,44 @@ function isValidUsername(username: string): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
+// Valid OAuth scopes - server-side validation
+const VALID_OAUTH_SCOPES = [
+  "openid", "profile", "email",
+  "read:mailbox", "read:messages", "read:folders",
+  "search:messages", "write:messages", "write:drafts", "*"
+];
+
+// Validate and filter scopes
+function validateScopes(scopeString: string): string[] {
+  return scopeString
+    .split(" ")
+    .map(s => s.trim())
+    .filter(s => VALID_OAUTH_SCOPES.includes(s));
+}
+
+// Whitelisted redirect URI patterns
+const WHITELISTED_URIS = ["https://afuchat.com/auth/afumail/callback"];
+
+function isRedirectUriValid(uri: string, appRedirectUris: string[]): boolean {
+  try {
+    const url = new URL(uri);
+    // Must be HTTPS
+    if (url.protocol !== "https:") return false;
+    
+    // Check exact match with app's registered URIs
+    if (appRedirectUris.includes(uri)) return true;
+    
+    // Check against global whitelist
+    if (WHITELISTED_URIS.includes(uri)) return true;
+    
+    // Check lovableproject.com pattern (strict)
+    const lovablePattern = /^https:\/\/[a-z0-9][a-z0-9-]*[a-z0-9]\.lovableproject\.com\/auth\/afumail\/callback$/;
+    return lovablePattern.test(uri);
+  } catch {
+    return false;
+  }
+}
+
 // Parse URL path
 function parsePath(url: URL): { route: string; params: Record<string, string> } {
   const functionName = "afumail-api";
@@ -204,6 +242,12 @@ async function handleTokenExchange(req: Request) {
     const code = formData.get("code") as string;
     const redirectUri = formData.get("redirect_uri") as string;
 
+    // Server-side redirect URI validation
+    if (!isRedirectUriValid(redirectUri, app.redirect_uris || [])) {
+      console.error("[Token Exchange] Invalid redirect URI:", redirectUri);
+      return errorResponse("Invalid redirect URI", 400, "invalid_request");
+    }
+
     // Validate authorization code
     const { data: authCode, error: codeError } = await supabase
       .from("oauth_authorization_codes")
@@ -219,20 +263,26 @@ async function handleTokenExchange(req: Request) {
       return errorResponse("Invalid or expired authorization code", 400, "invalid_grant");
     }
 
+    // Server-side scope validation - filter to valid scopes only
+    const validatedScopes = validateScopes((authCode.scopes || []).join(" "));
+    if (validatedScopes.length === 0) {
+      return errorResponse("No valid scopes in authorization", 400, "invalid_scope");
+    }
+
     // Mark code as used
     await supabase
       .from("oauth_authorization_codes")
       .update({ used: true })
       .eq("id", authCode.id);
 
-    // Create access token
+    // Create access token with validated scopes
     const { data: token, error: tokenError } = await supabase
       .from("oauth_tokens")
       .insert({
         application_id: app.id,
         user_id: authCode.user_id,
         email_address_id: authCode.email_address_id,
-        scopes: authCode.scopes,
+        scopes: validatedScopes,
       })
       .select()
       .single();
