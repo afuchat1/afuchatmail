@@ -501,6 +501,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_all_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email_addresses: string[]
+          email_count: number
+          is_admin: boolean
+          user_id: string
+        }[]
+      }
+      admin_toggle_user_role: {
+        Args: { _make_admin: boolean; _target_user_id: string }
+        Returns: boolean
+      }
       cleanup_old_trash_emails: { Args: never; Returns: undefined }
       has_role: {
         Args: {
