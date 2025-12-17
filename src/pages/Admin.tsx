@@ -346,7 +346,7 @@ const Admin = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-medium text-foreground">
-                            {user.email_addresses[0] || "No email"}
+                            {user.email_addresses?.[0] || "No email"}
                           </span>
                           {user.is_admin && (
                             <Badge variant="default" className="bg-amber-500">
@@ -464,7 +464,7 @@ const Admin = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5" />
-              Emails for {viewingUser?.email_addresses[0]}
+              Emails for {viewingUser?.email_addresses?.[0] || "Unknown"}
             </DialogTitle>
             <DialogDescription>
               Viewing the last 100 emails (sent and received)
@@ -541,8 +541,8 @@ const Admin = () => {
             </DialogTitle>
             <DialogDescription>
               {banTargetUser?.is_banned 
-                ? `Are you sure you want to unban ${banTargetUser?.email_addresses[0]}?`
-                : `This will prevent ${banTargetUser?.email_addresses[0]} from accessing their account.`
+                ? `Are you sure you want to unban ${banTargetUser?.email_addresses?.[0] || "this user"}?`
+                : `This will prevent ${banTargetUser?.email_addresses?.[0] || "this user"} from accessing their account.`
               }
             </DialogDescription>
           </DialogHeader>
