@@ -376,18 +376,24 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ban_reason: string | null
+          banned_at: string | null
           created_at: string
           full_name: string | null
           id: string
           updated_at: string
         }
         Insert: {
+          ban_reason?: string | null
+          banned_at?: string | null
           created_at?: string
           full_name?: string | null
           id: string
           updated_at?: string
         }
         Update: {
+          ban_reason?: string | null
+          banned_at?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -512,6 +518,26 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_get_user_emails: {
+        Args: { _target_user_id: string }
+        Returns: {
+          body_text: string
+          created_at: string
+          folder_type: string
+          from_address: string
+          id: string
+          is_read: boolean
+          is_starred: boolean
+          received_at: string
+          sent_at: string
+          subject: string
+          to_addresses: string[]
+        }[]
+      }
+      admin_toggle_user_ban: {
+        Args: { _ban: boolean; _reason?: string; _target_user_id: string }
+        Returns: boolean
+      }
       admin_toggle_user_role: {
         Args: { _make_admin: boolean; _target_user_id: string }
         Returns: boolean
@@ -524,6 +550,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_user_banned: { Args: { _user_id: string }; Returns: boolean }
       unsnooze_emails: { Args: never; Returns: undefined }
     }
     Enums: {
