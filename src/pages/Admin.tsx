@@ -6,11 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { ArrowLeft, Shield, Users, Mail, Crown } from "lucide-react";
+import { ArrowLeft, Shield, Users, Mail, Crown, ChevronDown, KeyRound } from "lucide-react";
 
 interface UserData {
   user_id: string;
+  auth_email: string | null;
   email_count: number;
   is_admin: boolean;
   email_addresses: string[];
@@ -23,6 +25,19 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [users, setUsers] = useState<UserData[]>([]);
   const [togglingUser, setTogglingUser] = useState<string | null>(null);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (userId: string) => {
+    setExpandedUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     checkAdminAndFetchUsers();
@@ -203,56 +218,78 @@ const Admin = () => {
           <CardContent>
             <div className="space-y-4">
               {users.map((user) => (
-                <div
+                <Collapsible
                   key={user.user_id}
-                  className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border bg-card gap-4"
+                  open={expandedUsers.has(user.user_id)}
+                  onOpenChange={() => toggleExpanded(user.user_id)}
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-foreground">
-                        {user.email_addresses[0] || "No email"}
-                      </span>
-                      {user.is_admin && (
-                        <Badge variant="default" className="bg-amber-500">
-                          <Crown className="h-3 w-3 mr-1" />
-                          Admin
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline">{user.email_count} email{user.email_count !== 1 ? 's' : ''}</Badge>
-                      <span className="text-xs text-muted-foreground">
-                        ID: {user.user_id.slice(0, 8)}...
-                      </span>
-                    </div>
-                    {user.email_addresses.length > 1 && (
-                      <div className="flex flex-wrap gap-1">
-                        {user.email_addresses.slice(1, 5).map((email, idx) => (
-                          <span
-                            key={idx}
-                            className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground"
-                          >
-                            {email}
+                  <div className="rounded-lg border bg-card overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-foreground">
+                            {user.email_addresses[0] || "No email"}
                           </span>
-                        ))}
-                        {user.email_addresses.length > 5 && (
-                          <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
-                            +{user.email_addresses.length - 5} more
-                          </span>
+                          {user.is_admin && (
+                            <Badge variant="default" className="bg-amber-500">
+                              <Crown className="h-3 w-3 mr-1" />
+                              Admin
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Auth Email */}
+                        {user.auth_email && (
+                          <div className="flex items-center gap-1.5 mb-2 text-sm text-muted-foreground">
+                            <KeyRound className="h-3.5 w-3.5" />
+                            <span>Auth: {user.auth_email}</span>
+                          </div>
                         )}
+                        
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{user.email_count} email{user.email_count !== 1 ? 's' : ''}</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            ID: {user.user_id.slice(0, 8)}...
+                          </span>
+                        </div>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground">Admin</span>
-                    <Switch
-                      checked={user.is_admin}
-                      onCheckedChange={(checked) => toggleAdminRole(user.user_id, checked)}
-                      disabled={togglingUser === user.user_id}
-                    />
+                      <div className="flex items-center gap-4">
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="gap-1">
+                            <span className="text-xs">View emails</span>
+                            <ChevronDown className={`h-4 w-4 transition-transform ${expandedUsers.has(user.user_id) ? 'rotate-180' : ''}`} />
+                          </Button>
+                        </CollapsibleTrigger>
+                        
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-muted-foreground">Admin</span>
+                          <Switch
+                            checked={user.is_admin}
+                            onCheckedChange={(checked) => toggleAdminRole(user.user_id, checked)}
+                            disabled={togglingUser === user.user_id}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 pt-0 border-t bg-muted/30">
+                        <p className="text-xs font-medium text-muted-foreground mb-2 pt-3">All Email Addresses:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {user.email_addresses.map((email, idx) => (
+                            <span
+                              key={idx}
+                              className="text-sm px-3 py-1.5 rounded-md bg-background border text-foreground"
+                            >
+                              {email}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </CollapsibleContent>
                   </div>
-                </div>
+                </Collapsible>
               ))}
 
               {users.length === 0 && (

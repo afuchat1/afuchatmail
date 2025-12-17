@@ -504,6 +504,7 @@ export type Database = {
       admin_get_all_users: {
         Args: never
         Returns: {
+          auth_email: string
           created_at: string
           email_addresses: string[]
           email_count: number
