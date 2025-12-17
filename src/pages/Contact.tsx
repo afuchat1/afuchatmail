@@ -1,15 +1,15 @@
 import { useState } from "react";
+import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, ArrowLeft, Send, MessageSquare, HelpCircle } from "lucide-react";
+import { Send, MessageSquare, HelpCircle, Mail, Clock, MapPin, Phone } from "lucide-react";
 
 const Contact = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -21,7 +21,6 @@ const Contact = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate form submission
     setTimeout(() => {
       toast({
         title: "Message sent!",
@@ -35,73 +34,82 @@ const Contact = () => {
     }, 1000);
   };
 
+  const contactMethods = [
+    {
+      icon: MessageSquare,
+      title: "General Inquiries",
+      description: "Questions about our service",
+      detail: "contact@afuchat.com"
+    },
+    {
+      icon: HelpCircle,
+      title: "Technical Support",
+      description: "Need help with your account",
+      detail: "support@afuchat.com"
+    },
+    {
+      icon: Mail,
+      title: "Business",
+      description: "Partnership opportunities",
+      detail: "business@afuchat.com"
+    }
+  ];
+
+  const info = [
+    { icon: Clock, label: "Response Time", value: "Within 24 hours" },
+    { icon: MapPin, label: "Location", value: "Global Service" },
+    { icon: Phone, label: "Support Hours", value: "24/7 Online" }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      <header className="container mx-auto px-4 py-6 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <Mail className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold">AfuChat Mail</span>
-            </div>
+    <PageLayout>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
+        <div className="container mx-auto px-4 pt-16 pb-12 relative">
+          <div className="text-center max-w-3xl mx-auto">
+            <Badge variant="outline" className="mb-4">Contact</Badge>
+            <h1 className="text-4xl md:text-6xl font-bold mb-4">
+              <span className="bg-gradient-primary bg-clip-text text-transparent">Get in Touch</span>
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Have questions? We'd love to hear from you
+            </p>
           </div>
-          <Button onClick={() => navigate("/auth")}>
-            Get Started
-          </Button>
         </div>
-      </header>
+      </section>
 
-      <section className="container mx-auto px-4 py-16">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent">
-            Get in Touch
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Have questions? We'd love to hear from you
-          </p>
-        </div>
-
-        <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-8 mb-12">
-          <Card className="border-2 text-center">
-            <CardContent className="pt-8 pb-6">
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">General Inquiries</h3>
-              <p className="text-muted-foreground">
-                Questions about our service
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 text-center">
-            <CardContent className="pt-8 pb-6">
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <HelpCircle className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Support</h3>
-              <p className="text-muted-foreground">
-                Need help with your account
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 text-center">
-            <CardContent className="pt-8 pb-6">
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Mail className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Email Us</h3>
-              <p className="text-muted-foreground">
-                contact@afuchat.com
-              </p>
-            </CardContent>
-          </Card>
+      {/* Contact Methods */}
+      <section className="container mx-auto px-4 py-12">
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
+          {contactMethods.map((method, index) => (
+            <Card key={index} className="text-center border-2 hover:border-primary/50 transition-colors">
+              <CardContent className="pt-8 pb-6">
+                <div className="h-14 w-14 rounded-xl bg-gradient-primary flex items-center justify-center mx-auto mb-4">
+                  <method.icon className="h-7 w-7 text-primary-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-1">{method.title}</h3>
+                <p className="text-sm text-muted-foreground mb-2">{method.description}</p>
+                <p className="text-sm font-medium text-primary">{method.detail}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
+        {/* Info Bar */}
+        <div className="grid grid-cols-3 gap-4 max-w-3xl mx-auto mb-12 p-4 rounded-xl bg-muted/50 border">
+          {info.map((item, index) => (
+            <div key={index} className="flex items-center gap-3 justify-center">
+              <item.icon className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">{item.label}</p>
+                <p className="text-sm font-medium">{item.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Contact Form */}
         <Card className="max-w-2xl mx-auto border-2">
           <CardHeader>
             <CardTitle>Send us a message</CardTitle>
@@ -111,27 +119,28 @@ const Contact = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  placeholder="Your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -157,7 +166,7 @@ const Contact = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full h-12" disabled={loading}>
                 <Send className="mr-2 h-4 w-4" />
                 {loading ? "Sending..." : "Send Message"}
               </Button>
@@ -165,7 +174,7 @@ const Contact = () => {
           </CardContent>
         </Card>
       </section>
-    </div>
+    </PageLayout>
   );
 };
 

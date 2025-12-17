@@ -1,7 +1,9 @@
+import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { Mail, Shield, Lock, Eye, Server, CheckCircle, ArrowLeft } from "lucide-react";
+import { Shield, Lock, Eye, Server, CheckCircle, Key, FileCheck, AlertTriangle, Globe, ArrowRight } from "lucide-react";
 
 const Security = () => {
   const navigate = useNavigate();
@@ -10,135 +12,146 @@ const Security = () => {
     {
       icon: Lock,
       title: "End-to-End Encryption",
-      description: "All emails are encrypted in transit and at rest using industry-standard AES-256 encryption"
+      description: "All emails are encrypted in transit and at rest using industry-standard AES-256 encryption. Your messages can only be read by you."
     },
     {
       icon: Shield,
       title: "Advanced Spam Protection",
-      description: "Multi-layer spam filtering keeps your inbox clean and protects against phishing attempts"
+      description: "Multi-layer spam filtering keeps your inbox clean and protects against phishing, malware, and social engineering attacks."
     },
     {
       icon: Eye,
       title: "No Tracking",
-      description: "We don't track your emails, read your messages, or sell your data to third parties"
+      description: "We don't track your emails, read your messages, or sell your data to third parties. Your privacy is our priority."
     },
     {
       icon: Server,
       title: "Secure Infrastructure",
-      description: "Hosted on enterprise-grade servers with regular security audits and monitoring"
+      description: "Hosted on enterprise-grade servers with regular security audits, 24/7 monitoring, and DDoS protection."
     },
     {
-      icon: CheckCircle,
+      icon: Key,
       title: "Two-Factor Authentication",
-      description: "Optional 2FA adds an extra layer of security to your account"
+      description: "Optional 2FA adds an extra layer of security to your account. Support for authenticator apps and security keys."
     },
     {
-      icon: Lock,
+      icon: FileCheck,
       title: "Password Protection",
-      description: "Passwords are hashed using bcrypt and never stored in plain text"
+      description: "Passwords are hashed using bcrypt with salt. We never store plain text passwords and enforce strong password policies."
+    }
+  ];
+
+  const practices = [
+    {
+      title: "Regular Security Audits",
+      description: "We conduct regular security audits and penetration testing by third-party security firms to identify and fix vulnerabilities."
+    },
+    {
+      title: "Data Backup & Recovery",
+      description: "Your emails are automatically backed up to multiple secure locations with geographic redundancy. Quick recovery in case of any issues."
+    },
+    {
+      title: "GDPR Compliant",
+      description: "We comply with GDPR, CCPA, and other international privacy regulations. Full control over your data with easy export and deletion."
+    },
+    {
+      title: "Incident Response",
+      description: "Comprehensive incident response plan with immediate notification to affected users. Transparent communication about any security events."
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      <header className="container mx-auto px-4 py-6 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <Mail className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold">AfuChat Mail</span>
-            </div>
+    <PageLayout>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
+        <div className="container mx-auto px-4 pt-16 pb-12 relative">
+          <div className="text-center max-w-3xl mx-auto">
+            <Badge variant="outline" className="mb-4">Security</Badge>
+            <h1 className="text-4xl md:text-6xl font-bold mb-4">
+              <span className="bg-gradient-primary bg-clip-text text-transparent">Security & Privacy</span>
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Your data security is our top priority
+            </p>
           </div>
-          <Button onClick={() => navigate("/auth")}>
-            Get Started
-          </Button>
         </div>
-      </header>
+      </section>
 
-      <section className="container mx-auto px-4 py-16">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent">
-            Security & Privacy
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Your data security is our top priority
-          </p>
-        </div>
-
-        <div className="max-w-4xl mx-auto mb-12">
-          <Card className="border-2 bg-primary/5">
-            <CardContent className="pt-8 pb-6">
-              <div className="flex items-start gap-4">
-                <Shield className="h-12 w-12 text-primary flex-shrink-0" />
-                <div>
-                  <h2 className="text-2xl font-bold mb-3">Bank-Level Security</h2>
-                  <p className="text-lg text-muted-foreground leading-relaxed">
-                    AfuChat Mail uses the same encryption standards as major financial institutions. Your emails are protected with multiple layers of security to ensure they remain private and secure.
-                  </p>
-                </div>
+      {/* Hero Card */}
+      <section className="container mx-auto px-4 py-8">
+        <Card className="max-w-4xl mx-auto border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5">
+          <CardContent className="pt-8 pb-6">
+            <div className="flex items-start gap-6">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-primary flex items-center justify-center flex-shrink-0">
+                <Shield className="h-8 w-8 text-primary-foreground" />
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div>
+                <Badge className="mb-2 bg-primary/10 text-primary">Bank-Level Security</Badge>
+                <h2 className="text-2xl font-bold mb-3">Enterprise-Grade Protection</h2>
+                <p className="text-lg text-muted-foreground leading-relaxed">
+                  AfuChat Mail uses the same encryption standards as major financial institutions. Your emails are protected with multiple layers of security including AES-256 encryption, TLS 1.3, and zero-knowledge architecture.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto mb-12">
+      {/* Security Features */}
+      <section className="container mx-auto px-4 py-12">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {features.map((feature, index) => (
-            <Card key={index} className="border-2 hover:shadow-lg transition-all duration-300">
+            <Card key={index} className="group border-2 hover:border-primary/50 transition-all duration-300">
               <CardContent className="pt-8 pb-6">
-                <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mb-4">
-                  <feature.icon className="h-8 w-8 text-primary" />
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                  <feature.icon className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                <p className="text-muted-foreground">{feature.description}</p>
               </CardContent>
             </Card>
           ))}
         </div>
+      </section>
 
-        <Card className="max-w-4xl mx-auto border-2">
-          <CardContent className="pt-8 pb-6 space-y-6">
-            <h2 className="text-3xl font-bold">Our Security Practices</h2>
-            
-            <section>
-              <h3 className="text-xl font-semibold mb-3">Regular Security Audits</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                We conduct regular security audits and penetration testing to identify and fix vulnerabilities before they can be exploited.
-              </p>
-            </section>
+      {/* Security Practices */}
+      <section className="bg-muted/30 border-y">
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <Badge variant="outline" className="mb-4">Our Practices</Badge>
+              <h2 className="text-3xl md:text-4xl font-bold">How We Protect Your Data</h2>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              {practices.map((practice, index) => (
+                <div key={index} className="flex items-start gap-4 p-6 rounded-xl bg-background border">
+                  <CheckCircle className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold mb-2">{practice.title}</h3>
+                    <p className="text-sm text-muted-foreground">{practice.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
-            <section>
-              <h3 className="text-xl font-semibold mb-3">Data Backup & Recovery</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Your emails are automatically backed up to multiple secure locations. In the event of data loss, we can restore your emails quickly and completely.
-              </p>
-            </section>
-
-            <section>
-              <h3 className="text-xl font-semibold mb-3">GDPR Compliant</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                We comply with GDPR and other international privacy regulations. You have full control over your data and can request deletion at any time.
-              </p>
-            </section>
-
-            <section>
-              <h3 className="text-xl font-semibold mb-3">Incident Response</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                In the unlikely event of a security incident, we have a comprehensive response plan to minimize impact and notify affected users immediately.
-              </p>
-            </section>
-          </CardContent>
-        </Card>
-
-        <div className="text-center mt-16">
+      {/* CTA */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="text-center max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold mb-4">Start Securely Today</h2>
+          <p className="text-muted-foreground mb-8">
+            Experience enterprise-grade security with our free plan
+          </p>
           <Button size="lg" onClick={() => navigate("/auth")}>
             Get Started Securely
+            <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
       </section>
-    </div>
+    </PageLayout>
   );
 };
 
