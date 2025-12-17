@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { PenSquare, Inbox, Send, FileText, AlertCircle, Trash2 } from "lucide-react";
+import { PenSquare, Inbox, Send, FileText, AlertCircle, Trash2, Shield } from "lucide-react";
 
 import { EmailAddressSwitcher } from "./EmailAddressSwitcher";
 
@@ -28,10 +29,31 @@ export const EmailSidebar = ({
   onEmailAddressChange 
 }: EmailSidebarProps) => {
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchFolders();
+    checkAdminStatus();
   }, []);
+
+  const checkAdminStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      setIsAdmin(!!data);
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+    }
+  };
 
   const fetchFolders = async () => {
     try {
@@ -96,6 +118,19 @@ export const EmailSidebar = ({
           );
         })}
       </nav>
+
+      {/* Admin Link */}
+      {isAdmin && (
+        <div className="flex-shrink-0 pt-2 border-t">
+          <button
+            onClick={() => navigate("/admin")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-accent text-muted-foreground"
+          >
+            <Shield className="h-4 w-4 flex-shrink-0 text-amber-500" />
+            <span className="truncate">Admin Panel</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
