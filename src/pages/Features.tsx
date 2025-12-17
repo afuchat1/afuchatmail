@@ -1,7 +1,9 @@
+import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { Mail, Shield, Zap, Smartphone, Users, Globe, Clock, Lock, Bell, Search, Archive, Star, ArrowLeft } from "lucide-react";
+import { Mail, Shield, Zap, Smartphone, Users, Globe, Search, Archive, Star, Clock, Lock, Bell, ArrowRight, Check } from "lucide-react";
 
 const Features = () => {
   const navigate = useNavigate();
@@ -10,17 +12,18 @@ const Features = () => {
     {
       icon: Mail,
       title: "Custom Email Addresses",
-      description: "Create unlimited @afuchat.com email addresses for different purposes - work, personal, or projects. Each address is fully functional and can send and receive emails."
+      description: "Create unlimited @afuchat.com email addresses for different purposes - work, personal, or projects. Each address is fully functional and can send and receive emails.",
+      highlight: true
     },
     {
       icon: Shield,
       title: "Enterprise Security",
-      description: "Bank-level encryption protects your emails. Advanced spam protection and security features keep your data safe from threats."
+      description: "Bank-level encryption protects your emails. Advanced spam protection and security features keep your data safe from threats and unauthorized access."
     },
     {
       icon: Zap,
       title: "Lightning Fast",
-      description: "Instant email delivery with real-time notifications. Never miss important messages with our high-performance infrastructure."
+      description: "Instant email delivery with real-time notifications. Never miss important messages with our high-performance global infrastructure."
     },
     {
       icon: Smartphone,
@@ -40,7 +43,7 @@ const Features = () => {
     {
       icon: Search,
       title: "Powerful Search",
-      description: "Find any email instantly with our advanced search. Filter by sender, subject, date, or content."
+      description: "Find any email instantly with our advanced search. Filter by sender, subject, date, attachments, or content."
     },
     {
       icon: Archive,
@@ -50,75 +53,96 @@ const Features = () => {
     {
       icon: Star,
       title: "Important Markers",
-      description: "Flag important emails automatically. Smart sorting helps you focus on what matters most."
+      description: "Flag important emails automatically based on sender history and content. Smart sorting helps you focus on what matters."
     },
     {
       icon: Clock,
       title: "Snooze Feature",
-      description: "Temporarily hide emails and have them reappear at a specified time. Perfect for follow-ups and reminders."
+      description: "Temporarily hide emails and have them reappear at a specified time. Perfect for follow-ups, reminders, and task management."
     },
     {
       icon: Lock,
       title: "Privacy First",
-      description: "No tracking, no ads, no data mining. Your emails and data belong to you, period."
+      description: "No tracking, no ads, no data mining. Your emails and data belong to you, period. We never sell your information."
     },
     {
       icon: Bell,
       title: "Real-time Notifications",
-      description: "Push notifications keep you informed instantly. Customize which emails trigger alerts."
+      description: "Push notifications keep you informed instantly. Customize which emails trigger alerts and how you receive them."
     }
   ];
 
+  const benefits = [
+    "Unlimited email addresses",
+    "No ads or tracking",
+    "Works with all providers",
+    "Real-time sync",
+    "Offline access",
+    "Mobile & desktop apps"
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      <header className="container mx-auto px-4 py-6 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <Mail className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold">AfuChat Mail</span>
+    <PageLayout>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
+        <div className="container mx-auto px-4 pt-16 pb-12 relative">
+          <div className="text-center max-w-3xl mx-auto">
+            <Badge variant="outline" className="mb-4">Features</Badge>
+            <h1 className="text-4xl md:text-6xl font-bold mb-4">
+              <span className="bg-gradient-primary bg-clip-text text-transparent">Powerful Features</span>
+            </h1>
+            <p className="text-xl text-muted-foreground mb-8">
+              Everything you need for professional email communication, all in one place
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              {benefits.map((benefit, index) => (
+                <Badge key={index} variant="secondary" className="text-sm py-1 px-3">
+                  <Check className="h-3 w-3 mr-1" />
+                  {benefit}
+                </Badge>
+              ))}
             </div>
           </div>
-          <Button onClick={() => navigate("/auth")}>
-            Get Started
-          </Button>
         </div>
-      </header>
+      </section>
 
+      {/* Features Grid */}
       <section className="container mx-auto px-4 py-16">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent">
-            Powerful Email Features
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Everything you need for professional email communication, all in one place
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
           {features.map((feature, index) => (
-            <Card key={index} className="border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <Card 
+              key={index} 
+              className={`group border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-lg ${feature.highlight ? 'md:col-span-2 lg:col-span-1 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent' : ''}`}
+            >
               <CardContent className="pt-8 pb-6">
-                <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mb-4">
-                  <feature.icon className="h-8 w-8 text-primary" />
+                <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <feature.icon className="h-6 w-6 text-primary-foreground" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
               </CardContent>
             </Card>
           ))}
         </div>
+      </section>
 
-        <div className="text-center mt-16">
-          <Button size="lg" onClick={() => navigate("/auth")}>
-            Get Started Free
-          </Button>
+      {/* CTA */}
+      <section className="border-t bg-muted/30">
+        <div className="container mx-auto px-4 py-16">
+          <div className="text-center max-w-2xl mx-auto">
+            <h2 className="text-3xl font-bold mb-4">Ready to experience these features?</h2>
+            <p className="text-muted-foreground mb-8">
+              Get started for free and discover why thousands of professionals choose AfuChat Mail
+            </p>
+            <Button size="lg" onClick={() => navigate("/auth")}>
+              Get Started Free
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </section>
-    </div>
+    </PageLayout>
   );
 };
 

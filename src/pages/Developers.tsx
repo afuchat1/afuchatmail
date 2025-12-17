@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Copy, Trash2, Key, Book, Shield, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Copy, Trash2, Key, Book, Shield, Pencil, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface OAuthApp {
   id: string;
@@ -170,14 +171,22 @@ const Developers = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold">Developer Portal</h1>
-            <p className="text-sm text-muted-foreground">Manage API access and integrations</p>
+      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <button onClick={() => navigate("/")} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <div className="h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center">
+                <Mail className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-bold hidden sm:inline">AfuChat Mail</span>
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Badge variant="outline">Developer Portal</Badge>
           </div>
         </div>
       </header>
