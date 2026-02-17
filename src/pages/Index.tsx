@@ -24,7 +24,7 @@ const Index = () => {
             <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm">
               <Mail className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold">AfuChat</span>
+            <span className="text-xl font-extrabold">AfuChat</span>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -44,11 +44,11 @@ const Index = () => {
           <Sparkles className="h-3.5 w-3.5" />
           Free forever · No ads · Privacy first
         </div>
-        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-[1.1]">
+        <h1 className="text-[2.5rem] md:text-6xl font-black tracking-tight mb-5 leading-[1.08]">
           Professional email,<br />
           <span className="text-primary">simplified.</span>
         </h1>
-        <p className="text-lg text-muted-foreground mb-8 max-w-md leading-relaxed">
+        <p className="text-[17px] md:text-lg text-muted-foreground mb-8 max-w-md leading-relaxed font-medium">
           Custom @afuchat.com addresses with aliases, threading, and real-time sync.
         </p>
         <div className="flex gap-3">
@@ -71,8 +71,8 @@ const Index = () => {
                 <feature.icon className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold mb-0.5">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
+                <h3 className="font-bold text-[15px] mb-0.5">{feature.title}</h3>
+                <p className="text-muted-foreground text-[13px] leading-relaxed font-medium">{feature.description}</p>
               </div>
             </div>
           ))}
@@ -82,8 +82,8 @@ const Index = () => {
       {/* CTA */}
       <section className="max-w-3xl mx-auto px-5 py-16">
         <div className="bg-card border border-border rounded-3xl p-8 md:p-12 text-center shadow-md">
-          <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to start?</h2>
-          <p className="text-muted-foreground mb-8 max-w-md mx-auto">No credit card required. Setup in 60 seconds.</p>
+          <h2 className="text-3xl md:text-4xl font-black mb-3">Ready to start?</h2>
+          <p className="text-muted-foreground mb-8 max-w-md mx-auto text-[15px] font-medium">No credit card required. Setup in 60 seconds.</p>
           <Button size="lg" className="rounded-xl shadow-md hover:shadow-lg h-12 px-8 font-semibold" onClick={() => navigate("/auth")}>
             Create Free Account
           </Button>

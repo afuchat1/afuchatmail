@@ -43,8 +43,8 @@ export const BottomTabBar = ({ activeTab, onTabChange, unreadCount = 0 }: Bottom
                 )}
               </div>
               <span className={cn(
-                "text-[10px] relative",
-                isActive ? "font-semibold" : "font-medium"
+                "text-[11px] relative",
+                isActive ? "font-bold" : "font-semibold"
               )}>
                 {tab.label}
               </span>
