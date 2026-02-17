@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, ArrowLeft, Save, Plus, Trash2, Copy, LogOut } from "lucide-react";
 import { User } from "@supabase/supabase-js";
-import { EmailTemplates } from "@/components/EmailTemplates";
+// Templates removed from settings
 import { EmailAddressSwitcher } from "@/components/EmailAddressSwitcher";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
@@ -177,7 +177,6 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
           <TabsList className="bg-muted rounded-xl p-1 h-auto">
             <TabsTrigger value="preferences" className="rounded-lg data-[state=active]:shadow-sm text-xs font-semibold px-4 py-2">Preferences</TabsTrigger>
             <TabsTrigger value="addresses" className="rounded-lg data-[state=active]:shadow-sm text-xs font-semibold px-4 py-2">Addresses</TabsTrigger>
-            <TabsTrigger value="templates" className="rounded-lg data-[state=active]:shadow-sm text-xs font-semibold px-4 py-2">Templates</TabsTrigger>
           </TabsList>
 
           <TabsContent value="preferences" className="space-y-5">
@@ -309,9 +308,6 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
             </div>
           </TabsContent>
 
-          <TabsContent value="templates">
-            <EmailTemplates />
-          </TabsContent>
         </Tabs>
       </main>
     </div>
