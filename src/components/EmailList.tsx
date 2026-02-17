@@ -521,17 +521,23 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="h-10 w-10 rounded-2xl bg-muted flex items-center justify-center">
+          <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent"></div>
+        </div>
+        <p className="text-sm text-muted-foreground font-medium">Loading emails...</p>
       </div>
     );
   }
 
   if (threads.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-        <Mail className="h-12 w-12 mb-4 opacity-50" />
-        <p>No emails in this folder</p>
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground px-8">
+        <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+          <Mail className="h-7 w-7 opacity-40" />
+        </div>
+        <p className="font-medium text-sm">No emails here</p>
+        <p className="text-xs mt-1 opacity-70">Messages will appear when you receive them</p>
       </div>
     );
   }
@@ -540,34 +546,31 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b bg-muted/20 flex-shrink-0">
-        <div className="text-sm font-medium">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-card flex-shrink-0">
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           {threads.length} conversation{threads.length !== 1 ? 's' : ''}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              Bulk Actions
+            <Button variant="outline" size="sm" className="rounded-xl text-xs font-semibold h-8 shadow-xs">
+              Actions
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-popover">
+          <DropdownMenuContent align="end" className="bg-popover rounded-xl shadow-lg border-border">
             {hasUnreadEmails && (
-              <DropdownMenuItem onClick={handleMarkAllAsRead}>
+              <DropdownMenuItem onClick={handleMarkAllAsRead} className="rounded-lg">
                 <CheckCheck className="h-4 w-4 mr-2" />
                 Mark all as read
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem 
-              onClick={handleDeleteAll}
-              className="text-destructive focus:text-destructive"
-            >
+            <DropdownMenuItem onClick={handleDeleteAll} className="text-destructive focus:text-destructive rounded-lg">
               <Trash2 className="h-4 w-4 mr-2" />
               Delete all
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="flex-1 overflow-y-auto divide-y">
+      <div className="flex-1 overflow-y-auto divide-y divide-border scroll-smooth-ios">
         {threads.map((thread) => {
           const email = thread.latest_email;
           const participantCount = getParticipantCount(email);
@@ -580,13 +583,13 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
               key={thread.thread_id}
               onClick={() => onEmailSelect(email)}
               className={cn(
-                "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-accent/50",
-                thread.unread_count > 0 && "bg-accent/20"
+                "flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-all duration-150 touch-active",
+                thread.unread_count > 0 ? "bg-accent/30" : "hover:bg-muted/50"
               )}
             >
               {/* Avatar */}
-              <Avatar className="h-10 w-10 flex-shrink-0">
-                <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+              <Avatar className="h-10 w-10 flex-shrink-0 shadow-xs">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
                   {getInitials(email.from_address)}
                 </AvatarFallback>
               </Avatar>

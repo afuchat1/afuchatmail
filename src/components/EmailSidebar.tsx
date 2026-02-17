@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PenSquare, Inbox, Send, FileText, AlertCircle, Trash2, Shield } from "lucide-react";
-
 import { EmailAddressSwitcher } from "./EmailAddressSwitcher";
 
 interface Folder {
@@ -41,14 +40,12 @@ export const EmailSidebar = ({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
       const { data } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
         .eq("role", "admin")
         .maybeSingle();
-
       setIsAdmin(!!data);
     } catch (error) {
       console.error("Error checking admin status:", error);
@@ -59,17 +56,13 @@ export const EmailSidebar = ({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
       const { data, error } = await supabase
         .from("folders")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: true });
-
       if (error) throw error;
       setFolders(data || []);
-      
-      // Select inbox by default
       const inboxFolder = data?.find(f => f.type === "inbox");
       if (inboxFolder && !selectedFolderId) {
         onFolderSelect(inboxFolder.id);
@@ -91,7 +84,16 @@ export const EmailSidebar = ({
   };
 
   return (
-    <div className="w-64 border-r bg-card p-4 flex flex-col gap-4 h-full">
+    <div className="w-64 bg-card border-r border-border p-3 flex flex-col gap-3 h-full">
+      {/* Compose button */}
+      <Button
+        onClick={onCompose}
+        className="w-full h-12 rounded-2xl shadow-md hover:shadow-lg transition-shadow font-medium text-[15px] gap-2"
+      >
+        <PenSquare className="h-4 w-4" />
+        Compose
+      </Button>
+
       <div className="flex-shrink-0">
         <EmailAddressSwitcher
           selectedEmailAddressId={selectedEmailAddressId}
@@ -99,34 +101,34 @@ export const EmailSidebar = ({
         />
       </div>
       
-      <nav className="space-y-1 flex-1 overflow-y-auto">
+      <nav className="space-y-0.5 flex-1 overflow-y-auto">
         {folders.map((folder) => {
           const Icon = getIcon(folder.icon);
+          const isSelected = selectedFolderId === folder.id;
           return (
             <button
               key={folder.id}
               onClick={() => onFolderSelect(folder.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                selectedFolderId === folder.id
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "hover:bg-accent text-muted-foreground"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
+                isSelected
+                  ? "bg-accent text-accent-foreground font-semibold shadow-sm"
+                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className="h-4 w-4 flex-shrink-0" />
+              <Icon className={`h-[18px] w-[18px] flex-shrink-0 ${isSelected ? 'text-primary' : ''}`} />
               <span className="truncate">{folder.name}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* Admin Link */}
       {isAdmin && (
-        <div className="flex-shrink-0 pt-2 border-t">
+        <div className="flex-shrink-0 pt-2 border-t border-border">
           <button
             onClick={() => navigate("/admin")}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-accent text-muted-foreground"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
           >
-            <Shield className="h-4 w-4 flex-shrink-0 text-amber-500" />
+            <Shield className="h-[18px] w-[18px] flex-shrink-0 text-amber-500" />
             <span className="truncate">Admin Panel</span>
           </button>
         </div>

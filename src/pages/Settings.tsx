@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, ArrowLeft, Save, Plus, Trash2, Copy } from "lucide-react";
+import { Mail, ArrowLeft, Save, Plus, Trash2, Copy, LogOut } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { EmailTemplates } from "@/components/EmailTemplates";
 import { EmailAddressSwitcher } from "@/components/EmailAddressSwitcher";
@@ -39,11 +39,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   const [loading, setLoading] = useState(false);
   const [selectedEmailAddressId, setSelectedEmailAddressId] = useState<string | null>(null);
   const [settings, setSettings] = useState<UserSettings>({
-    email_signature: "",
-    default_reply_to: "",
-    notifications_enabled: true,
-    notification_new_email: true,
-    notification_replies: true,
+    email_signature: "", default_reply_to: "", notifications_enabled: true, notification_new_email: true, notification_replies: true,
   });
   const [emails, setEmails] = useState<EmailAddress[]>([]);
   const [newEmail, setNewEmail] = useState("");
@@ -60,8 +56,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
       else { setUser(session.user); fetchEmails(session.user.id); }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) { navigate("/auth"); }
-      else { setUser(session.user); }
+      if (!session) { navigate("/auth"); } else { setUser(session.user); }
     });
     return () => subscription.unsubscribe();
   }, [navigate]);
@@ -156,165 +151,142 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   return (
     <div className="min-h-screen bg-background">
       {!embedded && (
-        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md">
-          <div className="max-w-2xl mx-auto px-5 py-4 flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/dashboard")}>
+        <header className="sticky top-0 z-10 bg-card/80 backdrop-blur-xl border-b border-border">
+          <div className="max-w-2xl mx-auto px-5 py-3 flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-lg font-semibold">Settings</h1>
+            <h1 className="text-lg font-bold">Settings</h1>
           </div>
         </header>
       )}
 
-      <main className="max-w-2xl mx-auto px-5 pb-16">
-        <div className="mb-6">
-          <EmailAddressSwitcher
-            selectedEmailAddressId={selectedEmailAddressId}
-            onEmailAddressChange={setSelectedEmailAddressId}
-          />
+      {embedded && (
+        <div className="px-5 pt-5 pb-2">
+          <h1 className="text-xl font-bold">Settings</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage your account and preferences</p>
+        </div>
+      )}
+
+      <main className="max-w-2xl mx-auto px-5 pb-24">
+        <div className="mb-5 mt-3">
+          <EmailAddressSwitcher selectedEmailAddressId={selectedEmailAddressId} onEmailAddressChange={setSelectedEmailAddressId} />
         </div>
 
-        <Tabs defaultValue="preferences" className="space-y-6">
-          <TabsList className="bg-muted">
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="addresses">Addresses</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
+        <Tabs defaultValue="preferences" className="space-y-5">
+          <TabsList className="bg-muted rounded-xl p-1 h-auto">
+            <TabsTrigger value="preferences" className="rounded-lg data-[state=active]:shadow-sm text-xs font-semibold px-4 py-2">Preferences</TabsTrigger>
+            <TabsTrigger value="addresses" className="rounded-lg data-[state=active]:shadow-sm text-xs font-semibold px-4 py-2">Addresses</TabsTrigger>
+            <TabsTrigger value="templates" className="rounded-lg data-[state=active]:shadow-sm text-xs font-semibold px-4 py-2">Templates</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="preferences" className="space-y-8">
-            {/* Account */}
-            <section>
-              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">Account</h2>
-              <div className="flex items-center justify-between py-3">
+          <TabsContent value="preferences" className="space-y-5">
+            {/* Account Card */}
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Account</h2>
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-sm">{user?.email}</p>
+                  <p className="font-semibold text-sm">{user?.email}</p>
                   <p className="text-xs text-muted-foreground">Signed in</p>
                 </div>
-                <Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { await supabase.auth.signOut(); navigate("/auth"); }}>
+                <Button variant="outline" size="sm" className="rounded-xl text-destructive border-destructive/20 hover:bg-destructive/10" onClick={async () => { await supabase.auth.signOut(); navigate("/auth"); }}>
+                  <LogOut className="h-3.5 w-3.5 mr-1.5" />
                   Sign Out
                 </Button>
               </div>
-            </section>
+            </div>
 
-            <div className="border-t" />
-
-            {/* Email Settings */}
-            <section>
-              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">Email Settings</h2>
+            {/* Email Settings Card */}
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Email Settings</h2>
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="signature" className="text-sm">Signature</Label>
-                  <Textarea
-                    id="signature"
-                    placeholder="Best regards,&#10;Your Name"
-                    value={settings.email_signature}
+                  <Label htmlFor="signature" className="text-sm font-medium">Signature</Label>
+                  <Textarea id="signature" placeholder="Best regards,&#10;Your Name" value={settings.email_signature}
                     onChange={(e) => setSettings({ ...settings, email_signature: e.target.value })}
-                    className="min-h-[100px] border-0 bg-muted rounded-lg resize-none"
-                  />
+                    className="min-h-[100px] border border-border bg-background rounded-xl resize-none shadow-xs" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="replyTo" className="text-sm">Reply-To Address</Label>
-                  <Input
-                    id="replyTo"
-                    type="email"
-                    placeholder="reply@example.com"
-                    value={settings.default_reply_to}
+                  <Label htmlFor="replyTo" className="text-sm font-medium">Reply-To Address</Label>
+                  <Input id="replyTo" type="email" placeholder="reply@example.com" value={settings.default_reply_to}
                     onChange={(e) => setSettings({ ...settings, default_reply_to: e.target.value })}
-                    className="border-0 bg-muted rounded-lg"
-                  />
+                    className="border border-border bg-background rounded-xl shadow-xs" />
                 </div>
               </div>
-            </section>
+            </div>
 
-            <div className="border-t" />
-
-            {/* Notifications */}
-            <section>
-              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">Notifications</h2>
+            {/* Notifications Card */}
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Notifications</h2>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Notifications</p>
-                    <p className="text-xs text-muted-foreground">Receive email event notifications</p>
+                {[
+                  { label: "Notifications", desc: "Receive email event notifications", key: "notifications_enabled" as const, disabled: false },
+                  { label: "New emails", desc: "When you receive new emails", key: "notification_new_email" as const, disabled: !settings.notifications_enabled },
+                  { label: "Replies", desc: "When someone replies to your emails", key: "notification_replies" as const, disabled: !settings.notifications_enabled },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between py-1">
+                    <div>
+                      <p className="text-sm font-medium">{item.label}</p>
+                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                    </div>
+                    <Switch checked={settings[item.key]} onCheckedChange={(checked) => setSettings({ ...settings, [item.key]: checked })} disabled={item.disabled} />
                   </div>
-                  <Switch checked={settings.notifications_enabled} onCheckedChange={(checked) => setSettings({ ...settings, notifications_enabled: checked })} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">New emails</p>
-                    <p className="text-xs text-muted-foreground">When you receive new emails</p>
-                  </div>
-                  <Switch checked={settings.notification_new_email} onCheckedChange={(checked) => setSettings({ ...settings, notification_new_email: checked })} disabled={!settings.notifications_enabled} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Replies</p>
-                    <p className="text-xs text-muted-foreground">When someone replies to your emails</p>
-                  </div>
-                  <Switch checked={settings.notification_replies} onCheckedChange={(checked) => setSettings({ ...settings, notification_replies: checked })} disabled={!settings.notifications_enabled} />
-                </div>
+                ))}
                 {selectedEmailAddressId && (
-                  <div className="pt-2">
+                  <div className="pt-2 border-t border-border">
                     <p className="text-sm font-medium mb-2">Push Notifications</p>
                     <PushNotificationToggle emailAddressId={selectedEmailAddressId} />
                   </div>
                 )}
               </div>
-            </section>
-
-            <div className="pt-4">
-              <Button onClick={handleSave} disabled={loading || !selectedEmailAddressId} className="w-full h-12 rounded-lg">
-                <Save className="h-4 w-4 mr-2" />
-                {loading ? "Saving..." : "Save Settings"}
-              </Button>
             </div>
+
+            <Button onClick={handleSave} disabled={loading || !selectedEmailAddressId} className="w-full h-12 rounded-xl font-semibold shadow-md hover:shadow-lg transition-shadow">
+              <Save className="h-4 w-4 mr-2" />
+              {loading ? "Saving..." : "Save Settings"}
+            </Button>
           </TabsContent>
 
-          <TabsContent value="addresses" className="space-y-8">
-            {/* Create New */}
-            <section>
-              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">New Address</h2>
+          <TabsContent value="addresses" className="space-y-5">
+            {/* Create New Card */}
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">New Address</h2>
               <form onSubmit={handleCreateEmail} className="space-y-3">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Input
-                      placeholder="yourname"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value.toLowerCase())}
-                      pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]"
-                      minLength={3}
-                      maxLength={30}
-                      required
-                      className="pr-28 border-0 bg-muted rounded-lg"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">@afuchat.com</span>
+                    <Input placeholder="yourname" value={newEmail} onChange={(e) => setNewEmail(e.target.value.toLowerCase())}
+                      pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]" minLength={3} maxLength={30} required
+                      className="pr-28 border border-border bg-background rounded-xl shadow-xs" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">@afuchat.com</span>
                   </div>
-                  <Button type="submit" disabled={creatingEmail} size="sm">
+                  <Button type="submit" disabled={creatingEmail} size="icon" className="rounded-xl shadow-sm h-10 w-10">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">3-30 characters, lowercase letters, numbers, dots, hyphens</p>
               </form>
-            </section>
+            </div>
 
-            <div className="border-t" />
-
-            {/* Existing Addresses */}
-            <section>
-              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
+            {/* Existing Addresses Card */}
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
                 Your Addresses ({emails.length})
               </h2>
               {emails.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Mail className="h-8 w-8 mx-auto mb-3 opacity-40" />
-                  <p className="text-sm">No email addresses yet</p>
+                  <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
+                    <Mail className="h-5 w-5 opacity-40" />
+                  </div>
+                  <p className="text-sm font-medium">No email addresses yet</p>
                 </div>
               ) : (
                 <div className="space-y-1">
                   {emails.map((email) => (
-                    <div key={email.id} className="flex items-center justify-between py-3">
+                    <div key={email.id} className="flex items-center justify-between py-3 px-1">
                       <div className="flex items-center gap-3 min-w-0">
-                        <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div className="h-8 w-8 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
+                          <Mail className="h-3.5 w-3.5 text-accent-foreground" />
+                        </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{email.full_email}</p>
                           <p className="text-xs text-muted-foreground">
@@ -322,11 +294,11 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { navigator.clipboard.writeText(email.full_email); toast({ title: "Copied!" }); }}>
+                      <div className="flex gap-0.5 flex-shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { navigator.clipboard.writeText(email.full_email); toast({ title: "Copied!" }); }}>
                           <Copy className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteEmail(email.id)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:text-destructive" onClick={() => handleDeleteEmail(email.id)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -334,7 +306,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                   ))}
                 </div>
               )}
-            </section>
+            </div>
           </TabsContent>
 
           <TabsContent value="templates">
