@@ -118,3 +118,8 @@
     color: hsl(0 0% 98%);
   }
 }
+
+/* Safe area for bottom tab bar on notched devices */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

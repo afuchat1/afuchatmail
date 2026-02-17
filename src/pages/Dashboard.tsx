@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, LogOut, Settings as SettingsIcon, Menu, Search, Edit, User as UserIcon, ArrowLeft } from "lucide-react";
+import { Mail, Menu, Search, Edit, ArrowLeft, X, Inbox, Send, FileText, AlertCircle, Trash2, Shield } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { EmailSidebar } from "@/components/EmailSidebar";
 import { EmailList } from "@/components/EmailList";
@@ -13,6 +13,8 @@ import { EmailComposer } from "@/components/EmailComposer";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { BottomTabBar, TabId } from "@/components/BottomTabBar";
+import Settings from "@/pages/Settings";
 
 interface EmailAddress {
   id: string;
@@ -47,8 +49,8 @@ const Dashboard = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>("mail");
   const [selectedEmailAddressId, setSelectedEmailAddressId] = useState<string | null>(() => {
     return localStorage.getItem('selectedEmailAddressId');
   });
@@ -175,47 +177,133 @@ const Dashboard = () => {
     navigate("/auth");
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile Header */}
-      <header className="md:hidden bg-background sticky top-0 z-50">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-10 w-10">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-[280px]">
-              <EmailSidebar
-                onCompose={() => { setShowComposer(true); setDrawerOpen(false); }}
-                onFolderSelect={(folderId) => { setSelectedFolder(folderId); setSelectedEmail(null); setDrawerOpen(false); }}
-                selectedFolderId={selectedFolder}
-                selectedEmailAddressId={selectedEmailAddressId}
-                onEmailAddressChange={setSelectedEmailAddressId}
-              />
-            </SheetContent>
-          </Sheet>
-          
-          <div 
-            className="flex-1 bg-muted rounded-lg px-4 py-2.5 flex items-center gap-2 cursor-pointer"
-            onClick={() => setShowSearch(true)}
-          >
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Search in mail</span>
-          </div>
-          
-          <Avatar 
-            className="h-8 w-8 cursor-pointer"
-            onClick={() => navigate("/settings")}
-          >
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-              {user?.email?.[0].toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
+    if (tab === "mail") {
+      setSelectedEmail(null);
+      setSearchQuery("");
+    }
+  };
+
+  // ── MAIL TAB ──
+  const renderMailTab = () => (
+    <div className="flex flex-col h-full">
+      {/* Top bar */}
+      <header className="flex items-center gap-3 px-4 py-3 bg-background sticky top-0 z-40">
+        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-[280px]">
+            <EmailSidebar
+              onCompose={() => { setShowComposer(true); setDrawerOpen(false); }}
+              onFolderSelect={(folderId) => { setSelectedFolder(folderId); setSelectedEmail(null); setDrawerOpen(false); }}
+              selectedFolderId={selectedFolder}
+              selectedEmailAddressId={selectedEmailAddressId}
+              onEmailAddressChange={setSelectedEmailAddressId}
+            />
+          </SheetContent>
+        </Sheet>
+
+        <h1 className="text-lg font-semibold flex-1">Inbox</h1>
+
+        <Avatar
+          className="h-7 w-7 cursor-pointer"
+          onClick={() => setActiveTab("settings")}
+        >
+          <AvatarFallback className="bg-primary text-primary-foreground text-[11px] font-semibold">
+            {user?.email?.[0].toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+      </header>
+
+      {/* Content */}
+      {selectedEmail ? (
+        <div className="flex-1 overflow-y-auto">
+          <EmailViewer
+            email={selectedEmail}
+            onBack={() => { setSelectedEmail(null); setRefreshTrigger(prev => prev + 1); }}
+            onReply={() => setShowComposer(true)}
+          />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          <EmailList
+            folderId={selectedFolder}
+            emailAddressId={selectedEmailAddressId}
+            onEmailSelect={setSelectedEmail}
+            refreshTrigger={refreshTrigger}
+          />
+        </div>
+      )}
+
+      {/* FAB */}
+      {!selectedEmail && (
+        <Button
+          onClick={() => setShowComposer(true)}
+          className="fixed bottom-20 right-4 h-14 px-5 rounded-2xl z-40 shadow-lg flex items-center gap-2"
+        >
+          <Edit className="h-5 w-5" />
+          <span className="text-sm font-medium">Compose</span>
+        </Button>
+      )}
+    </div>
+  );
+
+  // ── SEARCH TAB ──
+  const renderSearchTab = () => (
+    <div className="flex flex-col h-full">
+      <header className="px-4 py-3 bg-background sticky top-0 z-40">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search emails..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 h-10 border-0 bg-muted rounded-xl"
+            autoFocus
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+            >
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+          )}
         </div>
       </header>
 
+      <div className="flex-1 overflow-y-auto">
+        {searchQuery.trim() ? (
+          <EmailList
+            folderId={selectedFolder}
+            emailAddressId={selectedEmailAddressId}
+            onEmailSelect={(email) => { setSelectedEmail(email); setActiveTab("mail"); }}
+            refreshTrigger={refreshTrigger}
+            searchQuery={searchQuery}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground px-8">
+            <Search className="h-10 w-10 mb-3 opacity-30" />
+            <p className="text-sm text-center">Search your emails by sender, subject, or content</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // ── SETTINGS TAB (inline) ──
+  const renderSettingsTab = () => (
+    <div className="flex-1 overflow-y-auto">
+      <Settings embedded />
+    </div>
+  );
+
+  return (
+    <div className="h-[100dvh] flex flex-col bg-background">
       {/* Desktop Header */}
       <header className="hidden md:block bg-background sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -225,44 +313,36 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
-              <SettingsIcon className="h-5 w-5" />
+              <Search className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
+            <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
+              <Mail className="h-5 w-5" />
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto">
-        {/* Mobile View */}
-        <div className="md:hidden flex flex-col h-[calc(100vh-8rem)]">
-          {showSearch ? (
-            <div className="fixed inset-0 bg-background z-50 flex flex-col">
-              <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0">
-                <Button variant="ghost" size="icon" onClick={() => setShowSearch(false)}>
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <Input
-                  placeholder="Search emails..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 border-0 bg-muted"
-                  autoFocus
-                />
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                <EmailList
-                  folderId={selectedFolder}
-                  emailAddressId={selectedEmailAddressId}
-                  onEmailSelect={(email) => { setSelectedEmail(email); setShowSearch(false); }}
-                  refreshTrigger={refreshTrigger}
-                  searchQuery={searchQuery}
-                />
-              </div>
-            </div>
-          ) : selectedEmail ? (
+      {/* Mobile: Tab content area */}
+      <div className="md:hidden flex-1 overflow-hidden pb-14">
+        {activeTab === "mail" && renderMailTab()}
+        {activeTab === "search" && renderSearchTab()}
+        {activeTab === "settings" && renderSettingsTab()}
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden md:flex flex-1 overflow-hidden border-t">
+        <div className="flex-shrink-0 overflow-y-auto">
+          <EmailSidebar
+            onCompose={() => setShowComposer(true)}
+            onFolderSelect={(folderId) => { setSelectedFolder(folderId); setSelectedEmail(null); }}
+            selectedFolderId={selectedFolder}
+            selectedEmailAddressId={selectedEmailAddressId}
+            onEmailAddressChange={setSelectedEmailAddressId}
+          />
+        </div>
+
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-l">
+          {selectedEmail ? (
             <div className="flex-1 overflow-y-auto">
               <EmailViewer
                 email={selectedEmail}
@@ -271,81 +351,25 @@ const Dashboard = () => {
               />
             </div>
           ) : (
-            <div className="flex flex-col flex-1 overflow-hidden">
-              <div className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide flex-shrink-0">
-                Inbox
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                <EmailList
-                  folderId={selectedFolder}
-                  emailAddressId={selectedEmailAddressId}
-                  onEmailSelect={setSelectedEmail}
-                  refreshTrigger={refreshTrigger}
-                />
-              </div>
+            <div className="flex-1 overflow-y-auto">
+              <EmailList
+                folderId={selectedFolder}
+                emailAddressId={selectedEmailAddressId}
+                onEmailSelect={setSelectedEmail}
+                refreshTrigger={refreshTrigger}
+              />
             </div>
           )}
         </div>
+      </div>
 
-        {/* Desktop View */}
-        <div className="hidden md:flex h-[calc(100vh-4rem)] border-t">
-          <div className="flex-shrink-0 overflow-y-auto">
-            <EmailSidebar
-              onCompose={() => setShowComposer(true)}
-              onFolderSelect={(folderId) => { setSelectedFolder(folderId); setSelectedEmail(null); }}
-              selectedFolderId={selectedFolder}
-              selectedEmailAddressId={selectedEmailAddressId}
-              onEmailAddressChange={setSelectedEmailAddressId}
-            />
-          </div>
-          
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-l">
-            {selectedEmail ? (
-              <div className="flex-1 overflow-y-auto">
-                <EmailViewer
-                  email={selectedEmail}
-                  onBack={() => { setSelectedEmail(null); setRefreshTrigger(prev => prev + 1); }}
-                  onReply={() => setShowComposer(true)}
-                />
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto">
-                <EmailList
-                  folderId={selectedFolder}
-                  emailAddressId={selectedEmailAddressId}
-                  onEmailSelect={setSelectedEmail}
-                  refreshTrigger={refreshTrigger}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-
-      {/* Floating Compose Button - Mobile */}
-      <Button
-        onClick={() => setShowComposer(true)}
-        className="md:hidden fixed bottom-20 right-4 h-14 w-14 rounded-full z-40"
-        size="icon"
-      >
-        <Edit className="h-5 w-5" />
-      </Button>
-
-      {/* Bottom Nav - Mobile */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">
-        <div className="flex justify-around items-center py-3">
-          <Button variant="ghost" size="icon" className="relative">
-            <Mail className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
-            <UserIcon className="h-5 w-5" />
-          </Button>
-        </div>
+      {/* Bottom Tab Bar - Mobile only */}
+      <div className="md:hidden">
+        <BottomTabBar
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          unreadCount={unreadCount}
+        />
       </div>
 
       {showComposer && selectedEmailAddressId && (

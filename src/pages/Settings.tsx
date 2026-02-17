@@ -34,7 +34,7 @@ interface EmailAddress {
   created_at: string;
 }
 
-const Settings = () => {
+const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedEmailAddressId, setSelectedEmailAddressId] = useState<string | null>(null);
@@ -155,14 +155,16 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md">
-        <div className="max-w-2xl mx-auto px-5 py-4 flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-lg font-semibold">Settings</h1>
-        </div>
-      </header>
+      {!embedded && (
+        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md">
+          <div className="max-w-2xl mx-auto px-5 py-4 flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/dashboard")}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-lg font-semibold">Settings</h1>
+          </div>
+        </header>
+      )}
 
       <main className="max-w-2xl mx-auto px-5 pb-16">
         <div className="mb-6">
