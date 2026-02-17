@@ -2,76 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Apple Mail / iCloud inspired design system — ultra clean, no borders, no shadows */
+/* AfuChat Mail — Premium app design system */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    --background: 220 14% 96%;
+    --foreground: 220 20% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card-foreground: 220 20% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
+    --popover-foreground: 220 20% 10%;
 
-    --primary: 211 100% 50%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
     
-    --primary-glow: 211 100% 50%;
+    --primary-glow: 217 91% 70%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 20% 10%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 220 14% 92%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 217 91% 95%;
+    --accent-foreground: 217 91% 40%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 92%;
-    --input: 0 0% 92%;
-    --ring: 211 100% 50%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%;
 
-    --radius: 0.625rem;
+    --radius: 0.75rem;
     
-    --gradient-primary: linear-gradient(135deg, hsl(211 100% 50%), hsl(211 100% 50%));
-    --gradient-hero: none;
+    --shadow-xs: 0 1px 2px 0 hsl(220 20% 10% / 0.04);
+    --shadow-sm: 0 1px 3px 0 hsl(220 20% 10% / 0.06), 0 1px 2px -1px hsl(220 20% 10% / 0.06);
+    --shadow-md: 0 4px 6px -1px hsl(220 20% 10% / 0.07), 0 2px 4px -2px hsl(220 20% 10% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(220 20% 10% / 0.08), 0 4px 6px -4px hsl(220 20% 10% / 0.04);
+    --shadow-xl: 0 20px 25px -5px hsl(220 20% 10% / 0.1), 0 8px 10px -6px hsl(220 20% 10% / 0.05);
     
-    --transition-smooth: all 0.2s ease;
+    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 98%;
+    --background: 222 20% 7%;
+    --foreground: 220 14% 96%;
 
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 98%;
+    --card: 222 20% 11%;
+    --card-foreground: 220 14% 96%;
 
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 222 20% 11%;
+    --popover-foreground: 220 14% 96%;
 
-    --primary: 211 100% 50%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 222 20% 15%;
+    --secondary-foreground: 220 14% 96%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 64%;
+    --muted: 222 20% 15%;
+    --muted-foreground: 220 10% 55%;
 
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 217 91% 15%;
+    --accent-foreground: 217 91% 70%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 211 100% 50%;
+    --border: 222 20% 18%;
+    --input: 222 20% 18%;
+    --ring: 217 91% 60%;
+    
+    --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
+    --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.3), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.2);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.35), 0 4px 6px -4px hsl(0 0% 0% / 0.2);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.4), 0 8px 10px -6px hsl(0 0% 0% / 0.2);
   }
 }
 
@@ -82,14 +91,28 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Elevated card utility */
+  .card-elevated {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease;
+  }
+
+  .card-elevated:hover {
+    box-shadow: var(--shadow-md);
   }
 
   /* Email content link styling */
   .prose a {
-    color: hsl(211 100% 50%);
+    color: hsl(217 91% 60%);
   }
 
   .prose a:hover {
@@ -97,16 +120,16 @@
   }
 
   .dark .prose a {
-    color: hsl(211 100% 60%);
+    color: hsl(217 91% 70%);
   }
 
   .dark .prose {
-    color: hsl(0 0% 98%);
+    color: hsl(220 14% 96%);
   }
 
   .dark .prose strong,
   .dark .prose b {
-    color: hsl(0 0% 98%);
+    color: hsl(220 14% 96%);
   }
 
   .dark .prose h1,
@@ -115,11 +138,24 @@
   .dark .prose h4,
   .dark .prose h5,
   .dark .prose h6 {
-    color: hsl(0 0% 98%);
+    color: hsl(220 14% 96%);
   }
 }
 
 /* Safe area for bottom tab bar on notched devices */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Smooth scrolling on iOS */
+.scroll-smooth-ios {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Active state for touch devices */
+@media (hover: none) {
+  .touch-active:active {
+    opacity: 0.7;
+    transition: opacity 0.1s ease;
+  }
 }

@@ -311,40 +311,31 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b p-4 flex items-center justify-between bg-gradient-to-r from-primary/5 to-cyan-500/5">
-        <Button variant="ghost" size="icon" onClick={onBack}>
+      <div className="border-b border-border p-3 flex items-center justify-between bg-card sticky top-0 z-10 shadow-xs">
+        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setShowSnoozeDialog(true)}>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setShowSnoozeDialog(true)}>
             <Clock className="h-4 w-4" />
           </Button>
           {!isTrashFolder && (
             <>
-              <Button variant="ghost" size="icon" onClick={toggleStar}>
-                <Star
-                  className={`h-4 w-4 ${
-                    email.is_starred ? "fill-yellow-500 text-yellow-500" : ""
-                  }`}
-                />
+              <Button variant="ghost" size="icon" className="rounded-xl" onClick={toggleStar}>
+                <Star className={`h-4 w-4 ${email.is_starred ? "fill-yellow-500 text-yellow-500" : ""}`} />
               </Button>
-              <Button variant="ghost" size="icon" onClick={onReply}>
+              <Button variant="ghost" size="icon" className="rounded-xl" onClick={onReply}>
                 <Reply className="h-4 w-4" />
               </Button>
             </>
           )}
           {isTrashFolder && (
-            <Button variant="ghost" size="icon" onClick={restoreEmail} title="Restore">
+            <Button variant="ghost" size="icon" className="rounded-xl" onClick={restoreEmail} title="Restore">
               <Undo2 className="h-4 w-4" />
             </Button>
           )}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={deleteEmail}
-            className={isTrashFolder ? "text-destructive hover:text-destructive" : ""}
-            title={isTrashFolder ? "Delete permanently" : "Move to trash"}
-          >
+          <Button variant="ghost" size="icon" className={`rounded-xl ${isTrashFolder ? "text-destructive hover:text-destructive" : ""}`}
+            onClick={deleteEmail} title={isTrashFolder ? "Delete permanently" : "Move to trash"}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -357,11 +348,11 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
         onSnooze={onBack}
       />
 
-      <div className="flex-1 overflow-y-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">{email.subject}</h1>
+      <div className="flex-1 overflow-y-auto p-5 scroll-smooth-ios">
+        <h1 className="text-xl font-bold mb-5">{email.subject}</h1>
         
-        {/* Thread conversation view - Gmail style */}
-        <div className="space-y-4">
+        {/* Thread conversation view */}
+        <div className="space-y-3">
           {threadEmails.map((threadEmail, index) => {
             const isExpanded = expandedEmails.has(threadEmail.id);
             const isLastEmail = index === threadEmails.length - 1;
@@ -370,8 +361,8 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
               <div 
                 key={threadEmail.id} 
                 className={cn(
-                  "border rounded-lg transition-all",
-                  isExpanded ? "shadow-md" : "hover:shadow-sm cursor-pointer"
+                  "border border-border rounded-2xl transition-all bg-card",
+                  isExpanded ? "shadow-md" : "shadow-xs hover:shadow-sm cursor-pointer"
                 )}
               >
                 {/* Email header */}
