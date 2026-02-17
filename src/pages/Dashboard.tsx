@@ -3,16 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, LogOut, Plus, Trash2, Copy, Settings as SettingsIcon, Menu, Search, Edit, User as UserIcon, ArrowLeft } from "lucide-react";
+import { Mail, LogOut, Settings as SettingsIcon, Menu, Search, Edit, User as UserIcon, ArrowLeft } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { EmailSidebar } from "@/components/EmailSidebar";
 import { EmailList } from "@/components/EmailList";
 import { EmailViewer } from "@/components/EmailViewer";
 import { EmailComposer } from "@/components/EmailComposer";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
@@ -58,7 +55,6 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Persist selected email address to localStorage
   useEffect(() => {
     if (selectedEmailAddressId) {
       localStorage.setItem('selectedEmailAddressId', selectedEmailAddressId);
@@ -66,7 +62,6 @@ const Dashboard = () => {
   }, [selectedEmailAddressId]);
 
   useEffect(() => {
-    // Check authentication
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
@@ -88,7 +83,6 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Real-time subscription for unread count updates
   useEffect(() => {
     if (!user || !selectedEmailAddressId) return;
 
@@ -121,11 +115,7 @@ const Dashboard = () => {
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error fetching emails",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Error fetching emails", description: error.message });
     } else {
       setEmails(data || []);
     }
@@ -146,7 +136,6 @@ const Dashboard = () => {
     }
   };
 
-  // Update unread count when email address changes
   useEffect(() => {
     if (user && selectedEmailAddressId) {
       fetchUnreadCount(user.id);
@@ -156,32 +145,15 @@ const Dashboard = () => {
   const handleCreateEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
     setLoading(true);
-
     try {
-      const { error } = await supabase
-        .from("email_addresses")
-        .insert({
-          user_id: user.id,
-          local_part: newEmail.toLowerCase(),
-        });
-
+      const { error } = await supabase.from("email_addresses").insert({ user_id: user.id, local_part: newEmail.toLowerCase() });
       if (error) throw error;
-
-      toast({
-        title: "Email created!",
-        description: `${newEmail}@afuchat.com is now active.`,
-      });
-
+      toast({ title: "Email created!", description: `${newEmail}@afuchat.com is now active.` });
       setNewEmail("");
       fetchEmails(user.id);
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error creating email",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Error creating email", description: error.message });
     } finally {
       setLoading(false);
     }
@@ -189,23 +161,11 @@ const Dashboard = () => {
 
   const handleDeleteEmail = async (id: string) => {
     if (!user) return;
-
-    const { error } = await supabase
-      .from("email_addresses")
-      .delete()
-      .eq("id", id);
-
+    const { error } = await supabase.from("email_addresses").delete().eq("id", id);
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error deleting email",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Error deleting email", description: error.message });
     } else {
-      toast({
-        title: "Email deleted",
-        description: "Your email address has been removed.",
-      });
+      toast({ title: "Email deleted", description: "Your email address has been removed." });
       fetchEmails(user.id);
     }
   };
@@ -217,8 +177,8 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile Header - Gmail Style */}
-      <header className="md:hidden bg-background border-b sticky top-0 z-50">
+      {/* Mobile Header */}
+      <header className="md:hidden bg-background sticky top-0 z-50">
         <div className="flex items-center gap-3 px-4 py-3">
           <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
             <SheetTrigger asChild>
@@ -228,15 +188,8 @@ const Dashboard = () => {
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-[280px]">
               <EmailSidebar
-                onCompose={() => {
-                  setShowComposer(true);
-                  setDrawerOpen(false);
-                }}
-                onFolderSelect={(folderId) => {
-                  setSelectedFolder(folderId);
-                  setSelectedEmail(null);
-                  setDrawerOpen(false); // Close drawer immediately
-                }}
+                onCompose={() => { setShowComposer(true); setDrawerOpen(false); }}
+                onFolderSelect={(folderId) => { setSelectedFolder(folderId); setSelectedEmail(null); setDrawerOpen(false); }}
                 selectedFolderId={selectedFolder}
                 selectedEmailAddressId={selectedEmailAddressId}
                 onEmailAddressChange={setSelectedEmailAddressId}
@@ -245,7 +198,7 @@ const Dashboard = () => {
           </Sheet>
           
           <div 
-            className="flex-1 bg-muted/50 rounded-full px-4 py-2 flex items-center gap-2 cursor-pointer"
+            className="flex-1 bg-muted rounded-lg px-4 py-2.5 flex items-center gap-2 cursor-pointer"
             onClick={() => setShowSearch(true)}
           >
             <Search className="h-4 w-4 text-muted-foreground" />
@@ -253,10 +206,10 @@ const Dashboard = () => {
           </div>
           
           <Avatar 
-            className="h-10 w-10 cursor-pointer"
+            className="h-8 w-8 cursor-pointer"
             onClick={() => navigate("/settings")}
           >
-            <AvatarFallback className="bg-primary text-primary-foreground">
+            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
               {user?.email?.[0].toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -264,19 +217,17 @@ const Dashboard = () => {
       </header>
 
       {/* Desktop Header */}
-      <header className="hidden md:block bg-card/80 backdrop-blur-sm border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <Mail className="h-8 w-8 text-primary flex-shrink-0" />
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent truncate">
-              AfuChat Email
-            </h1>
+      <header className="hidden md:block bg-background sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-semibold">AfuChat Mail</h1>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
               <SettingsIcon className="h-5 w-5" />
             </Button>
-            <Button variant="outline" onClick={handleSignOut}>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
             </Button>
@@ -284,12 +235,12 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-0 md:px-4 py-0 md:py-8 max-w-7xl">
+      <main className="max-w-7xl mx-auto">
         {/* Mobile View */}
         <div className="md:hidden flex flex-col h-[calc(100vh-8rem)]">
           {showSearch ? (
             <div className="fixed inset-0 bg-background z-50 flex flex-col">
-              <div className="flex items-center gap-3 px-4 py-3 border-b flex-shrink-0">
+              <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0">
                 <Button variant="ghost" size="icon" onClick={() => setShowSearch(false)}>
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -297,7 +248,7 @@ const Dashboard = () => {
                   placeholder="Search emails..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 border-0 bg-muted"
                   autoFocus
                 />
               </div>
@@ -305,10 +256,7 @@ const Dashboard = () => {
                 <EmailList
                   folderId={selectedFolder}
                   emailAddressId={selectedEmailAddressId}
-                  onEmailSelect={(email) => {
-                    setSelectedEmail(email);
-                    setShowSearch(false);
-                  }}
+                  onEmailSelect={(email) => { setSelectedEmail(email); setShowSearch(false); }}
                   refreshTrigger={refreshTrigger}
                   searchQuery={searchQuery}
                 />
@@ -318,19 +266,14 @@ const Dashboard = () => {
             <div className="flex-1 overflow-y-auto">
               <EmailViewer
                 email={selectedEmail}
-                onBack={() => {
-                  setSelectedEmail(null);
-                  setRefreshTrigger(prev => prev + 1);
-                }}
-                onReply={() => {
-                  setShowComposer(true);
-                }}
+                onBack={() => { setSelectedEmail(null); setRefreshTrigger(prev => prev + 1); }}
+                onReply={() => setShowComposer(true)}
               />
             </div>
           ) : (
             <div className="flex flex-col flex-1 overflow-hidden">
-              <div className="px-4 py-2 text-sm font-medium text-muted-foreground flex-shrink-0">
-                Primary
+              <div className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide flex-shrink-0">
+                Inbox
               </div>
               <div className="flex-1 overflow-y-auto">
                 <EmailList
@@ -345,88 +288,70 @@ const Dashboard = () => {
         </div>
 
         {/* Desktop View */}
-        <Card className="hidden md:block border-border shadow-lg">
-          <div className="flex h-[calc(100vh-12rem)] min-h-[500px]">
-            <div className="flex-shrink-0 overflow-y-auto">
-              <EmailSidebar
-                onCompose={() => setShowComposer(true)}
-                onFolderSelect={(folderId) => {
-                  setSelectedFolder(folderId);
-                  setSelectedEmail(null);
-                }}
-                selectedFolderId={selectedFolder}
-                selectedEmailAddressId={selectedEmailAddressId}
-                onEmailAddressChange={setSelectedEmailAddressId}
-              />
-            </div>
-            
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              {selectedEmail ? (
-                <div className="flex-1 overflow-y-auto">
-                  <EmailViewer
-                    email={selectedEmail}
-                    onBack={() => {
-                      setSelectedEmail(null);
-                      setRefreshTrigger(prev => prev + 1);
-                    }}
-                    onReply={() => {
-                      setShowComposer(true);
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="flex-1 overflow-y-auto">
-                  <EmailList
-                    folderId={selectedFolder}
-                    emailAddressId={selectedEmailAddressId}
-                    onEmailSelect={setSelectedEmail}
-                    refreshTrigger={refreshTrigger}
-                  />
-                </div>
-              )}
-            </div>
+        <div className="hidden md:flex h-[calc(100vh-4rem)] border-t">
+          <div className="flex-shrink-0 overflow-y-auto">
+            <EmailSidebar
+              onCompose={() => setShowComposer(true)}
+              onFolderSelect={(folderId) => { setSelectedFolder(folderId); setSelectedEmail(null); }}
+              selectedFolderId={selectedFolder}
+              selectedEmailAddressId={selectedEmailAddressId}
+              onEmailAddressChange={setSelectedEmailAddressId}
+            />
           </div>
-        </Card>
+          
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-l">
+            {selectedEmail ? (
+              <div className="flex-1 overflow-y-auto">
+                <EmailViewer
+                  email={selectedEmail}
+                  onBack={() => { setSelectedEmail(null); setRefreshTrigger(prev => prev + 1); }}
+                  onReply={() => setShowComposer(true)}
+                />
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                <EmailList
+                  folderId={selectedFolder}
+                  emailAddressId={selectedEmailAddressId}
+                  onEmailSelect={setSelectedEmail}
+                  refreshTrigger={refreshTrigger}
+                />
+              </div>
+            )}
+          </div>
+        </div>
       </main>
 
-      {/* Floating Compose Button - Mobile Only */}
+      {/* Floating Compose Button - Mobile */}
       <Button
         onClick={() => setShowComposer(true)}
-        className="md:hidden fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 z-40"
+        className="md:hidden fixed bottom-20 right-4 h-14 w-14 rounded-full z-40"
         size="icon"
       >
         <Edit className="h-5 w-5" />
       </Button>
 
-      {/* Bottom Navigation - Mobile Only */}
+      {/* Bottom Nav - Mobile */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">
         <div className="flex justify-around items-center py-3">
           <Button variant="ghost" size="icon" className="relative">
             <Mail className="h-5 w-5" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </Button>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => navigate("/settings")}
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
             <UserIcon className="h-5 w-5" />
           </Button>
         </div>
       </div>
 
-      {/* Email Composer */}
       {showComposer && selectedEmailAddressId && (
         <EmailComposer
           fromAddress={emails.find(e => e.id === selectedEmailAddressId)?.full_email}
-          onClose={() => {
-            setShowComposer(false);
-            setRefreshTrigger(prev => prev + 1);
-          }}
+          onClose={() => { setShowComposer(false); setRefreshTrigger(prev => prev + 1); }}
           replyTo={selectedEmail ? {
             to: selectedEmail.from_address,
             subject: selectedEmail.subject,
