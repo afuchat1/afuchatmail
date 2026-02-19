@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Shield, Mail, Inbox, Search, FolderOpen, CheckCircle, XCircle, User, Key, Send, FileEdit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface OAuthParams {
   clientId: string;
@@ -343,9 +344,22 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
   if (mailboxLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="w-full max-w-md px-6 space-y-6">
+          <div className="flex flex-col items-center gap-3">
+            <Skeleton className="h-12 w-12 rounded-2xl" />
+            <Skeleton className="h-5 w-40" />
+          </div>
+          <div className="bg-card rounded-2xl p-6 space-y-4 border border-border">
+            <Skeleton className="h-4 w-3/4 mx-auto" />
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full rounded-xl" />
+              <Skeleton className="h-10 w-full rounded-xl" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Skeleton className="h-11 flex-1 rounded-xl" />
+              <Skeleton className="h-11 flex-1 rounded-xl" />
+            </div>
+          </div>
         </div>
       </div>
     );

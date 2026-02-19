@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, ArrowLeft } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import OAuthConsentScreen from "@/components/OAuthConsentScreen";
 
 interface OAuthParams {
@@ -98,14 +99,26 @@ const Auth = () => {
   if (checkingAuth || preparingOAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center shadow-md">
-            <Mail className="h-5 w-5 text-primary-foreground" />
+        <div className="w-full max-w-sm px-5 space-y-8">
+          <div className="flex items-center gap-2.5">
+            <Skeleton className="h-10 w-10 rounded-2xl" />
+            <Skeleton className="h-6 w-24" />
           </div>
-          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground font-medium">
-            {preparingOAuth ? "Preparing authorization..." : "Loading..."}
-          </p>
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+            <Skeleton className="h-12 w-full rounded-xl" />
+          </div>
         </div>
       </div>
     );
