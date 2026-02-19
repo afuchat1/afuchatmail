@@ -149,7 +149,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={embedded ? "h-full" : "min-h-screen bg-background"}>
       {!embedded && (
         <header className="sticky top-0 z-10 bg-card/80 backdrop-blur-xl border-b border-border">
           <div className="max-w-2xl mx-auto px-5 py-3 flex items-center gap-3">

@@ -10,7 +10,7 @@ import { EmailSidebar } from "@/components/EmailSidebar";
 import { EmailList } from "@/components/EmailList";
 import { EmailViewer } from "@/components/EmailViewer";
 import { EmailComposer } from "@/components/EmailComposer";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { BottomTabBar, TabId } from "@/components/BottomTabBar";
@@ -155,7 +155,8 @@ const Dashboard = () => {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-[280px]">
+           <SheetContent side="left" className="p-0 w-[280px]" aria-describedby={undefined}>
+             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <EmailSidebar
               onCompose={() => { setShowComposer(true); setDrawerOpen(false); }}
               onFolderSelect={(folderId) => { setSelectedFolder(folderId); setSelectedEmail(null); setDrawerOpen(false); }}
@@ -259,7 +260,7 @@ const Dashboard = () => {
 
   // ── SETTINGS TAB ──
   const renderSettingsTab = () => (
-    <div className="flex-1 overflow-y-auto scroll-smooth-ios">
+    <div className="flex-1 overflow-y-auto scroll-smooth-ios pb-4">
       <Settings embedded />
     </div>
   );
