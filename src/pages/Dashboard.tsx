@@ -294,7 +294,7 @@ const Dashboard = () => {
       </header>
 
       {/* Mobile tab content */}
-      <div className="md:hidden flex-1 overflow-hidden pb-14">
+      <div className="md:hidden flex-1 flex flex-col overflow-hidden pb-14">
         {activeTab === "mail" && renderMailTab()}
         {activeTab === "search" && renderSearchTab()}
         {activeTab === "settings" && renderSettingsTab()}
