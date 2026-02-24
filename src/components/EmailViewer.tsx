@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText, Clock, ChevronDown, ChevronUp, Undo2 } from "lucide-react";
+import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText, Clock, ChevronDown, ChevronUp, Undo2, Sparkles, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { SnoozeDialog } from "./SnoozeDialog";
 import DOMPurify from "dompurify";
 import { linkifyText } from "@/lib/linkify";
+import { useAIEmailAssist } from "@/hooks/useAIEmailAssist";
 
 interface Attachment {
   name: string;
@@ -36,7 +37,7 @@ interface Email {
 interface EmailViewerProps {
   email: Email;
   onBack: () => void;
-  onReply: () => void;
+  onReply: (initialBody?: string) => void;
 }
 
 export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
@@ -46,6 +47,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set([email.id]));
   const [isTrashFolder, setIsTrashFolder] = useState(false);
+  const { loading: aiLoading, smartReplies, getSmartReplies } = useAIEmailAssist();
 
   useEffect(() => {
     if (!email.is_read) {
@@ -324,7 +326,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
               <Button variant="ghost" size="icon" className="rounded-xl" onClick={toggleStar}>
                 <Star className={`h-4 w-4 ${email.is_starred ? "fill-yellow-500 text-yellow-500" : ""}`} />
               </Button>
-              <Button variant="ghost" size="icon" className="rounded-xl" onClick={onReply}>
+              <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => onReply()}>
                 <Reply className="h-4 w-4" />
               </Button>
             </>
@@ -481,13 +483,45 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                       </div>
                     )}
 
-                    {/* Reply button for each email in thread */}
+                    {/* Smart replies + Reply button for last email in thread */}
                     {isLastEmail && (
-                      <div className="mt-4 pt-4 border-t">
-                        <Button variant="outline" size="sm" onClick={onReply}>
-                          <Reply className="h-4 w-4 mr-2" />
-                          Reply
-                        </Button>
+                      <div className="mt-4 pt-4 border-t space-y-3">
+                        {/* Smart Reply Chips */}
+                        {smartReplies.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {smartReplies.map((reply, i) => (
+                              <button
+                                key={i}
+                                onClick={() => onReply(reply)}
+                                className="text-sm px-3.5 py-2 rounded-full bg-accent text-accent-foreground hover:bg-primary/10 border border-border transition-colors font-medium"
+                              >
+                                {reply.length > 60 ? reply.slice(0, 57) + "..." : reply}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => onReply()}>
+                            <Reply className="h-4 w-4 mr-2" />
+                            Reply
+                          </Button>
+                          {smartReplies.length === 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1.5 text-primary hover:text-primary"
+                              onClick={() => getSmartReplies(
+                                threadEmail.body_text || threadEmail.body_html || "",
+                                email.subject,
+                                threadEmail.from_address
+                              )}
+                              disabled={aiLoading}
+                            >
+                              {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                              Smart Reply
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { X, Send, Paperclip, FileText, Clock } from "lucide-react";
+import { X, Send, Paperclip, FileText, Clock, Sparkles, Wand2, CheckCheck, ArrowDownToLine, ArrowUpToLine, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAIEmailAssist } from "@/hooks/useAIEmailAssist";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface EmailComposerProps {
   fromAddress?: string;
@@ -28,6 +36,7 @@ interface EmailComposerProps {
     threadId?: string;
     originalEmailId?: string;
   };
+  initialBody?: string;
 }
 
 interface EmailTemplate {
@@ -44,14 +53,14 @@ interface Attachment {
   path: string;
 }
 
-export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }: EmailComposerProps) => {
+export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, initialBody }: EmailComposerProps) => {
   const [fromAddress, setFromAddress] = useState(propFromAddress || "");
   const [userEmails, setUserEmails] = useState<Array<{ id: string; full_email: string }>>([]);
   const [to, setTo] = useState(replyTo?.to || "");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
   const [subject, setSubject] = useState(replyTo?.subject ? `Re: ${replyTo.subject}` : "");
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(initialBody || "");
   const [sending, setSending] = useState(false);
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
@@ -63,13 +72,62 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }
   const [scheduledAt, setScheduledAt] = useState<string>("");
   const [showSchedule, setShowSchedule] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+
+  const {
+    loading: aiLoading,
+    autocompleteText,
+    getAutocomplete,
+    improveTone,
+    fixGrammar,
+    makeShorter,
+    makeLonger,
+    clearAutocomplete,
+  } = useAIEmailAssist();
 
   useEffect(() => {
     fetchUserEmails();
     fetchUserSettings();
     fetchTemplates();
   }, []);
+
+  // Debounced autocomplete
+  const handleBodyChange = useCallback(
+    (newBody: string) => {
+      setBody(newBody);
+      clearAutocomplete();
+      if (autocompleteTimerRef.current) clearTimeout(autocompleteTimerRef.current);
+      autocompleteTimerRef.current = setTimeout(() => {
+        if (newBody.length > 15) {
+          getAutocomplete(newBody, subject);
+        }
+      }, 1500);
+    },
+    [subject, getAutocomplete, clearAutocomplete]
+  );
+
+  const acceptAutocomplete = () => {
+    if (autocompleteText) {
+      setBody((prev) => prev + " " + autocompleteText);
+      clearAutocomplete();
+    }
+  };
+
+  const handleAIAction = async (action: "improve_tone" | "fix_grammar" | "make_shorter" | "make_longer") => {
+    if (!body.trim()) {
+      toast({ title: "No content", description: "Write something first", variant: "destructive" });
+      return;
+    }
+    let result: string | null = null;
+    switch (action) {
+      case "improve_tone": result = await improveTone(body); break;
+      case "fix_grammar": result = await fixGrammar(body); break;
+      case "make_shorter": result = await makeShorter(body); break;
+      case "make_longer": result = await makeLonger(body); break;
+    }
+    if (result) setBody(result);
+  };
 
   const fetchUserEmails = async () => {
     try {
@@ -165,17 +223,14 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }
     const tomorrow9am = new Date(now);
     tomorrow9am.setDate(tomorrow9am.getDate() + 1);
     tomorrow9am.setHours(9, 0, 0, 0);
-    
     const mondayMorning = new Date(now);
     const dayOfWeek = mondayMorning.getDay();
     const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
     mondayMorning.setDate(mondayMorning.getDate() + daysUntilMonday);
     mondayMorning.setHours(9, 0, 0, 0);
-
     const laterToday = new Date(now);
     laterToday.setHours(laterToday.getHours() + 2);
     laterToday.setMinutes(0, 0, 0);
-
     return [
       { label: "Later today", time: laterToday },
       { label: "Tomorrow morning", time: tomorrow9am },
@@ -192,7 +247,6 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) throw new Error("You must be logged in to send emails.");
-
       const toAddresses = to.split(",").map(email => email.trim());
       const ccAddresses = cc ? cc.split(",").map(email => email.trim()) : [];
       const bccAddresses = bcc ? bcc.split(",").map(email => email.trim()) : [];
@@ -223,10 +277,7 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }
 
       if (scheduledAt) {
         const schedDate = new Date(scheduledAt);
-        toast({
-          title: "Email scheduled!",
-          description: `Will be sent ${schedDate.toLocaleDateString()} at ${schedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-        });
+        toast({ title: "Email scheduled!", description: `Will be sent ${schedDate.toLocaleDateString()} at ${schedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` });
       } else {
         toast({ title: "Email sent!", description: "Your email has been sent successfully" });
       }
@@ -238,9 +289,12 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-foreground/40 backdrop-blur-sm">
-      <div className="w-full max-w-3xl bg-card border border-border rounded-t-2xl md:rounded-2xl shadow-xl overflow-hidden max-h-[95dvh] md:max-h-[85vh] flex flex-col">
+      <div className="w-full max-w-3xl bg-card border border-border rounded-t-2xl md:rounded-2xl shadow-xl overflow-hidden max-h-[95dvh] md:max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-card">
-          <h2 className="text-base font-bold">New Message</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold">New Message</h2>
+            {aiLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+          </div>
           <Button variant="ghost" size="icon" className="rounded-xl h-8 w-8" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
@@ -308,8 +362,60 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo }
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="body" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Message</Label>
-            <Textarea id="body" placeholder="Type your message here..." className="min-h-[200px] resize-none rounded-xl border-border" value={body} onChange={(e) => setBody(e.target.value)} />
+            <div className="flex items-center justify-between">
+              <Label htmlFor="body" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Message</Label>
+              {/* AI Writing Tools */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs rounded-lg text-primary hover:text-primary">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI Assist
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                  <DropdownMenuItem onClick={() => handleAIAction("improve_tone")} disabled={aiLoading} className="gap-2 rounded-lg">
+                    <Wand2 className="h-4 w-4" />
+                    Improve tone
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAIAction("fix_grammar")} disabled={aiLoading} className="gap-2 rounded-lg">
+                    <CheckCheck className="h-4 w-4" />
+                    Fix grammar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAIAction("make_shorter")} disabled={aiLoading} className="gap-2 rounded-lg">
+                    <ArrowDownToLine className="h-4 w-4" />
+                    Make shorter
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAIAction("make_longer")} disabled={aiLoading} className="gap-2 rounded-lg">
+                    <ArrowUpToLine className="h-4 w-4" />
+                    Make longer
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="relative">
+              <Textarea
+                id="body"
+                placeholder="Type your message here..."
+                className="min-h-[200px] resize-none rounded-xl border-border"
+                value={body}
+                onChange={(e) => handleBodyChange(e.target.value)}
+              />
+              {/* Autocomplete suggestion */}
+              {autocompleteText && (
+                <div
+                  className="absolute bottom-2 left-2 right-2 bg-accent/80 backdrop-blur-sm border border-border rounded-xl p-3 cursor-pointer hover:bg-accent transition-colors animate-in fade-in slide-in-from-bottom-2 duration-200"
+                  onClick={acceptAutocomplete}
+                >
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground font-semibold mb-0.5">Tap to accept suggestion</p>
+                      <p className="text-sm text-foreground line-clamp-2">{autocompleteText}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Schedule indicator */}
