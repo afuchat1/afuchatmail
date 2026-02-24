@@ -91,7 +91,7 @@ export const EmailAddressSwitcher = ({
             <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[260px] rounded-xl shadow-lg border-border">
+        <DropdownMenuContent align="start" className="w-[260px] max-h-[60vh] overflow-y-auto rounded-xl shadow-lg border-border">
           {emailAddresses.map((email) => (
             <DropdownMenuItem key={email.id} onClick={() => onEmailAddressChange(email.id)} className="cursor-pointer rounded-lg py-2.5">
               <div className="flex items-center justify-between w-full gap-2">
