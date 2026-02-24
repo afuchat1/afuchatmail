@@ -44,6 +44,7 @@ const Dashboard = () => {
   const [newEmail, setNewEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
+  const [composerInitialBody, setComposerInitialBody] = useState<string | undefined>(undefined);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -190,7 +191,7 @@ const Dashboard = () => {
           <EmailViewer
             email={selectedEmail}
             onBack={() => { setSelectedEmail(null); setRefreshTrigger(prev => prev + 1); }}
-            onReply={() => setShowComposer(true)}
+            onReply={(initialBody?: string) => { setComposerInitialBody(initialBody); setShowComposer(true); }}
           />
         </div>
       ) : (
@@ -317,7 +318,7 @@ const Dashboard = () => {
               <EmailViewer
                 email={selectedEmail}
                 onBack={() => { setSelectedEmail(null); setRefreshTrigger(prev => prev + 1); }}
-                onReply={() => setShowComposer(true)}
+                onReply={(initialBody?: string) => { setComposerInitialBody(initialBody); setShowComposer(true); }}
               />
             </div>
           ) : (
@@ -342,13 +343,14 @@ const Dashboard = () => {
       {showComposer && selectedEmailAddressId && (
         <EmailComposer
           fromAddress={emails.find(e => e.id === selectedEmailAddressId)?.full_email}
-          onClose={() => { setShowComposer(false); setRefreshTrigger(prev => prev + 1); }}
+          onClose={() => { setShowComposer(false); setComposerInitialBody(undefined); setRefreshTrigger(prev => prev + 1); }}
           replyTo={selectedEmail ? {
             to: selectedEmail.from_address,
             subject: selectedEmail.subject,
             threadId: selectedEmail.thread_id || undefined,
             originalEmailId: selectedEmail.id,
           } : undefined}
+          initialBody={composerInitialBody}
         />
       )}
 
