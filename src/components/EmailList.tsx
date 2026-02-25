@@ -153,8 +153,12 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
         .from("emails")
         .select("*")
         .eq("user_id", user.id)
-        .eq("email_address_id", emailAddressId)
         .order("created_at", { ascending: false });
+
+      // Filter by email address unless "all" is selected
+      if (emailAddressId !== "all") {
+        query = query.eq("email_address_id", emailAddressId);
+      }
 
       if (folderId) {
         query = query.eq("folder_id", folderId);
@@ -593,7 +597,8 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
             <SwipeableEmailItem
               key={thread.thread_id}
               onSwipeLeft={() => deleteEmail(email.id)}
-              onSwipeRight={() => deleteEmail(email.id)}
+              onSwipeRight={() => toggleStar(email.id, email.is_starred)}
+              rightIcon="star"
             >
             <div
               onClick={() => onEmailSelect(email)}

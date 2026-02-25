@@ -104,9 +104,13 @@ const Dashboard = () => {
 
   const fetchUnreadCount = async (userId: string) => {
     if (!selectedEmailAddressId) return;
-    const { count, error } = await supabase
+    let query = supabase
       .from("emails").select("*", { count: 'exact', head: true })
-      .eq("user_id", userId).eq("email_address_id", selectedEmailAddressId).eq("is_read", false);
+      .eq("user_id", userId).eq("is_read", false);
+    if (selectedEmailAddressId !== "all") {
+      query = query.eq("email_address_id", selectedEmailAddressId);
+    }
+    const { count, error } = await query;
     if (!error && count !== null) { setUnreadCount(count); }
   };
 

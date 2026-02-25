@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Archive, Trash2 } from "lucide-react";
+import { Archive, Star, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SwipeableEmailItemProps {
@@ -8,6 +8,8 @@ interface SwipeableEmailItemProps {
   onSwipeRight: () => void;
   leftLabel?: string;
   rightLabel?: string;
+  leftIcon?: "delete" | "archive";
+  rightIcon?: "archive" | "star";
 }
 
 export const SwipeableEmailItem = ({
@@ -16,6 +18,8 @@ export const SwipeableEmailItem = ({
   onSwipeRight,
   leftLabel = "Delete",
   rightLabel = "Archive",
+  leftIcon = "delete",
+  rightIcon = "archive",
 }: SwipeableEmailItemProps) => {
   const [offset, setOffset] = useState(0);
   const startX = useRef(0);
@@ -62,22 +66,30 @@ export const SwipeableEmailItem = ({
 
   return (
     <div className="relative overflow-hidden" ref={containerRef}>
-      {/* Left background (swipe right = archive) */}
+      {/* Left background (swipe right) */}
       <div className={cn(
         "absolute inset-y-0 left-0 flex items-center px-5 transition-opacity",
         offset > 30 ? "opacity-100" : "opacity-0",
-        "bg-green-500"
+        rightIcon === "star" ? "bg-yellow-500" : "bg-green-500"
       )} style={{ width: Math.max(Math.abs(offset), 0) }}>
-        <Archive className="h-5 w-5 text-white" />
+        {rightIcon === "star" ? (
+          <Star className="h-5 w-5 text-white fill-white" />
+        ) : (
+          <Archive className="h-5 w-5 text-white" />
+        )}
       </div>
 
-      {/* Right background (swipe left = delete) */}
+      {/* Right background (swipe left) */}
       <div className={cn(
         "absolute inset-y-0 right-0 flex items-center justify-end px-5 transition-opacity",
         offset < -30 ? "opacity-100" : "opacity-0",
-        "bg-destructive"
+        leftIcon === "archive" ? "bg-green-500" : "bg-destructive"
       )} style={{ width: Math.max(Math.abs(offset), 0) }}>
-        <Trash2 className="h-5 w-5 text-white" />
+        {leftIcon === "archive" ? (
+          <Archive className="h-5 w-5 text-white" />
+        ) : (
+          <Trash2 className="h-5 w-5 text-white" />
+        )}
       </div>
 
       {/* Content */}
