@@ -81,19 +81,55 @@ const handler = async (req: Request): Promise<Response> => {
     // Resend sends the email data in the 'data' property
     const webhookData = verifiedPayload.data || verifiedPayload;
     
-    console.log("Received email webhook - full payload:", JSON.stringify(webhookData, null, 2));
+    console.log("Received email webhook:", JSON.stringify({
+      from: webhookData.from,
+      to: webhookData.to,
+      subject: webhookData.subject,
+    }));
+
+    // Create admin client to bypass RLS
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // Extract recipient email address
+    const toAddresses: string[] = Array.isArray(webhookData.to) ? webhookData.to : [webhookData.to];
+    const toEmail = toAddresses[0].toLowerCase();
     
-    // For Resend inbound emails, use the receiving API endpoint
+    // === EARLY REJECT: Check if recipient exists BEFORE fetching email body ===
+    const { data: emailAddress, error: emailError } = await supabaseAdmin
+      .from("email_addresses")
+      .select("id, user_id, is_alias, alias_for_id")
+      .eq("full_email", toEmail)
+      .single();
+
+    if (emailError || !emailAddress) {
+      console.warn("Rejected email to non-existent address:", toEmail);
+      return new Response(
+        JSON.stringify({ 
+          error: "Recipient email address not found",
+          email: toEmail,
+          rejected: true
+        }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    console.log("Found email address for user:", emailAddress.user_id);
+
+    // Now fetch the email body content since we confirmed the recipient exists
     let emailHtml = webhookData.html || "";
     let emailText = webhookData.text || "";
     
-    // If no body content in webhook, fetch from Resend API
     if (!emailHtml && !emailText && webhookData.email_id) {
       try {
         const resendApiKey = Deno.env.get("RESEND_API_KEY");
         console.log("Fetching email content for ID:", webhookData.email_id);
         
-        // Use the correct REST API endpoint for received emails
         const emailResponse = await fetch(
           `https://api.resend.com/emails/receiving/${webhookData.email_id}`,
           {
@@ -106,28 +142,20 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (emailResponse.ok) {
           const emailData = await emailResponse.json();
-          console.log("Fetched email data successfully");
           emailHtml = emailData.html || "";
           emailText = emailData.text || "";
         } else {
-          const errorText = await emailResponse.text();
-          console.error("Failed to fetch email:", emailResponse.status, errorText);
+          console.error("Failed to fetch email:", emailResponse.status);
         }
       } catch (fetchError) {
         console.error("Error fetching email content:", fetchError);
       }
     }
-    
-    console.log("Final email body:", {
-      hasHtml: !!emailHtml,
-      hasText: !!emailText,
-      htmlLength: emailHtml?.length || 0,
-      textLength: emailText?.length || 0,
-    });
 
+    // Build payload after confirming recipient
     const payload: InboundEmailPayload = {
       from: webhookData.from,
-      to: Array.isArray(webhookData.to) ? webhookData.to : [webhookData.to],
+      to: toAddresses,
       subject: webhookData.subject,
       html: emailHtml,
       text: emailText,
@@ -136,38 +164,6 @@ const handler = async (req: Request): Promise<Response> => {
       bcc: webhookData.bcc,
       attachments: webhookData.attachments,
     };
-
-    // Create admin client to bypass RLS
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-
-    // Extract recipient email address
-    const toEmail = (Array.isArray(payload.to) ? payload.to[0] : payload.to).toLowerCase();
-    
-    // Find the email address or alias
-    const { data: emailAddress, error: emailError } = await supabaseAdmin
-      .from("email_addresses")
-      .select("id, user_id, is_alias, alias_for_id")
-      .eq("full_email", toEmail)
-      .single();
-
-    if (emailError || !emailAddress) {
-      console.error("Email address not found:", toEmail, emailError);
-      return new Response(
-        JSON.stringify({ 
-          error: "Recipient email address not found",
-          email: toEmail 
-        }),
-        {
-          status: 404,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
-      );
-    }
-
-    console.log("Found email address for user:", emailAddress.user_id);
 
     // If this is an alias, get the target email address
     let targetEmailAddressId = emailAddress.id;
