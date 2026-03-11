@@ -343,6 +343,44 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Error sending push notification:', pushError);
     }
 
+    // Send Telegram notification
+    try {
+      const { data: telegramLink } = await supabaseAdmin
+        .from("telegram_links")
+        .select("chat_id, notifications_enabled")
+        .eq("user_id", emailAddress.user_id)
+        .neq("user_id", "00000000-0000-0000-0000-000000000000")
+        .eq("notifications_enabled", true)
+        .maybeSingle();
+
+      if (telegramLink) {
+        const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+        if (TELEGRAM_BOT_TOKEN) {
+          const preview = (payload.text || "").substring(0, 200);
+          const tgMessage = 
+            `📩 <b>New Email</b>\n\n` +
+            `<b>To:</b> ${toEmail}\n` +
+            `<b>From:</b> ${payload.from}\n` +
+            `<b>Subject:</b> ${payload.subject}\n\n` +
+            `${preview}${preview.length >= 200 ? '...' : ''}\n\n` +
+            `Use /inbox to read more.`;
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: telegramLink.chat_id,
+              text: tgMessage,
+              parse_mode: "HTML",
+            }),
+          });
+          console.log("Telegram notification sent to chat:", telegramLink.chat_id);
+        }
+      }
+    } catch (tgError) {
+      console.error("Telegram notification error:", tgError);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
