@@ -57,7 +57,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { navigate("/auth"); }
-      else { setUser(session.user); fetchEmails(session.user.id); }
+      else { setUser(session.user); fetchEmails(session.user.id); fetchTelegramStatus(session.user.id); }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) { navigate("/auth"); } else { setUser(session.user); }
