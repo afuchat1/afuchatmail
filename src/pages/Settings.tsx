@@ -290,6 +290,59 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
               </div>
             </div>
 
+            {/* Telegram Integration Card */}
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                <MessageCircle className="h-3.5 w-3.5 inline mr-1.5" />
+                Telegram Bot
+              </h2>
+              {telegramLinked ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-xl">
+                    <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Link2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Connected</p>
+                      <p className="text-xs text-muted-foreground">
+                        {telegramUsername ? `@${telegramUsername}` : "Telegram account linked"}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    You receive email notifications and can manage your inbox via Telegram.
+                  </p>
+                  <Button variant="outline" size="sm" className="rounded-xl text-destructive border-destructive/20 hover:bg-destructive/10" onClick={handleUnlinkTelegram}>
+                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
+                    Unlink Telegram
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Link your Telegram to receive notifications and manage emails via bot.
+                  </p>
+                  <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>Open <a href="https://t.me/AfuChatMailBot" target="_blank" rel="noopener" className="text-primary font-medium hover:underline">@AfuChatMailBot</a> on Telegram</li>
+                    <li>Send <code className="bg-muted px-1 py-0.5 rounded">/start</code> to get a link code</li>
+                    <li>Paste the code below</li>
+                  </ol>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter link code"
+                      value={telegramCode}
+                      onChange={(e) => setTelegramCode(e.target.value)}
+                      className="border border-border bg-background rounded-xl shadow-xs"
+                    />
+                    <Button onClick={handleLinkTelegram} disabled={linkingTelegram || !telegramCode.trim()} className="rounded-xl">
+                      <Link2 className="h-4 w-4 mr-1.5" />
+                      {linkingTelegram ? "Linking..." : "Link"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <Button onClick={handleSave} disabled={loading || !selectedEmailAddressId} className="w-full h-12 rounded-xl font-semibold shadow-md hover:shadow-lg transition-shadow">
               <Save className="h-4 w-4 mr-2" />
               {loading ? "Saving..." : "Save Settings"}
