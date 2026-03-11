@@ -47,6 +47,10 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   const [newAlias, setNewAlias] = useState("");
   const [selectedAliasTarget, setSelectedAliasTarget] = useState<string>("");
   const [creatingAlias, setCreatingAlias] = useState(false);
+  const [telegramCode, setTelegramCode] = useState("");
+  const [linkingTelegram, setLinkingTelegram] = useState(false);
+  const [telegramLinked, setTelegramLinked] = useState(false);
+  const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
