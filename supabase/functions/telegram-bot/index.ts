@@ -59,7 +59,7 @@ async function handleStart(chatId: number, username?: string) {
     `To link your account, go to your AfuChat Settings and enter this code:\n\n` +
     `🔑 <code>${linkCode}</code>\n\n` +
     `This code expires in 10 minutes.\n\n` +
-    `Or visit: https://afuchatmail.lovable.app/settings`
+    `Or visit: https://email.afuchat.com/settings`
   );
 }
 
