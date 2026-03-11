@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, ArrowLeft, Save, Plus, Trash2, Copy, LogOut } from "lucide-react";
+import { Mail, ArrowLeft, Save, Plus, Trash2, Copy, LogOut, MessageCircle, Link2, Unlink } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 // Templates removed from settings
 import { EmailAddressSwitcher } from "@/components/EmailAddressSwitcher";
@@ -47,13 +47,17 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   const [newAlias, setNewAlias] = useState("");
   const [selectedAliasTarget, setSelectedAliasTarget] = useState<string>("");
   const [creatingAlias, setCreatingAlias] = useState(false);
+  const [telegramCode, setTelegramCode] = useState("");
+  const [linkingTelegram, setLinkingTelegram] = useState(false);
+  const [telegramLinked, setTelegramLinked] = useState(false);
+  const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { navigate("/auth"); }
-      else { setUser(session.user); fetchEmails(session.user.id); }
+      else { setUser(session.user); fetchEmails(session.user.id); fetchTelegramStatus(session.user.id); }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) { navigate("/auth"); } else { setUser(session.user); }
@@ -148,6 +152,52 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
     } finally { setLoading(false); }
   };
 
+  const fetchTelegramStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from("telegram_links" as any)
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (data) {
+      setTelegramLinked(true);
+      setTelegramUsername((data as any).telegram_username);
+    }
+  };
+
+  const handleLinkTelegram = async () => {
+    if (!user || !telegramCode.trim()) return;
+    setLinkingTelegram(true);
+    try {
+      // Find pending link with this code and claim it
+      const { data, error } = await supabase.functions.invoke("telegram-bot", {
+        body: { action: "claim_link", code: telegramCode.trim(), user_id: user.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Telegram linked!", description: "You'll now receive notifications via Telegram." });
+      setTelegramLinked(true);
+      setTelegramCode("");
+      fetchTelegramStatus(user.id);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Link failed", description: error.message });
+    } finally { setLinkingTelegram(false); }
+  };
+
+  const handleUnlinkTelegram = async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("telegram_links" as any)
+      .delete()
+      .eq("user_id", user.id);
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } else {
+      setTelegramLinked(false);
+      setTelegramUsername(null);
+      toast({ title: "Telegram unlinked" });
+    }
+  };
+
   return (
     <div className={embedded ? "h-full" : "min-h-screen bg-background"}>
       {!embedded && (
@@ -238,6 +288,59 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Telegram Integration Card */}
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                <MessageCircle className="h-3.5 w-3.5 inline mr-1.5" />
+                Telegram Bot
+              </h2>
+              {telegramLinked ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-xl">
+                    <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Link2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Connected</p>
+                      <p className="text-xs text-muted-foreground">
+                        {telegramUsername ? `@${telegramUsername}` : "Telegram account linked"}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    You receive email notifications and can manage your inbox via Telegram.
+                  </p>
+                  <Button variant="outline" size="sm" className="rounded-xl text-destructive border-destructive/20 hover:bg-destructive/10" onClick={handleUnlinkTelegram}>
+                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
+                    Unlink Telegram
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Link your Telegram to receive notifications and manage emails via bot.
+                  </p>
+                  <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>Open <a href="https://t.me/AfuChatMailBot" target="_blank" rel="noopener" className="text-primary font-medium hover:underline">@AfuChatMailBot</a> on Telegram</li>
+                    <li>Send <code className="bg-muted px-1 py-0.5 rounded">/start</code> to get a link code</li>
+                    <li>Paste the code below</li>
+                  </ol>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter link code"
+                      value={telegramCode}
+                      onChange={(e) => setTelegramCode(e.target.value)}
+                      className="border border-border bg-background rounded-xl shadow-xs"
+                    />
+                    <Button onClick={handleLinkTelegram} disabled={linkingTelegram || !telegramCode.trim()} className="rounded-xl">
+                      <Link2 className="h-4 w-4 mr-1.5" />
+                      {linkingTelegram ? "Linking..." : "Link"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <Button onClick={handleSave} disabled={loading || !selectedEmailAddressId} className="w-full h-12 rounded-xl font-semibold shadow-md hover:shadow-lg transition-shadow">

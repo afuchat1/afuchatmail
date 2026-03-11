@@ -1,0 +1,2 @@
+// Quick script to set Telegram webhook - run once
+// URL: https://api.telegram.org/bot8226529071:AAEmKwaGOHzCWw1TG_dvjlsSgKIgQaIe6Pk/setWebhook?url=https://vfcukxlzqfeehhkiogpf.supabase.co/functions/v1/telegram-bot
