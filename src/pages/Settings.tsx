@@ -152,7 +152,53 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
     } finally { setLoading(false); }
   };
 
-  return (
+  const fetchTelegramStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from("telegram_links" as any)
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (data) {
+      setTelegramLinked(true);
+      setTelegramUsername((data as any).telegram_username);
+    }
+  };
+
+  const handleLinkTelegram = async () => {
+    if (!user || !telegramCode.trim()) return;
+    setLinkingTelegram(true);
+    try {
+      // Find pending link with this code and claim it
+      const { data, error } = await supabase.functions.invoke("telegram-bot", {
+        body: { action: "claim_link", code: telegramCode.trim(), user_id: user.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Telegram linked!", description: "You'll now receive notifications via Telegram." });
+      setTelegramLinked(true);
+      setTelegramCode("");
+      fetchTelegramStatus(user.id);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Link failed", description: error.message });
+    } finally { setLinkingTelegram(false); }
+  };
+
+  const handleUnlinkTelegram = async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("telegram_links" as any)
+      .delete()
+      .eq("user_id", user.id);
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } else {
+      setTelegramLinked(false);
+      setTelegramUsername(null);
+      toast({ title: "Telegram unlinked" });
+    }
+  };
+
+
     <div className={embedded ? "h-full" : "min-h-screen bg-background"}>
       {!embedded && (
         <header className="sticky top-0 z-10 bg-card/80 backdrop-blur-xl border-b border-border">
