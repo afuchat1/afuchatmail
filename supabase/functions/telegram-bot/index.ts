@@ -80,6 +80,7 @@ async function handleStart(chatId: number, username?: string) {
     await sendTelegramMessage(chatId,
       `✅ <b>You're already linked to AfuChat!</b>\n\nTap a button below to get started.`,
       inlineKeyboard([
+        [{ text: "📱 Open AfuChat App", web_app: { url: `${APP_URL}/telegram` } } as any],
         [{ text: "📬 Inbox", callback_data: "cmd_inbox" }, { text: "📩 Unread", callback_data: "cmd_unread" }],
         [{ text: "📝 Compose", callback_data: "cmd_compose" }, { text: "⚙️ Settings", callback_data: "cmd_settings" }],
         [{ text: "❓ Help", callback_data: "cmd_help" }],
@@ -371,6 +372,7 @@ async function handleHelp(chatId: number, editMsgId?: number) {
     `🌐 ${APP_URL}`;
 
   const kb = inlineKeyboard([
+    [{ text: "📱 Open AfuChat App", web_app: { url: `${APP_URL}/telegram` } } as any],
     [{ text: "📬 Inbox", callback_data: "cmd_inbox" }, { text: "📝 Compose", callback_data: "cmd_compose" }],
     [{ text: "⚙️ Settings", callback_data: "cmd_settings" }, { text: "📩 Unread", callback_data: "cmd_unread" }],
   ]);
