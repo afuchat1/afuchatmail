@@ -16,6 +16,7 @@ import Terms from "./pages/Terms";
 import Security from "./pages/Security";
 import Developers from "./pages/Developers";
 import Admin from "./pages/Admin";
+import TelegramMiniApp from "./pages/TelegramMiniApp";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
