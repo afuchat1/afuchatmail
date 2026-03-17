@@ -41,6 +41,7 @@ const App = () => (
             <Route path="/security" element={<Security />} />
             <Route path="/developers" element={<Developers />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/telegram" element={<TelegramMiniApp />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

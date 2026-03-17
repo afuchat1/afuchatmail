@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import "./TelegramMiniApp.css";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const APP_URL = "https://email.afuchat.com";
