@@ -59,6 +59,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
   const [threads, setThreads] = useState<EmailThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTrashFolder, setIsTrashFolder] = useState(false);
+  const [offline, setOffline] = useState(!isOnline());
   const { toast } = useToast();
 
   useEffect(() => {
