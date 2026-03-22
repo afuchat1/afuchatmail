@@ -67,6 +67,17 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
     checkIfTrashFolder();
   }, [folderId, emailAddressId, refreshTrigger, searchQuery]);
 
+  // Track online/offline status
+  useEffect(() => {
+    const cleanup = onOnlineStatusChange((online) => {
+      setOffline(!online);
+      if (online) {
+        fetchEmails(); // Re-fetch when back online
+      }
+    });
+    return cleanup;
+  }, []);
+
   const checkIfTrashFolder = async () => {
     if (!folderId) {
       setIsTrashFolder(false);
