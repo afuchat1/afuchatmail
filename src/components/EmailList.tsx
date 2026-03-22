@@ -297,16 +297,19 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
 
   const toggleStar = async (emailId: string, currentStarred: boolean) => {
     try {
-      const { error } = await supabase
-        .from("emails")
-        .update({ is_starred: !currentStarred })
-        .eq("id", emailId);
-
-      if (error) throw error;
-      
+      // Optimistic local update
       setEmails(emails.map(email => 
         email.id === emailId ? { ...email, is_starred: !currentStarred } : email
       ));
+      updateCachedEmail(emailId, { is_starred: !currentStarred });
+
+      if (isOnline()) {
+        const { error } = await supabase
+          .from("emails")
+          .update({ is_starred: !currentStarred })
+          .eq("id", emailId);
+        if (error) throw error;
+      }
     } catch (error: any) {
       toast({
         title: "Error",
