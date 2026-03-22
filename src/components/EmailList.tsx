@@ -153,11 +153,27 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        // Offline fallback: try cache without user ID filter
+        if (!isOnline()) {
+          const cached = await getCachedEmails({ folderId, emailAddressId, searchQuery });
+          setEmails(cached);
+        }
+        setLoading(false);
+        return;
+      }
 
       // Don't fetch if no email address is selected
       if (!emailAddressId) {
         setEmails([]);
+        setLoading(false);
+        return;
+      }
+
+      // If offline, serve from cache
+      if (!isOnline()) {
+        const cached = await getCachedEmails({ userId: user.id, folderId, emailAddressId, searchQuery });
+        setEmails(cached);
         setLoading(false);
         return;
       }
@@ -182,6 +198,11 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
       if (error) throw error;
       
       let filteredEmails = data || [];
+
+      // Cache ALL fetched emails for offline use (before search filter)
+      if (data && data.length > 0) {
+        cacheEmails(data);
+      }
       
       // Apply search filter if searchQuery exists
       if (searchQuery && searchQuery.trim()) {
@@ -197,6 +218,16 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
       setEmails(filteredEmails);
     } catch (error: any) {
       console.error("Error fetching emails:", error);
+      // Fallback to cache on network error
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const cached = await getCachedEmails({ userId: user?.id, folderId, emailAddressId, searchQuery });
+        if (cached.length > 0) {
+          setEmails(cached);
+          toast({ title: "Offline mode", description: "Showing cached emails" });
+          return;
+        }
+      } catch {}
       toast({
         title: "Error",
         description: "Failed to load emails",
