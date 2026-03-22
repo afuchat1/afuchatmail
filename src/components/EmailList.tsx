@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Trash2, Mail, MailOpen, CheckCheck, AlertCircle, Undo2, Archive } from "lucide-react";
+import { Star, Trash2, Mail, MailOpen, CheckCheck, AlertCircle, Undo2, Archive, WifiOff } from "lucide-react";
+import { cacheEmails, getCachedEmails, removeCachedEmail, updateCachedEmail, isOnline, onOnlineStatusChange } from "@/lib/offlineCache";
 import { SwipeableEmailItem } from "@/components/SwipeableEmailItem";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
