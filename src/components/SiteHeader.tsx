@@ -3,13 +3,12 @@ import { Activity, Building2, ChevronDown, Code2, FileClock, FileText, LifeBuoy,
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const navGroups = [
@@ -56,42 +55,44 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
-          {navGroups.map((group) => (
-            <DropdownMenu key={group.label}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-10 rounded-xl px-3 text-sm font-bold text-muted-foreground hover:text-foreground"
-                  data-testid={`button-nav-${group.label.toLowerCase()}`}
-                >
-                  {group.label}
-                  <ChevronDown className="ml-1 h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-72 rounded-2xl border-border bg-popover p-2 shadow-lg">
-                <DropdownMenuLabel className="px-3 text-xs uppercase tracking-wider text-muted-foreground">
-                  {group.label}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {group.items.map((item) => (
-                  <DropdownMenuItem
-                    key={item.path}
-                    onClick={() => navigate(item.path)}
-                    className="flex cursor-pointer items-start gap-3 rounded-xl p-3"
-                    data-testid={`link-nav-${item.label.toLowerCase()}`}
+          <NavigationMenu>
+            <NavigationMenuList className="gap-0">
+              {navGroups.map((group) => (
+                <NavigationMenuItem key={group.label}>
+                  <NavigationMenuTrigger
+                    className="h-10 rounded-xl bg-transparent px-3 text-sm font-bold text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
+                    data-testid={`button-nav-${group.label.toLowerCase()}`}
                   >
-                    <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                      <item.icon className="h-4 w-4" />
-                    </span>
-                    <span>
-                      <span className="block text-sm font-bold text-foreground">{item.label}</span>
-                      <span className="block text-xs font-medium text-muted-foreground">{item.description}</span>
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ))}
+                    {group.label}
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent className="rounded-2xl border-border bg-popover p-2 shadow-lg">
+                    <div className="w-72">
+                      <p className="px-3 pb-1 pt-2 text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                        {group.label}
+                      </p>
+                      <div className="my-1 h-px bg-border" />
+                      {group.items.map((item) => (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className="flex items-start gap-3 rounded-xl p-3 hover:bg-accent transition-colors"
+                          data-testid={`link-nav-${item.label.toLowerCase()}`}
+                        >
+                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+                            <item.icon className="h-4 w-4" />
+                          </span>
+                          <span>
+                            <span className="block text-sm font-bold text-foreground">{item.label}</span>
+                            <span className="block text-xs font-medium text-muted-foreground">{item.description}</span>
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              ))}
+            </NavigationMenuList>
+          </NavigationMenu>
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
