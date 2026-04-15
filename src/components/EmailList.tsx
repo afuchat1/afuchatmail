@@ -574,9 +574,14 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
 
   if (loading) {
     return (
-      <div className="p-4 space-y-1">
+      <div className="flex h-full flex-col bg-background">
+        <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-8 w-20 rounded-xl" />
+        </div>
+        <div className="space-y-3 p-4">
         {[1, 2, 3, 4, 5, 6].map(i => (
-          <div key={i} className="flex items-start gap-3 p-3 rounded-xl">
+          <div key={i} className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
             <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
@@ -588,6 +593,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
             </div>
           </div>
         ))}
+        </div>
       </div>
     );
   }
@@ -614,8 +620,8 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
           <span className="text-xs font-semibold">You're offline — showing cached emails</span>
         </div>
       )}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-card flex-shrink-0">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card flex-shrink-0">
+        <div className="text-xs font-black text-muted-foreground uppercase tracking-wider" data-testid="text-conversation-count">
           {threads.length} conversation{threads.length !== 1 ? 's' : ''}
         </div>
         <DropdownMenu>
@@ -656,9 +662,10 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
             <div
               onClick={() => onEmailSelect(email)}
               className={cn(
-                "flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-all duration-150 touch-active",
-                thread.unread_count > 0 ? "bg-accent/30" : "hover:bg-muted/50"
+                "flex items-start gap-3 px-4 py-4 cursor-pointer transition-all duration-150 touch-active",
+                thread.unread_count > 0 ? "bg-accent/40" : "bg-card hover:bg-muted/50"
               )}
+              data-testid={`row-email-${email.id}`}
             >
               {/* Avatar */}
               <Avatar className="h-10 w-10 flex-shrink-0 shadow-xs">
@@ -675,7 +682,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
                     <span className={cn(
                       "text-sm truncate",
                       thread.unread_count > 0 ? "font-bold text-foreground" : "font-normal text-foreground"
-                    )}>
+                    )} data-testid={`text-email-sender-${email.id}`}>
                       {senderName}, {toAddresses}
                       {participantCount > 2 && (
                         <span className="ml-1 text-muted-foreground font-normal">
@@ -704,7 +711,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
                 <div className={cn(
                   "text-sm mb-1 truncate",
                   thread.unread_count > 0 ? "font-medium text-foreground" : "text-muted-foreground"
-                )}>
+                )} data-testid={`text-email-subject-${email.id}`}>
                   {email.subject}
                 </div>
                 

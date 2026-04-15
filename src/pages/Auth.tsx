@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, ArrowLeft } from "lucide-react";
+import { CheckCircle, Mail, Shield } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import OAuthConsentScreen from "@/components/OAuthConsentScreen";
+import { SiteHeader } from "@/components/SiteHeader";
 
 interface OAuthParams {
   clientId: string;
@@ -130,26 +131,47 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <div className="px-5 py-4">
-        <button onClick={() => navigate("/")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-4 w-4" />
-          <span className="text-sm font-medium">Back</span>
-        </button>
-      </div>
+      <SiteHeader />
 
-      <div className="flex-1 flex items-center justify-center px-5 pb-16">
-        <div className="w-full max-w-sm">
-          <div className="flex items-center gap-2.5 mb-10">
-            <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center shadow-md">
+      <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:py-16">
+        <section className="hidden lg:flex lg:flex-col">
+          <div className="max-w-xl">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-black text-muted-foreground">
+              <Shield className="h-3.5 w-3.5 text-primary" />
+              Secure access to your workspace
+            </div>
+            <h1 className="mb-4 text-5xl font-black leading-tight tracking-tight">
+              Sign in to a calmer, more professional inbox.
+            </h1>
+            <p className="mb-8 text-lg font-medium leading-8 text-muted-foreground">
+              Manage aliases, send messages, and keep work communication organized from a flat, focused mail experience.
+            </p>
+            <div className="grid gap-3">
+              {["Private by default", "No ads or tracking", "Fast inbox and alias management"].map((item, index) => (
+                <div key={item} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
+                  <CheckCircle className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-black" data-testid={`text-auth-benefit-${index}`}>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <div className="w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-xs sm:p-8 lg:justify-self-end">
+          <div className="mb-8 flex items-center gap-3">
+            <div className="h-11 w-11 rounded-2xl bg-primary flex items-center justify-center">
               <Mail className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold">AfuChat</span>
+            <div>
+              <span className="block text-xl font-black">AfuChat Mail</span>
+              <span className="text-xs font-bold text-muted-foreground">Secure account access</span>
+            </div>
           </div>
 
-          <h1 className="text-2xl font-bold mb-1.5">
+          <h1 className="text-2xl font-black mb-1.5">
             {isSignUp ? "Create account" : "Welcome back"}
           </h1>
-          <p className="text-sm text-muted-foreground mb-8">
+          <p className="text-sm font-medium text-muted-foreground mb-8">
             {isOAuthFlow ? "Sign in to authorize the application" : isSignUp ? "Get your @afuchat.com email" : "Sign in to your @afuchat.com inbox"}
           </p>
 
@@ -158,26 +180,32 @@ const Auth = () => {
               <div className="space-y-1.5">
                 <Label htmlFor="fullName" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Full Name</Label>
                 <Input id="fullName" type="text" placeholder="Your name" value={fullName} onChange={(e) => setFullName(e.target.value)} required
-                  className="h-12 border border-border bg-card rounded-xl shadow-xs focus:shadow-sm transition-shadow" />
+                  autoComplete="name"
+                  className="h-12 border border-border bg-background rounded-xl shadow-xs focus:shadow-sm transition-shadow"
+                  data-testid="input-full-name" />
               </div>
             )}
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</Label>
               <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required
-                className="h-12 border border-border bg-card rounded-xl shadow-xs focus:shadow-sm transition-shadow" />
+                autoComplete="email"
+                className="h-12 border border-border bg-background rounded-xl shadow-xs focus:shadow-sm transition-shadow"
+                data-testid="input-email" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Password</Label>
               <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
-                className="h-12 border border-border bg-card rounded-xl shadow-xs focus:shadow-sm transition-shadow" />
+                autoComplete={isSignUp ? "new-password" : "current-password"}
+                className="h-12 border border-border bg-background rounded-xl shadow-xs focus:shadow-sm transition-shadow"
+                data-testid="input-password" />
             </div>
-            <Button type="submit" className="w-full h-12 rounded-xl font-semibold shadow-md hover:shadow-lg transition-shadow text-[15px]" disabled={loading}>
+            <Button type="submit" className="w-full h-12 rounded-xl font-black shadow-none text-[15px]" disabled={loading} data-testid="button-auth-submit">
               {loading ? "Processing..." : isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
 
           <div className="mt-8 text-center">
-            <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-sm text-primary font-medium hover:underline">
+            <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-sm text-primary font-bold hover:underline" data-testid="button-toggle-auth-mode">
               {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
             </button>
           </div>

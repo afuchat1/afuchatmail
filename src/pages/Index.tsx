@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Mail, ArrowRight, Shield, Zap, Smartphone, Users, Globe, Check, Sparkles, Star, Clock, Lock, Bell, Search, Archive, ChevronRight, MessageSquare } from "lucide-react";
+import { Mail, ArrowRight, Shield, Zap, Smartphone, Users, Globe, Check, Sparkles, Star, Clock, Lock, Bell, Search, Archive, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { SiteHeader } from "@/components/SiteHeader";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -47,73 +47,88 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-y-auto scroll-smooth-ios">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
-        <div className="max-w-5xl mx-auto px-5 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-              <Mail className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-extrabold">AfuChat</span>
-          </div>
-          <div className="hidden md:flex items-center gap-6 text-sm">
-            <button onClick={() => navigate("/features")} className="text-muted-foreground hover:text-foreground transition-colors font-semibold">Features</button>
-            <button onClick={() => navigate("/security")} className="text-muted-foreground hover:text-foreground transition-colors font-semibold">Security</button>
-            <button onClick={() => navigate("/developers")} className="text-muted-foreground hover:text-foreground transition-colors font-semibold">Developers</button>
-            <button onClick={() => navigate("/about")} className="text-muted-foreground hover:text-foreground transition-colors font-semibold">About</button>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="ghost" size="sm" className="rounded-xl font-semibold" onClick={() => navigate("/auth")}>
-              Sign In
-            </Button>
-            <Button size="sm" className="rounded-xl font-semibold shadow-sm hidden sm:flex" onClick={() => navigate("/auth")}>
-              Get Started
-            </Button>
-          </div>
-        </div>
-      </nav>
+      <SiteHeader />
 
-      {/* Hero */}
-      <section className="max-w-5xl mx-auto px-5 pt-20 pb-16">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold mb-6 shadow-xs border border-border">
-            <Sparkles className="h-3.5 w-3.5" />
-            Free forever · No ads · Privacy first
+      <section className="mx-auto grid max-w-6xl gap-10 px-4 pb-16 pt-14 sm:px-6 md:grid-cols-[1.05fr_0.95fr] md:items-center md:pb-20 md:pt-20">
+        <div>
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-black text-muted-foreground shadow-xs">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            Private, ad-free company-grade email
           </div>
-          <h1 className="text-[2.5rem] md:text-6xl font-black tracking-tight mb-5 leading-[1.08]">
-            Professional email,<br />
-            <span className="text-primary">simplified.</span>
+          <h1 className="mb-5 max-w-3xl text-[2.55rem] font-black leading-[1.04] tracking-tight md:text-6xl">
+            Professional email for focused teams and everyday work.
           </h1>
-          <p className="text-[17px] md:text-xl text-muted-foreground mb-8 max-w-lg leading-relaxed font-medium">
-            Create custom @afuchat.com addresses with unlimited aliases, smart threading, scheduled send, and real-time push notifications — all for free.
+          <p className="mb-8 max-w-xl text-base font-medium leading-8 text-muted-foreground md:text-xl">
+            AfuChat Mail gives you clean addresses, aliases, secure inboxes, smart threading, and fast notifications in a calm workspace that feels ready for business.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Button size="lg" className="rounded-xl shadow-md hover:shadow-lg transition-shadow h-12 px-6 font-bold" onClick={() => navigate("/auth")}>
-              Get Started Free
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button size="lg" className="h-12 rounded-xl px-6 font-black shadow-none" onClick={() => navigate("/auth")} data-testid="button-hero-start">
+              Get started free
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button size="lg" variant="outline" className="rounded-xl h-12 px-6 font-bold border-border" onClick={() => navigate("/features")}>
-              Explore Features
+            <Button size="lg" variant="outline" className="h-12 rounded-xl border-border px-6 font-black" onClick={() => navigate("/features")} data-testid="button-hero-features">
+              Explore features
             </Button>
+          </div>
+          <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold text-muted-foreground">
+            <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-primary" /> Free forever</span>
+            <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-primary" /> No ads</span>
+            <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-primary" /> Supabase powered</span>
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-border bg-card p-3 shadow-xs">
+          <div className="rounded-[1.5rem] border border-border bg-background">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-red-400" />
+                <div className="h-3 w-3 rounded-full bg-amber-400" />
+                <div className="h-3 w-3 rounded-full bg-green-400" />
+              </div>
+              <span className="text-xs font-black uppercase tracking-wider text-muted-foreground">Inbox</span>
+            </div>
+            <div className="grid md:grid-cols-[150px_1fr]">
+              <aside className="hidden border-r border-border p-4 md:block">
+                {["Inbox", "Important", "Sent", "Archive"].map((item, index) => (
+                  <div key={item} className={`mb-2 rounded-xl px-3 py-2 text-sm font-bold ${index === 0 ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>
+                    {item}
+                  </div>
+                ))}
+              </aside>
+              <div className="p-4">
+                {[
+                  ["AfuChat Team", "Your weekly delivery summary is ready", "2 min"],
+                  ["Security", "New sign-in protection was enabled", "18 min"],
+                  ["Support", "Re: custom alias setup", "1 hr"],
+                ].map(([sender, subject, time], index) => (
+                  <div key={sender} className="mb-3 rounded-2xl border border-border bg-card p-4">
+                    <div className="mb-1 flex items-center justify-between gap-3">
+                      <p className="truncate text-sm font-black" data-testid={`text-preview-sender-${index}`}>{sender}</p>
+                      <span className="text-xs font-bold text-muted-foreground">{time}</span>
+                    </div>
+                    <p className="truncate text-sm font-bold text-foreground">{subject}</p>
+                    <p className="mt-1 truncate text-xs font-medium text-muted-foreground">Clear, secure communication without visual noise.</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="max-w-5xl mx-auto px-5 pb-16">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {stats.map((stat, i) => (
-            <div key={i} className="bg-card border border-border rounded-2xl p-5 text-center shadow-xs">
-              <p className="text-2xl md:text-3xl font-black text-primary mb-1">{stat.value}</p>
-              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{stat.label}</p>
+            <div key={i} className="bg-card border border-border rounded-2xl p-5 shadow-xs">
+              <p className="text-2xl md:text-3xl font-black text-primary mb-1" data-testid={`text-stat-${i}`}>{stat.value}</p>
+              <p className="text-xs text-muted-foreground font-black uppercase tracking-wider">{stat.label}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Core Features */}
-      <section className="max-w-5xl mx-auto px-5 py-16">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
         <div className="mb-10">
           <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Core Features</p>
           <h2 className="text-3xl md:text-4xl font-black mb-3">Everything you need</h2>
@@ -121,7 +136,7 @@ const Index = () => {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, i) => (
-            <div key={i} className="flex gap-4 items-start p-5 rounded-2xl bg-card border border-border shadow-xs hover:shadow-sm transition-shadow">
+            <div key={i} className="flex gap-4 items-start p-5 rounded-2xl bg-card border border-border shadow-xs">
               <div className={`h-11 w-11 rounded-xl ${feature.color} flex items-center justify-center flex-shrink-0`}>
                 <feature.icon className="h-5 w-5" />
               </div>
@@ -136,7 +151,7 @@ const Index = () => {
 
       {/* Advanced Features */}
       <section className="bg-card border-y border-border">
-        <div className="max-w-5xl mx-auto px-5 py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
           <div className="mb-10">
             <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Advanced</p>
             <h2 className="text-3xl md:text-4xl font-black mb-3">Power tools, zero complexity</h2>
@@ -159,7 +174,7 @@ const Index = () => {
       </section>
 
       {/* How It Works */}
-      <section className="max-w-5xl mx-auto px-5 py-16">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
         <div className="mb-10">
           <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">How It Works</p>
           <h2 className="text-3xl md:text-4xl font-black mb-3">Up and running in 60 seconds</h2>
@@ -183,7 +198,7 @@ const Index = () => {
 
       {/* Testimonials */}
       <section className="bg-card border-y border-border">
-        <div className="max-w-5xl mx-auto px-5 py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
           <div className="mb-10">
             <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Testimonials</p>
             <h2 className="text-3xl md:text-4xl font-black mb-3">Loved by users</h2>
@@ -208,7 +223,7 @@ const Index = () => {
       </section>
 
       {/* FAQ */}
-      <section className="max-w-5xl mx-auto px-5 py-16">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
         <div className="max-w-2xl mx-auto">
           <div className="mb-10 text-center">
             <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">FAQ</p>
@@ -226,13 +241,13 @@ const Index = () => {
       </section>
 
       {/* CTA */}
-      <section className="max-w-5xl mx-auto px-5 py-16">
-        <div className="bg-card border border-border rounded-3xl p-8 md:p-12 text-center shadow-md">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+        <div className="bg-card border border-border rounded-3xl p-8 md:p-12 text-center shadow-xs">
           <h2 className="text-3xl md:text-4xl font-black mb-3">Ready to switch?</h2>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto text-[15px] font-medium">
             Join thousands of users who chose privacy, speed, and simplicity. No credit card required.
           </p>
-          <Button size="lg" className="rounded-xl shadow-md hover:shadow-lg h-12 px-8 font-bold" onClick={() => navigate("/auth")}>
+          <Button size="lg" className="rounded-xl shadow-none h-12 px-8 font-bold" onClick={() => navigate("/auth")}>
             Create Free Account
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
@@ -247,7 +262,7 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="border-t border-border bg-card">
-        <div className="max-w-5xl mx-auto px-5 py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div>
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Product</p>

@@ -84,11 +84,11 @@ export const EmailSidebar = ({
   };
 
   return (
-    <div className="w-64 bg-card border-r border-border p-3 flex flex-col gap-3 h-full">
-      {/* Compose button */}
+    <div className="w-72 bg-card border-r border-border p-4 flex flex-col gap-4 h-full">
       <Button
         onClick={onCompose}
-        className="w-full h-12 rounded-2xl shadow-md hover:shadow-lg transition-shadow font-medium text-[15px] gap-2"
+        className="w-full h-12 rounded-2xl shadow-none font-bold text-[15px] gap-2"
+        data-testid="button-sidebar-compose"
       >
         <PenSquare className="h-4 w-4" />
         Compose
@@ -101,7 +101,7 @@ export const EmailSidebar = ({
         />
       </div>
       
-      <nav className="space-y-0.5 flex-1 overflow-y-auto">
+      <nav className="space-y-1 flex-1 overflow-y-auto">
         {folders.map((folder) => {
           const Icon = getIcon(folder.icon);
           const isSelected = selectedFolderId === folder.id;
@@ -111,9 +111,10 @@ export const EmailSidebar = ({
               onClick={() => onFolderSelect(folder.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
                 isSelected
-                  ? "bg-accent text-accent-foreground font-semibold shadow-sm"
+                  ? "bg-accent text-accent-foreground font-bold"
                   : "hover:bg-muted text-muted-foreground hover:text-foreground"
               }`}
+              data-testid={`button-folder-${folder.type || folder.id}`}
             >
               <Icon className={`h-[18px] w-[18px] flex-shrink-0 ${isSelected ? 'text-primary' : ''}`} />
               <span className="truncate">{folder.name}</span>
@@ -127,6 +128,7 @@ export const EmailSidebar = ({
           <button
             onClick={() => navigate("/admin")}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
+            data-testid="button-admin-panel"
           >
             <Shield className="h-[18px] w-[18px] flex-shrink-0 text-amber-500" />
             <span className="truncate">Admin Panel</span>

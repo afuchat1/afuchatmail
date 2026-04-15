@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Menu, Search, Edit, X, PenSquare } from "lucide-react";
+import { Mail, Menu, Search, X, PenSquare, Settings as SettingsIcon, LogOut } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { EmailSidebar } from "@/components/EmailSidebar";
 import { EmailList } from "@/components/EmailList";
@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { BottomTabBar, TabId } from "@/components/BottomTabBar";
 import Settings from "@/pages/Settings";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface EmailAddress {
   id: string;
@@ -43,6 +44,7 @@ const Dashboard = () => {
   const [emails, setEmails] = useState<EmailAddress[]>([]);
   const [newEmail, setNewEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [showComposer, setShowComposer] = useState(false);
   const [composerInitialBody, setComposerInitialBody] = useState<string | undefined>(undefined);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -65,6 +67,7 @@ const Dashboard = () => {
   }, [selectedEmailAddressId]);
 
   useEffect(() => {
+    let mounted = true;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
@@ -73,15 +76,21 @@ const Dashboard = () => {
         fetchEmails(session.user.id);
         fetchUnreadCount(session.user.id);
       }
+    }).finally(() => {
+      if (mounted) setInitializing(false);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
         navigate("/auth");
       } else {
         setUser(session.user);
+        setInitializing(false);
       }
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   useEffect(() => {
@@ -271,28 +280,78 @@ const Dashboard = () => {
   );
 
   return (
+    initializing ? (
+      <div className="h-[100dvh] bg-background">
+        <header className="border-b border-border bg-card">
+          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">
+                <Mail className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <div>
+                <Skeleton className="mb-2 h-4 w-32" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+            <Skeleton className="hidden h-10 w-72 rounded-xl md:block" />
+          </div>
+        </header>
+        <div className="mx-auto grid h-[calc(100dvh-4rem)] max-w-7xl grid-cols-1 md:grid-cols-[18rem_1fr]">
+          <aside className="hidden border-r border-border bg-card p-4 md:block">
+            <Skeleton className="mb-5 h-12 rounded-2xl" />
+            {[1, 2, 3, 4, 5].map((item) => (
+              <Skeleton key={item} className="mb-3 h-10 rounded-xl" />
+            ))}
+          </aside>
+          <main className="p-4">
+            {[1, 2, 3, 4, 5].map((item) => (
+              <div key={item} className="mb-3 rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </main>
+        </div>
+      </div>
+    ) : (
     <div className="h-[100dvh] flex flex-col bg-background">
-      {/* Desktop Header */}
       <header className="hidden md:block bg-card border-b border-border sticky top-0 z-10 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center">
+            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center">
               <Mail className="h-4 w-4 text-primary-foreground" />
             </div>
-            <h1 className="text-lg font-bold">AfuChat Mail</h1>
+            <div>
+              <h1 className="text-base font-black leading-none">AfuChat Mail</h1>
+              <p className="mt-1 text-xs font-bold text-muted-foreground">Professional inbox workspace</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search..."
+                placeholder="Search mail..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-64 h-9 rounded-xl border-border bg-muted"
+                className="pl-9 w-72 h-10 rounded-xl border-border bg-background"
+                data-testid="input-desktop-search"
               />
             </div>
-            <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => navigate("/settings")}>
-              <Mail className="h-5 w-5" />
+            <Button className="rounded-xl font-bold shadow-none" onClick={() => setShowComposer(true)} data-testid="button-desktop-compose">
+              <PenSquare className="mr-2 h-4 w-4" />
+              Compose
+            </Button>
+            <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => navigate("/settings")} data-testid="button-desktop-settings">
+              <SettingsIcon className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="rounded-xl" onClick={handleSignOut} data-testid="button-sign-out">
+              <LogOut className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -360,6 +419,7 @@ const Dashboard = () => {
 
       <PWAInstallPrompt />
     </div>
+    )
   );
 };
 
