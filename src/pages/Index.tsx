@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Mail, ArrowRight, Shield, Zap, Smartphone, Users, Globe, Check, Sparkles, Star, Clock, Lock, Bell, Search, Archive, MessageSquare, Briefcase, Code2, Activity } from "lucide-react";
+import { Mail, ArrowRight, Shield, Zap, Smartphone, Users, Globe, Check, Star, Clock, Lock, Bell, Search, Archive, MessageSquare, Briefcase, Code2, Activity } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -57,10 +57,6 @@ const Index = () => {
 
       <section className="mx-auto grid max-w-6xl gap-10 px-4 pb-16 pt-14 sm:px-6 md:grid-cols-[1.05fr_0.95fr] md:items-center md:pb-20 md:pt-20">
         <div>
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-black text-muted-foreground shadow-xs">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            Private, ad-free company-grade email
-          </div>
           <h1 className="mb-5 max-w-3xl text-[2.55rem] font-black leading-[1.04] tracking-tight md:text-6xl">
             Professional email for focused teams and everyday work.
           </h1>
@@ -83,8 +79,8 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-border bg-card p-3 shadow-xs">
-          <div className="rounded-[1.5rem] border border-border bg-background">
+        <div className="rounded-2xl border border-border bg-card p-2">
+          <div className="rounded-xl border border-border bg-background">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-2">
                 <div className="h-3 w-3 rounded-full bg-red-400" />
@@ -107,7 +103,7 @@ const Index = () => {
                   ["Security", "New sign-in protection was enabled", "18 min"],
                   ["Support", "Re: custom alias setup", "1 hr"],
                 ].map(([sender, subject, time], index) => (
-                  <div key={sender} className="mb-3 rounded-2xl border border-border bg-card p-4">
+                  <div key={sender} className="mb-3 rounded-xl border border-border bg-card p-4">
                     <div className="mb-1 flex items-center justify-between gap-3">
                       <p className="truncate text-sm font-black" data-testid={`text-preview-sender-${index}`}>{sender}</p>
                       <span className="text-xs font-bold text-muted-foreground">{time}</span>
@@ -125,7 +121,7 @@ const Index = () => {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {stats.map((stat, i) => (
-            <div key={i} className="bg-card border border-border rounded-2xl p-5 shadow-xs">
+            <div key={i} className="bg-card border border-border rounded-xl p-5">
               <p className="text-2xl md:text-3xl font-black text-primary mb-1" data-testid={`text-stat-${i}`}>{stat.value}</p>
               <p className="text-xs text-muted-foreground font-black uppercase tracking-wider">{stat.label}</p>
             </div>
@@ -142,7 +138,7 @@ const Index = () => {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, i) => (
-            <div key={i} className="flex gap-4 items-start p-5 rounded-2xl bg-card border border-border shadow-xs">
+            <div key={i} className="flex gap-4 items-start p-5 rounded-xl bg-card border border-border">
               <div className={`h-11 w-11 rounded-xl ${feature.color} flex items-center justify-center flex-shrink-0`}>
                 <feature.icon className="h-5 w-5" />
               </div>
@@ -163,7 +159,7 @@ const Index = () => {
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           {platformHighlights.map((item, i) => (
-            <div key={item.title} className="rounded-3xl border border-border bg-card p-6 shadow-xs">
+            <div key={item.title} className="rounded-xl border border-border bg-card p-6">
               <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                 <item.icon className="h-5 w-5" />
               </div>
@@ -210,7 +206,7 @@ const Index = () => {
             { step: "02", title: "Pick your address", desc: "Choose yourname@afuchat.com — it's instantly active and ready to use." },
             { step: "03", title: "Start communicating", desc: "Send and receive emails from any provider. Add aliases and customize notifications." },
           ].map((item, i) => (
-            <div key={i} className="relative p-6 rounded-2xl bg-card border border-border shadow-xs">
+            <div key={i} className="relative p-6 rounded-xl bg-card border border-border">
               <span className="text-5xl font-black text-primary/10 absolute top-4 right-5">{item.step}</span>
               <div className="relative">
                 <h3 className="font-bold text-lg mb-2">{item.title}</h3>
@@ -230,7 +226,7 @@ const Index = () => {
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {testimonials.map((t, i) => (
-              <div key={i} className="p-6 rounded-2xl bg-background border border-border shadow-xs">
+              <div key={i} className="p-6 rounded-xl bg-background border border-border">
                 <div className="flex gap-1 mb-4">
                   {[...Array(5)].map((_, j) => (
                     <Star key={j} className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -256,7 +252,7 @@ const Index = () => {
           </div>
           <div className="space-y-4">
             {faqs.map((faq, i) => (
-              <div key={i} className="p-5 rounded-2xl bg-card border border-border shadow-xs">
+              <div key={i} className="p-5 rounded-xl bg-card border border-border">
                 <h3 className="font-bold text-[15px] mb-2">{faq.q}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed font-medium">{faq.a}</p>
               </div>
@@ -267,7 +263,7 @@ const Index = () => {
 
       {/* CTA */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-        <div className="bg-card border border-border rounded-3xl p-8 md:p-12 text-center shadow-xs">
+        <div className="bg-card border border-border rounded-xl p-8 md:p-12 text-center">
           <h2 className="text-3xl md:text-4xl font-black mb-3">Ready to switch?</h2>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto text-[15px] font-medium">
             Join thousands of users who chose privacy, speed, and simplicity. No credit card required.
@@ -326,9 +322,7 @@ const Index = () => {
           </div>
           <div className="border-t border-border pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-                <Mail className="h-3.5 w-3.5 text-primary-foreground" />
-              </div>
+              <img src="/logo.png" alt="AfuChat Mail" className="h-7 w-7" width={28} height={28} />
               <span className="text-sm font-bold">AfuChat Mail</span>
             </div>
             <p className="text-xs text-muted-foreground font-medium">&copy; {new Date().getFullYear()} AfuChat Mail. All rights reserved.</p>
