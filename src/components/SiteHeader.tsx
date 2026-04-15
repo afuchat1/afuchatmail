@@ -47,10 +47,8 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-3" data-testid="link-home">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Mail className="h-4 w-4" />
-          </span>
+        <Link to="/" className="flex items-center gap-2.5" data-testid="link-home">
+          <img src="/logo.png" alt="AfuChat Mail" className="h-8 w-8" width={32} height={32} />
           <span className="text-base font-black tracking-tight sm:text-lg">AfuChat Mail</span>
         </Link>
 
@@ -124,10 +122,8 @@ export function SiteHeader() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[88vw] max-w-sm p-0">
               <div className="border-b border-border p-5">
-                <SheetTitle className="flex items-center gap-3 text-base font-black">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                    <Mail className="h-4 w-4" />
-                  </span>
+                <SheetTitle className="flex items-center gap-2.5 text-base font-black">
+                  <img src="/logo.png" alt="AfuChat Mail" className="h-8 w-8" width={32} height={32} />
                   AfuChat Mail
                 </SheetTitle>
                 <SheetDescription className="mt-2 text-sm">
