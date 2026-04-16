@@ -231,7 +231,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
 
           <TabsContent value="preferences" className="space-y-5">
             {/* Account Card */}
-            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+            <div className="bg-card border border-border rounded p-4">
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Account</h2>
               <div className="flex items-center justify-between">
                 <div>
@@ -246,26 +246,26 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
             </div>
 
             {/* Email Settings Card */}
-            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+            <div className="bg-card border border-border rounded p-4">
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Email Settings</h2>
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="signature" className="text-sm font-medium">Signature</Label>
                   <Textarea id="signature" placeholder="Best regards,&#10;Your Name" value={settings.email_signature}
                     onChange={(e) => setSettings({ ...settings, email_signature: e.target.value })}
-                    className="min-h-[100px] border border-border bg-background rounded-xl resize-none shadow-xs" />
+                    className="min-h-[100px] border border-border bg-background rounded-xl resize-none" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="replyTo" className="text-sm font-medium">Reply-To Address</Label>
                   <Input id="replyTo" type="email" placeholder="reply@example.com" value={settings.default_reply_to}
                     onChange={(e) => setSettings({ ...settings, default_reply_to: e.target.value })}
-                    className="border border-border bg-background rounded-xl shadow-xs" />
+                    className="border border-border bg-background rounded-xl" />
                 </div>
               </div>
             </div>
 
             {/* Notifications Card */}
-            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+            <div className="bg-card border border-border rounded p-4">
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Notifications</h2>
               <div className="space-y-4">
                 {[
@@ -291,7 +291,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
             </div>
 
             {/* Telegram Integration Card */}
-            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+            <div className="bg-card border border-border rounded p-4">
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
                 <MessageCircle className="h-3.5 w-3.5 inline mr-1.5" />
                 Telegram Bot
@@ -332,7 +332,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                       placeholder="Enter link code"
                       value={telegramCode}
                       onChange={(e) => setTelegramCode(e.target.value)}
-                      className="border border-border bg-background rounded-xl shadow-xs"
+                      className="border border-border bg-background rounded-xl"
                     />
                     <Button onClick={handleLinkTelegram} disabled={linkingTelegram || !telegramCode.trim()} className="rounded-xl">
                       <Link2 className="h-4 w-4 mr-1.5" />
@@ -343,7 +343,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
               )}
             </div>
 
-            <Button onClick={handleSave} disabled={loading || !selectedEmailAddressId} className="w-full h-12 rounded-xl font-semibold shadow-md hover:shadow-lg transition-shadow">
+            <Button onClick={handleSave} disabled={loading || !selectedEmailAddressId} className="w-full h-12 rounded-xl font-semibold">
               <Save className="h-4 w-4 mr-2" />
               {loading ? "Saving..." : "Save Settings"}
             </Button>
@@ -351,17 +351,17 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
 
           <TabsContent value="addresses" className="space-y-5">
             {/* Create New Card */}
-            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+            <div className="bg-card border border-border rounded p-4">
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">New Address</h2>
               <form onSubmit={handleCreateEmail} className="space-y-3">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Input placeholder="yourname" value={newEmail} onChange={(e) => setNewEmail(e.target.value.toLowerCase())}
                       pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]" minLength={3} maxLength={30} required
-                      className="pr-28 border border-border bg-background rounded-xl shadow-xs" />
+                      className="pr-28 border border-border bg-background rounded-xl" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">@afuchat.com</span>
                   </div>
-                  <Button type="submit" disabled={creatingEmail} size="icon" className="rounded-xl shadow-sm h-10 w-10">
+                  <Button type="submit" disabled={creatingEmail} size="icon" className="rounded-xl h-10 w-10">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -370,13 +370,13 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
             </div>
 
             {/* Existing Addresses Card */}
-            <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+            <div className="bg-card border border-border rounded p-4">
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
                 Your Addresses ({emails.length})
               </h2>
               {emails.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
+                  <div className="h-12 w-12 rounded bg-muted flex items-center justify-center mx-auto mb-3">
                     <Mail className="h-5 w-5 opacity-40" />
                   </div>
                   <p className="text-sm font-medium">No email addresses yet</p>

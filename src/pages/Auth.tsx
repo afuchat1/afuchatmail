@@ -102,23 +102,23 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-full max-w-sm px-5 space-y-8">
           <div className="flex items-center gap-2.5">
-            <Skeleton className="h-10 w-10 rounded-2xl" />
-            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-9 w-9 rounded" />
+            <Skeleton className="h-5 w-24" />
           </div>
           <div className="space-y-2">
-            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-7 w-48" />
             <Skeleton className="h-4 w-64" />
           </div>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-11 w-full rounded" />
             </div>
             <div className="space-y-1.5">
               <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-11 w-full rounded" />
             </div>
-            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-11 w-full rounded" />
           </div>
         </div>
       </div>
@@ -133,79 +133,79 @@ const Auth = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <SiteHeader />
 
-      <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:py-16">
+      <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:py-20">
         <section className="hidden lg:flex lg:flex-col">
-          <div className="max-w-xl">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-black text-muted-foreground">
+          <div className="max-w-lg">
+            <div className="mb-5 inline-flex items-center gap-2 border border-border bg-secondary px-3 py-1.5 rounded text-xs font-medium text-muted-foreground">
               <Shield className="h-3.5 w-3.5 text-primary" />
               Secure access to your workspace
             </div>
-            <h1 className="mb-4 text-5xl font-black leading-tight tracking-tight">
+            <h1 className="mb-4 text-4xl font-bold leading-tight tracking-tight">
               Sign in to a calmer, more professional inbox.
             </h1>
-            <p className="mb-8 text-lg font-medium leading-8 text-muted-foreground">
+            <p className="mb-8 text-base leading-relaxed text-muted-foreground">
               Manage aliases, send messages, and keep work communication organized from a flat, focused mail experience.
             </p>
-            <div className="grid gap-3">
+            <div className="grid gap-2">
               {["Private by default", "No ads or tracking", "Fast inbox and alias management"].map((item, index) => (
-                <div key={item} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
-                  <CheckCircle className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-black" data-testid={`text-auth-benefit-${index}`}>{item}</span>
+                <div key={item} className="flex items-center gap-3 border border-border bg-white p-4 rounded">
+                  <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span className="text-sm font-medium" data-testid={`text-auth-benefit-${index}`}>{item}</span>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <div className="w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-xs sm:p-8 lg:justify-self-end">
-          <div className="mb-8 flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-primary flex items-center justify-center">
-              <Mail className="h-5 w-5 text-primary-foreground" />
+        <div className="w-full max-w-md border border-border bg-white p-6 sm:p-8 rounded lg:justify-self-end">
+          <div className="mb-7 flex items-center gap-3">
+            <div className="h-9 w-9 rounded bg-primary flex items-center justify-center">
+              <Mail className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <span className="block text-xl font-black">AfuChat Mail</span>
-              <span className="text-xs font-bold text-muted-foreground">Secure account access</span>
+              <span className="block text-base font-semibold">AfuChat Mail</span>
+              <span className="text-xs text-muted-foreground">Secure account access</span>
             </div>
           </div>
 
-          <h1 className="text-2xl font-black mb-1.5">
+          <h1 className="text-xl font-bold mb-1">
             {isSignUp ? "Create account" : "Welcome back"}
           </h1>
-          <p className="text-sm font-medium text-muted-foreground mb-8">
+          <p className="text-sm text-muted-foreground mb-6">
             {isOAuthFlow ? "Sign in to authorize the application" : isSignUp ? "Get your @afuchat.com email" : "Sign in to your @afuchat.com inbox"}
           </p>
 
           <form onSubmit={handleAuth} className="space-y-4">
             {isSignUp && (
               <div className="space-y-1.5">
-                <Label htmlFor="fullName" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Full Name</Label>
+                <Label htmlFor="fullName" className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Full Name</Label>
                 <Input id="fullName" type="text" placeholder="Your name" value={fullName} onChange={(e) => setFullName(e.target.value)} required
                   autoComplete="name"
-                  className="h-12 border border-border bg-background rounded-xl shadow-xs focus:shadow-sm transition-shadow"
+                  className="h-10 border border-border bg-background rounded shadow-none"
                   data-testid="input-full-name" />
               </div>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</Label>
+              <Label htmlFor="email" className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Email</Label>
               <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required
                 autoComplete="email"
-                className="h-12 border border-border bg-background rounded-xl shadow-xs focus:shadow-sm transition-shadow"
+                className="h-10 border border-border bg-background rounded shadow-none"
                 data-testid="input-email" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Password</Label>
+              <Label htmlFor="password" className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Password</Label>
               <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
                 autoComplete={isSignUp ? "new-password" : "current-password"}
-                className="h-12 border border-border bg-background rounded-xl shadow-xs focus:shadow-sm transition-shadow"
+                className="h-10 border border-border bg-background rounded shadow-none"
                 data-testid="input-password" />
             </div>
-            <Button type="submit" className="w-full h-12 rounded-xl font-black shadow-none text-[15px]" disabled={loading} data-testid="button-auth-submit">
+            <Button type="submit" className="w-full h-10 rounded font-semibold shadow-none" disabled={loading} data-testid="button-auth-submit">
               {loading ? "Processing..." : isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
 
-          <div className="mt-8 text-center">
-            <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-sm text-primary font-bold hover:underline" data-testid="button-toggle-auth-mode">
+          <div className="mt-6 text-center">
+            <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-sm text-primary font-medium hover:underline" data-testid="button-toggle-auth-mode">
               {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
             </button>
           </div>

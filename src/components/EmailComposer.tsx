@@ -289,7 +289,7 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-foreground/40 backdrop-blur-sm">
-      <div className="w-full max-w-3xl bg-card border border-border rounded-t-2xl md:rounded-2xl shadow-xl overflow-hidden max-h-[95dvh] md:max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+      <div className="w-full max-w-3xl bg-card border border-border rounded-t-2xl md:rounded overflow-hidden max-h-[95dvh] md:max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-card">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-bold">New Message</h2>
@@ -494,7 +494,7 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
           </div>
           <div className="flex gap-2">
             <Button variant="outline" className="rounded-xl" onClick={onClose}>Cancel</Button>
-            <Button className="rounded-xl shadow-sm font-semibold" onClick={handleSend} disabled={sending}>
+            <Button className="rounded-xl font-semibold" onClick={handleSend} disabled={sending}>
               <Send className="h-4 w-4 mr-2" />
               {sending ? "Sending..." : scheduledAt ? "Schedule" : "Send"}
             </Button>

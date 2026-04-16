@@ -99,7 +99,7 @@ const About = () => {
         <h2 className="text-2xl font-black mb-6">Built by passionate people</h2>
         <div className="space-y-4">
           {team.map((t, i) => (
-            <div key={i} className="p-5 rounded-2xl bg-card border border-border shadow-xs">
+            <div key={i} className="p-5 rounded bg-card border border-border">
               <h3 className="font-bold mb-1">{t.name}</h3>
               <p className="text-sm text-muted-foreground font-medium">{t.description}</p>
             </div>
@@ -109,7 +109,7 @@ const About = () => {
 
       {/* Mission */}
       <section className="py-10 border-t border-border">
-        <div className="p-6 rounded-2xl bg-accent/50 border border-border">
+        <div className="p-6 rounded bg-accent/50 border border-border">
           <h2 className="text-xl font-black mb-3">Our Mission</h2>
           <p className="text-muted-foreground leading-relaxed font-medium">
             To make professional, private email accessible to every person on the planet — free from ads, tracking, and paywalls. We're committed to building open, transparent tools that put users in control of their digital communication.
@@ -121,7 +121,7 @@ const About = () => {
       <section className="py-12 text-center border-t border-border">
         <h2 className="text-2xl font-black mb-3">Join thousands of happy users</h2>
         <p className="text-muted-foreground mb-6 font-medium">Get your free @afuchat.com email today.</p>
-        <Button size="lg" className="rounded-xl shadow-md font-bold" onClick={() => navigate("/auth")}>
+        <Button size="lg" className="rounded-xl font-bold" onClick={() => navigate("/auth")}>
           Get Started Free
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>

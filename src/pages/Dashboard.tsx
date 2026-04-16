@@ -221,7 +221,7 @@ const Dashboard = () => {
       {!selectedEmail && (
         <Button
           onClick={() => setShowComposer(true)}
-          className="fixed bottom-20 right-4 h-14 px-5 rounded-2xl z-40 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+          className="fixed bottom-20 right-4 h-12 px-5 rounded z-40 shadow-none flex items-center gap-2"
         >
           <PenSquare className="h-5 w-5" />
           <span className="text-sm font-semibold">Compose</span>
@@ -261,7 +261,7 @@ const Dashboard = () => {
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground px-8">
-            <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+            <div className="h-16 w-16 rounded bg-muted flex items-center justify-center mb-4">
               <Search className="h-7 w-7 opacity-40" />
             </div>
             <p className="text-sm text-center font-medium">Search your emails</p>
@@ -298,14 +298,14 @@ const Dashboard = () => {
         </header>
         <div className="mx-auto grid h-[calc(100dvh-4rem)] max-w-7xl grid-cols-1 md:grid-cols-[18rem_1fr]">
           <aside className="hidden border-r border-border bg-card p-4 md:block">
-            <Skeleton className="mb-5 h-12 rounded-2xl" />
+            <Skeleton className="mb-5 h-12 rounded" />
             {[1, 2, 3, 4, 5].map((item) => (
               <Skeleton key={item} className="mb-3 h-10 rounded-xl" />
             ))}
           </aside>
           <main className="p-4">
             {[1, 2, 3, 4, 5].map((item) => (
-              <div key={item} className="mb-3 rounded-2xl border border-border bg-card p-4">
+              <div key={item} className="mb-3 rounded border border-border bg-card p-4">
                 <div className="flex items-start gap-3">
                   <Skeleton className="h-10 w-10 rounded-full" />
                   <div className="flex-1 space-y-2">
@@ -321,15 +321,15 @@ const Dashboard = () => {
       </div>
     ) : (
     <div className="h-[100dvh] flex flex-col bg-background">
-      <header className="hidden md:block bg-card border-b border-border sticky top-0 z-10 shadow-xs">
+      <header className="hidden md:block bg-card border-b border-border sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center">
+            <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
               <Mail className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-base font-black leading-none">AfuChat Mail</h1>
-              <p className="mt-1 text-xs font-bold text-muted-foreground">Professional inbox workspace</p>
+              <h1 className="text-sm font-semibold leading-none">AfuChat Mail</h1>
+              <p className="mt-1 text-xs text-muted-foreground">Professional inbox</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -339,18 +339,18 @@ const Dashboard = () => {
                 placeholder="Search mail..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-72 h-10 rounded-xl border-border bg-background"
+                className="pl-9 w-72 h-9 rounded border-border bg-background shadow-none"
                 data-testid="input-desktop-search"
               />
             </div>
-            <Button className="rounded-xl font-bold shadow-none" onClick={() => setShowComposer(true)} data-testid="button-desktop-compose">
+            <Button className="rounded font-medium shadow-none" onClick={() => setShowComposer(true)} data-testid="button-desktop-compose">
               <PenSquare className="mr-2 h-4 w-4" />
               Compose
             </Button>
-            <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => navigate("/settings")} data-testid="button-desktop-settings">
+            <Button variant="ghost" size="icon" className="rounded" onClick={() => navigate("/settings")} data-testid="button-desktop-settings">
               <SettingsIcon className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="rounded-xl" onClick={handleSignOut} data-testid="button-sign-out">
+            <Button variant="ghost" size="icon" className="rounded" onClick={handleSignOut} data-testid="button-sign-out">
               <LogOut className="h-5 w-5" />
             </Button>
           </div>

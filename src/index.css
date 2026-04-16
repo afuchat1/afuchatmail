@@ -2,85 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
-/* AfuChat Mail — Premium app design system */
+/* AfuChat Mail — Flat design system (pay.afuchat.com style) */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 @layer base {
   :root {
-    --background: 220 14% 96%;
-    --foreground: 220 20% 10%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 6%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 6%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
+    --popover-foreground: 0 0% 6%;
 
-    --primary: 217 91% 60%;
+    --primary: 217 100% 50%;
     --primary-foreground: 0 0% 100%;
-    
-    --primary-glow: 217 91% 70%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 20% 10%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 6%;
 
-    --muted: 220 14% 92%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 44%;
 
-    --accent: 217 91% 95%;
-    --accent-foreground: 217 91% 40%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 6%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 217 91% 60%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 217 100% 50%;
 
-    --radius: 0.75rem;
-    
-    --shadow-xs: 0 1px 2px 0 hsl(220 20% 10% / 0.04);
-    --shadow-sm: 0 1px 3px 0 hsl(220 20% 10% / 0.06), 0 1px 2px -1px hsl(220 20% 10% / 0.06);
-    --shadow-md: 0 4px 6px -1px hsl(220 20% 10% / 0.07), 0 2px 4px -2px hsl(220 20% 10% / 0.05);
-    --shadow-lg: 0 10px 15px -3px hsl(220 20% 10% / 0.08), 0 4px 6px -4px hsl(220 20% 10% / 0.04);
-    --shadow-xl: 0 20px 25px -5px hsl(220 20% 10% / 0.1), 0 8px 10px -6px hsl(220 20% 10% / 0.05);
-    
-    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --radius: 0.25rem;
   }
 
   .dark {
-    --background: 222 20% 7%;
-    --foreground: 220 14% 96%;
+    --background: 0 0% 6%;
+    --foreground: 0 0% 96%;
 
-    --card: 222 20% 11%;
-    --card-foreground: 220 14% 96%;
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 96%;
 
-    --popover: 222 20% 11%;
-    --popover-foreground: 220 14% 96%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 96%;
 
-    --primary: 217 91% 60%;
+    --primary: 217 100% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 20% 15%;
-    --secondary-foreground: 220 14% 96%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 96%;
 
-    --muted: 222 20% 15%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 217 91% 15%;
-    --accent-foreground: 217 91% 70%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 96%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 20% 18%;
-    --input: 222 20% 18%;
-    --ring: 217 91% 60%;
-    
-    --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
-    --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.3), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.2);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.35), 0 4px 6px -4px hsl(0 0% 0% / 0.2);
-    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.4), 0 8px 10px -6px hsl(0 0% 0% / 0.2);
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 217 100% 60%;
   }
 }
 
@@ -90,44 +76,28 @@
   }
 
   body {
-    @apply bg-background text-foreground text-[15px] leading-relaxed;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
-    font-weight: 500;
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    font-weight: 400;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-extrabold tracking-tight;
+    @apply font-bold tracking-tight;
+    letter-spacing: -0.02em;
   }
 
-  h1 { @apply text-3xl md:text-4xl; }
-  h2 { @apply text-2xl md:text-3xl; }
-  h3 { @apply text-xl md:text-2xl; }
+  p { line-height: 1.6; }
 
-  p { @apply text-[15px] leading-relaxed; }
-
-  button, a { font-weight: 600; }
-
-  label { @apply text-sm font-semibold; }
-
-  /* Elevated card utility */
-  .card-elevated {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow 0.2s ease;
-  }
-
-  .card-elevated:hover {
-    box-shadow: var(--shadow-md);
-  }
+  label { @apply text-sm font-medium; }
 
   /* Email content link styling */
   .prose a {
-    color: hsl(217 91% 60%);
+    color: hsl(217 100% 50%);
   }
 
   .prose a:hover {
@@ -135,16 +105,16 @@
   }
 
   .dark .prose a {
-    color: hsl(217 91% 70%);
+    color: hsl(217 100% 65%);
   }
 
   .dark .prose {
-    color: hsl(220 14% 96%);
+    color: hsl(0 0% 96%);
   }
 
   .dark .prose strong,
   .dark .prose b {
-    color: hsl(220 14% 96%);
+    color: hsl(0 0% 96%);
   }
 
   .dark .prose h1,
@@ -153,8 +123,14 @@
   .dark .prose h4,
   .dark .prose h5,
   .dark .prose h6 {
-    color: hsl(220 14% 96%);
+    color: hsl(0 0% 96%);
   }
+}
+
+/* Hero dark section */
+.hero-dark {
+  background-color: #0a0a0a;
+  color: #ffffff;
 }
 
 /* Safe area for bottom tab bar on notched devices */
@@ -175,29 +151,30 @@
   }
 }
 
-/* AI suggestion glow */
-@keyframes ai-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.15); }
-  50% { box-shadow: 0 0 0 6px hsl(var(--primary) / 0); }
-}
-
-.ai-pulse {
-  animation: ai-pulse 2s ease-in-out infinite;
-}
-
 /* Smooth enter animation for email items */
 @keyframes email-enter {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-email-enter {
-  animation: email-enter 0.25s ease-out forwards;
+  animation: email-enter 0.2s ease-out forwards;
 }
 
-/* Better focus ring for accessibility */
+/* Focus ring */
 *:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
-  border-radius: var(--radius);
+  border-radius: 2px;
+}
+
+/* Accordion keyframes */
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
 }

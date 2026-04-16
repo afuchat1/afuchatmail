@@ -581,7 +581,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
         </div>
         <div className="space-y-3 p-4">
         {[1, 2, 3, 4, 5, 6].map(i => (
-          <div key={i} className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
+          <div key={i} className="flex items-start gap-3 rounded border border-border bg-card p-4">
             <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
@@ -601,7 +601,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
   if (threads.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground px-8">
-        <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+        <div className="h-16 w-16 rounded bg-muted flex items-center justify-center mb-4">
           <Mail className="h-7 w-7 opacity-40" />
         </div>
         <p className="font-medium text-sm">No emails here</p>
@@ -626,11 +626,11 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="rounded-xl text-xs font-semibold h-8 shadow-xs">
+            <Button variant="outline" size="sm" className="rounded-xl text-xs font-semibold h-8">
               Actions
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-popover rounded-xl shadow-lg border-border">
+          <DropdownMenuContent align="end" className="bg-popover rounded-xl border-border">
             {hasUnreadEmails && (
               <DropdownMenuItem onClick={handleMarkAllAsRead} className="rounded-lg">
                 <CheckCheck className="h-4 w-4 mr-2" />
@@ -668,7 +668,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
               data-testid={`row-email-${email.id}`}
             >
               {/* Avatar */}
-              <Avatar className="h-10 w-10 flex-shrink-0 shadow-xs">
+              <Avatar className="h-10 w-10 flex-shrink-0">
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
                   {getInitials(email.from_address)}
                 </AvatarFallback>

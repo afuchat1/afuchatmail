@@ -346,10 +346,10 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
       <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
         <div className="w-full max-w-md px-6 space-y-6">
           <div className="flex flex-col items-center gap-3">
-            <Skeleton className="h-12 w-12 rounded-2xl" />
+            <Skeleton className="h-12 w-12 rounded" />
             <Skeleton className="h-5 w-40" />
           </div>
-          <div className="bg-card rounded-2xl p-6 space-y-4 border border-border">
+          <div className="bg-card rounded p-6 space-y-4 border border-border">
             <Skeleton className="h-4 w-3/4 mx-auto" />
             <div className="space-y-3">
               <Skeleton className="h-10 w-full rounded-xl" />

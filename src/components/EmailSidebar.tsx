@@ -87,7 +87,7 @@ export const EmailSidebar = ({
     <div className="w-72 bg-card border-r border-border p-4 flex flex-col gap-4 h-full">
       <Button
         onClick={onCompose}
-        className="w-full h-12 rounded-2xl shadow-none font-bold text-[15px] gap-2"
+        className="w-full h-12 rounded shadow-none font-bold text-[15px] gap-2"
         data-testid="button-sidebar-compose"
       >
         <PenSquare className="h-4 w-4" />
