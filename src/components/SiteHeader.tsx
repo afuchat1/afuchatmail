@@ -19,7 +19,13 @@ const navGroups = [
       { label: "Solutions", description: "Use cases and workflows", path: "/solutions", icon: Users },
       { label: "Pricing", description: "Plans and future upgrades", path: "/pricing", icon: Tags },
       { label: "Security", description: "Privacy and protection", path: "/security", icon: Shield },
-      { label: "Developers", description: "OAuth apps and APIs", path: "/developers", icon: Code2 },
+    ],
+  },
+  {
+    label: "Developers",
+    items: [
+      { label: "Documentation", description: "API reference and guides", path: "/docs", icon: FileText },
+      { label: "Developer Console", description: "OAuth apps and API keys", path: "/developers", icon: Code2 },
     ],
   },
   {

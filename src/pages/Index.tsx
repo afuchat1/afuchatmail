@@ -292,7 +292,13 @@ const Index = () => {
                 <button onClick={() => navigate("/solutions")} className="block text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">Solutions</button>
                 <button onClick={() => navigate("/pricing")} className="block text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">Pricing</button>
                 <button onClick={() => navigate("/security")} className="block text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">Security</button>
-                <button onClick={() => navigate("/developers")} className="block text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">Developers</button>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Developers</p>
+              <div className="space-y-2">
+                <button onClick={() => navigate("/docs")} className="block text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">Documentation</button>
+                <button onClick={() => navigate("/developers")} className="block text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">Developer Console</button>
               </div>
             </div>
             <div>
