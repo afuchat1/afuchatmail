@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.telegram-miniapp-api]
 verify_jwt = false
+
+[functions.skypay-checkout-session]
+verify_jwt = true
+
+[functions.skypay-confirm-payment]
+verify_jwt = true
+
+[functions.skypay-webhook]
+verify_jwt = false

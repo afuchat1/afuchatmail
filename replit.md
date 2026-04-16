@@ -64,6 +64,13 @@ AfuChat Mail is a fully-featured @afuchat.com email service SPA built with React
 - `user_roles` — Admin role management
 - `admin_audit_log` — Admin actions log
 - `telegram_links` — Telegram account links
+- `subscriptions` — Active SkyPay-backed paid plan per user
+- `payment_transactions` — SkyPay webhook/payment reference ledger used for idempotent subscription activation
+
+## SkyPay Payments
+- Checkout is created by the Supabase Edge Function `skypay-checkout-session`; the frontend never stores a SkyPay seller ID or API key.
+- Live checkout requires Supabase secrets `SKYPAY_SELLER_ID`, `SKYPAY_API_KEY`, and optionally `SKYPAY_WEBHOOK_SECRET` for webhook signature checks.
+- SkyPay webhook endpoint: `/functions/v1/skypay-webhook`; successful `payment.success` events are confirmed by reference before activating a subscription.
 
 ## Running
 - `npm run dev` — starts Vite dev server on port 5000

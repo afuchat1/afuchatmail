@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Crown, Sparkles, Users, Shield, Zap, Globe } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-const SKYPAY_CHECKOUT_BASE = "https://fxdpbbscczpvmblyhnts.supabase.co/functions/v1/sdk/checkout";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const plans = [
   {
@@ -89,29 +90,45 @@ const comparisons = [
 
 const Pricing = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
-  const handleSubscribe = (plan: typeof plans[number]) => {
+  const handleSubscribe = async (plan: typeof plans[number]) => {
     if (plan.href) {
       navigate(plan.href);
       return;
     }
     if (plan.skypayAmount) {
-      const params = new URLSearchParams({
-        amount: plan.skypayAmount.toString(),
-        currency: "UGX",
-        description: plan.skypayDescription || plan.name,
-        merchant: "AfuChat Mail",
-        plan: plan.planId,
-        billing_cycle: "monthly",
-        environment: "production",
-        mode: "live",
-        test: "false",
-        reference: `afuchat-${plan.planId}-${Date.now()}`,
-        callback_url: `${window.location.origin}/dashboard`,
-        success_url: `${window.location.origin}/dashboard?payment=success&plan=${plan.planId}`,
-        cancel_url: `${window.location.origin}/pricing?payment=cancelled&plan=${plan.planId}`,
+      setLoadingPlan(plan.planId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Sign in required",
+          description: "Create an account or sign in before starting a paid subscription.",
+        });
+        navigate("/auth");
+        setLoadingPlan(null);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("skypay-checkout-session", {
+        body: {
+          planId: plan.planId,
+          origin: window.location.origin,
+        },
       });
-      window.open(`${SKYPAY_CHECKOUT_BASE}?${params.toString()}`, "_blank");
+
+      if (error || !data?.checkoutUrl) {
+        toast({
+          title: "SkyPay checkout unavailable",
+          description: data?.error || error?.message || "Please try again in a moment.",
+          variant: "destructive",
+        });
+        setLoadingPlan(null);
+        return;
+      }
+
+      window.location.href = data.checkoutUrl;
     }
   };
 
@@ -178,8 +195,9 @@ const Pricing = () => {
               }`}
               variant={plan.highlighted ? "default" : "outline"}
               onClick={() => handleSubscribe(plan)}
+              disabled={loadingPlan === plan.planId}
             >
-              {plan.cta}
+              {loadingPlan === plan.planId ? "Opening SkyPay..." : plan.cta}
               <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
             </Button>
           </article>

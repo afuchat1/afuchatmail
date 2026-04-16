@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Search, X, PenSquare, Menu, GripVertical } from "lucide-react";
+import { Search, X, PenSquare, Menu, GripVertical, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { EmailSidebar } from "@/components/EmailSidebar";
 import { EmailList } from "@/components/EmailList";
@@ -38,9 +38,26 @@ interface Email {
   thread_id: string | null;
 }
 
+interface ActiveSubscription {
+  plan_id: string;
+  status: string;
+  current_period_end: string | null;
+}
+
+type PaymentConfirmationState = {
+  status: "idle" | "checking" | "success" | "pending" | "error";
+  message: string;
+  reference?: string;
+};
+
 const MIN_LIST_WIDTH = 260;
 const MAX_LIST_WIDTH = 600;
 const DEFAULT_LIST_WIDTH = 340;
+
+const formatPlanName = (planId?: string | null) => {
+  if (!planId) return "subscription";
+  return planId.charAt(0).toUpperCase() + planId.slice(1);
+};
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -56,6 +73,11 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("mail");
+  const [activeSubscription, setActiveSubscription] = useState<ActiveSubscription | null>(null);
+  const [paymentConfirmation, setPaymentConfirmation] = useState<PaymentConfirmationState>({
+    status: "idle",
+    message: "",
+  });
   const [selectedEmailAddressId, setSelectedEmailAddressId] = useState<string | null>(() => {
     return localStorage.getItem("selectedEmailAddressId");
   });
@@ -68,6 +90,35 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const fetchActiveSubscription = useCallback(async (userId: string) => {
+    const client = supabase as unknown as {
+      from: (table: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            eq: (column: string, value: string) => {
+              order: (column: string, options: { ascending: boolean }) => {
+                limit: (count: number) => {
+                  maybeSingle: () => Promise<{ data: ActiveSubscription | null; error: Error | null }>;
+                };
+              };
+            };
+          };
+        };
+      };
+    };
+
+    const { data, error } = await client
+      .from("subscriptions")
+      .select("plan_id,status,current_period_end")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("current_period_end", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!error) setActiveSubscription(data);
+  }, []);
 
   useEffect(() => {
     if (selectedEmailAddressId) {
@@ -100,6 +151,88 @@ const Dashboard = () => {
       subscription.unsubscribe();
     };
   }, [navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchActiveSubscription(user.id);
+  }, [user, fetchActiveSubscription]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const status = params.get("status");
+    const reference = params.get("reference");
+    const planId = params.get("plan");
+
+    if (payment === "cancelled" || status === "cancelled") {
+      toast({
+        title: "Payment cancelled",
+        description: "Your subscription was not changed.",
+      });
+      navigate("/pricing", { replace: true });
+      return;
+    }
+
+    if (payment !== "success" && status !== "success") return;
+
+    if (!reference || !planId) {
+      setPaymentConfirmation({
+        status: "pending",
+        message: "SkyPay returned you safely, but no payment reference was included. Your plan will activate when the SkyPay webhook arrives.",
+      });
+      window.history.replaceState(null, "", "/dashboard");
+      return;
+    }
+
+    let cancelled = false;
+    let retryTimer: number | undefined;
+
+    const confirmPayment = async (attempt = 1) => {
+      setPaymentConfirmation({
+        status: "checking",
+        message: `Confirming your ${formatPlanName(planId)} payment with SkyPay...`,
+        reference,
+      });
+
+      const { data, error } = await supabase.functions.invoke("skypay-confirm-payment", {
+        body: { reference, planId },
+      });
+
+      if (cancelled) return;
+
+      if (!error && data?.success) {
+        setPaymentConfirmation({
+          status: "success",
+          message: `${formatPlanName(planId)} is active. Your payment has been verified by SkyPay.`,
+          reference,
+        });
+        fetchActiveSubscription(user.id);
+        window.history.replaceState(null, "", "/dashboard");
+        return;
+      }
+
+      if ((data?.pending || error) && attempt < 8) {
+        retryTimer = window.setTimeout(() => confirmPayment(attempt + 1), 3000);
+        return;
+      }
+
+      setPaymentConfirmation({
+        status: data?.pending ? "pending" : "error",
+        message: data?.error || "SkyPay has not delivered the verified payment webhook yet. This will update automatically after the webhook is received.",
+        reference,
+      });
+      window.history.replaceState(null, "", "/dashboard");
+    };
+
+    confirmPayment();
+
+    return () => {
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+    };
+  }, [user, fetchActiveSubscription, navigate, toast]);
 
   useEffect(() => {
     if (!user) return;
@@ -292,8 +425,44 @@ const Dashboard = () => {
     onReply: handleReply,
   } : null;
 
+  const paymentBannerIcon = paymentConfirmation.status === "success"
+    ? <CheckCircle2 className="h-4 w-4 text-green-600" />
+    : paymentConfirmation.status === "error"
+      ? <AlertCircle className="h-4 w-4 text-red-600" />
+      : <Clock className="h-4 w-4 text-primary" />;
+
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
+      {activeSubscription && (
+        <div className="border-b bg-primary/5 px-4 py-2 text-xs text-primary">
+          Active plan: <span className="font-semibold">{formatPlanName(activeSubscription.plan_id)}</span>
+          {activeSubscription.current_period_end && (
+            <span className="text-muted-foreground"> · Renews {new Date(activeSubscription.current_period_end).toLocaleDateString()}</span>
+          )}
+        </div>
+      )}
+
+      {paymentConfirmation.status !== "idle" && (
+        <div className="border-b bg-card px-4 py-3">
+          <div className="mx-auto flex max-w-4xl items-start gap-3 rounded-lg border bg-background px-3 py-2">
+            {paymentBannerIcon}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">{paymentConfirmation.message}</p>
+              {paymentConfirmation.reference && (
+                <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">SkyPay ref: {paymentConfirmation.reference}</p>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setPaymentConfirmation({ status: "idle", message: "" })}
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* ── MOBILE / TABLET LAYOUT (< lg = < 1024px) ── */}
       <div className="lg:hidden flex-1 flex flex-col overflow-hidden pb-14">
