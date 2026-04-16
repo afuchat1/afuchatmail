@@ -343,6 +343,28 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
               )}
             </div>
 
+            {/* Keyboard Shortcuts Card */}
+            <div className="bg-card rounded p-4">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Keyboard Shortcuts</h2>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+                {[
+                  { keys: ["C"], label: "Compose new email" },
+                  { keys: ["R"], label: "Reply to email" },
+                  { keys: ["Esc"], label: "Close / go back" },
+                  { keys: ["/"], label: "Open search" },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-2 py-0.5">
+                    <div className="flex gap-1">
+                      {item.keys.map(k => (
+                        <kbd key={k} className="px-2 py-0.5 text-[11px] font-mono font-semibold bg-muted border border-border rounded text-foreground">{k}</kbd>
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <Button onClick={handleSave} disabled={loading || !selectedEmailAddressId} className="w-full h-12 rounded-xl font-semibold">
               <Save className="h-4 w-4 mr-2" />
               {loading ? "Saving..." : "Save Settings"}

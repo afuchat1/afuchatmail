@@ -1,35 +1,75 @@
-# Replit Project Notes
+# AfuChat Mail — Replit Notes
 
 ## Overview
-AfuChat Mail is a Vite, React, TypeScript, shadcn/ui, and Tailwind CSS application. It was originally built on Lovable and has been migrated to Replit.
+AfuChat Mail is a fully-featured @afuchat.com email service SPA built with React + Vite + TypeScript + Tailwind CSS + shadcn/ui. Supabase is the exclusive backend (auth, database, realtime, edge functions, storage).
 
 ## Architecture
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS + shadcn/ui
-- **Backend/Auth/DB**: Supabase (hosted, external — intentionally kept as-is)
-- **Edge Functions**: Supabase Edge Functions (Deno) — remain deployed on Supabase
+- **Backend/Auth/DB**: Supabase (hosted, external — no Replit DB involved)
+- **Edge Functions**: Supabase Edge Functions (Deno) — deployed on Supabase platform
 - **Dev server**: Vite on port 5000
 - **PWA**: vite-plugin-pwa (service worker, manifest, offline caching)
 
 ## Key Config
-- `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are in the `.env` file (NOT Replit env vars — user's explicit requirement)
-- `lovable-tagger` devDependency removed (Lovable-platform-only tool)
-- `vite.config.ts` updated: removed `componentTagger`, Supabase backend stays on the hosted Supabase project
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are in `.env` file ONLY — NOT Replit env vars (user's explicit requirement)
+- Supabase anon key is intentionally public (embedded in frontend bundle)
+- `lovable-tagger` devDependency removed (Lovable-only tool)
+- `vite.config.ts`: removed `componentTagger`
 
-## Design System (pay.afuchat.com style)
-- **Font**: Inter (Google Fonts import in index.css)
-- **Color scheme**: Dark hero `#0a0a0a`, white content `#ffffff`, muted `#f5f5f5`, blue primary `hsl(217 100% 50%)`
-- **Border radius**: `--radius: 0.25rem` (4px), `xl` overridden to 6px, `2xl` to 8px — flat/sharp
-- **Shadows**: None throughout — all `shadow-xs/sm/md/lg` removed
-- **Nav**: Dark `#0a0a0a` background with white text, flat links, white "Get started" button
-- **Hero**: Dark section with large bold white text + blue accent on key phrase, flat buttons
-- **Content sections**: Alternating white and light gray backgrounds, thin 1px borders
-- **CTA & Footer**: Dark `#0a0a0a` sections, white text
+## Design System
+- **Font**: Inter (loaded in HTML)
+- **Primary color**: `hsl(220 100% 50%)` — bright blue `#0052ff`
+- **Border radius**: `--radius: 0.375rem` (6px) — small rounded corners throughout
+- **Shadows**: None — flat minimal design
+- **Dark hero sections**: `#0a0a0a` background
+- **Light content**: White `#fff`, card `#f9f9f9`, border `#e3e3e3`
+- **Sidebar width**: `--sidebar-width: 17rem` CSS variable
+
+## Core Pages
+- `/` — Landing page (dark hero, features, stats, testimonials, FAQ)
+- `/auth` — Split-screen auth (form + feature list)
+- `/dashboard` — Mail app (3-panel desktop: sidebar + list + viewer; mobile: tab bar)
+- `/settings` — Account settings (standalone and embedded in dashboard)
+- `/admin` — Admin panel (admin-only)
+- `/developers` — OAuth app management
+- `/features`, `/pricing`, `/about`, `/contact` — Marketing pages
+- `/privacy`, `/terms`, `/security`, `/docs`, `/help`, `/status`, `/changelog`, `/solutions` — Support pages
+- `/telegram` — Telegram MiniApp
+
+## Key Components
+- `EmailSidebar` — Sidebar with real-time unread counts per folder, account dropdown, compose button
+- `EmailList` — Email list with thread grouping, bulk selection (checkboxes, mark read, delete), swipe gestures, offline cache
+- `EmailViewer` — Thread view, AI smart replies, attachments, snooze, restore
+- `EmailComposer` — Full composer with AI assist (smart reply, autocomplete, tone, grammar), CC/BCC, attachments, scheduling, templates
+- `BottomTabBar` — Mobile bottom navigation (Mail, Search, Settings) with unread badge
+- `SiteHeader` — Dark navigation bar with mega-menu dropdowns
+
+## Mail App Features
+- **Keyboard shortcuts**: C (compose), R (reply), Esc (close), / (search)
+- **3-panel layout**: Desktop shows sidebar + email list + email viewer side-by-side
+- **Bulk actions**: Select multiple emails → mark read or delete
+- **Unread counts**: Per-folder badges in sidebar, real-time via Supabase Realtime
+- **Offline support**: IndexedDB cache via custom offlineCache lib
+- **Push notifications**: Web Push via Supabase Edge Function
+- **Telegram bot**: Link Telegram account for notifications
+
+## Supabase Schema (key tables)
+- `profiles` — User profiles
+- `email_addresses` — Custom @afuchat.com addresses (with aliases)
+- `folders` — inbox, sent, drafts, spam, trash (per user)
+- `emails` — Full email records (threading, snooze, importance, attachments)
+- `user_settings` — Per-address settings (signature, reply-to, notifications)
+- `push_subscriptions` — Web push endpoints
+- `oauth_applications`, `oauth_codes`, `oauth_tokens` — OAuth 2.0 developer API
+- `user_roles` — Admin role management
+- `admin_audit_log` — Admin actions log
+- `telegram_links` — Telegram account links
 
 ## Running
 - `npm run dev` — starts Vite dev server on port 5000
 - `npm run build` — production build to `dist/`
 
-## Notes
-- Do NOT migrate the backend from Supabase to Replit Postgres — the Supabase edge functions, auth, and database are part of the production system
-- The Supabase anon key (publishable) is intentionally public (embedded in the frontend bundle)
-- Supabase Edge Functions live in `supabase/functions/` and are deployed separately on Supabase's platform
+## Important Rules
+- NEVER use Replit Postgres or Replit env vars — everything uses Supabase
+- Do NOT modify Supabase edge functions unless explicitly asked
+- Keep all Supabase calls using `src/integrations/supabase/client.ts`

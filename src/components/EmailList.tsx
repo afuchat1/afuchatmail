@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Trash2, Mail, MailOpen, CheckCheck, AlertCircle, Undo2, Archive, WifiOff } from "lucide-react";
+import { Star, Trash2, Mail, MailOpen, CheckCheck, AlertCircle, Undo2, Archive, WifiOff, Square, CheckSquare, X } from "lucide-react";
 import { cacheEmails, getCachedEmails, removeCachedEmail, updateCachedEmail, isOnline, onOnlineStatusChange } from "@/lib/offlineCache";
 import { SwipeableEmailItem } from "@/components/SwipeableEmailItem";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,8 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
   const [loading, setLoading] = useState(true);
   const [isTrashFolder, setIsTrashFolder] = useState(false);
   const [offline, setOffline] = useState(!isOnline());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -468,6 +470,82 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
     return allAddresses.size;
   };
 
+  const toggleSelectMode = () => {
+    setSelectMode(v => !v);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelectId = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(threads.map(t => t.latest_email.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setSelectMode(false);
+  };
+
+  const bulkMarkAsRead = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const ids = Array.from(selectedIds);
+      const { error } = await supabase
+        .from("emails")
+        .update({ is_read: true })
+        .in("id", ids);
+      if (error) throw error;
+      setEmails(emails.map(e => selectedIds.has(e.id) ? { ...e, is_read: true } : e));
+      toast({ title: `${ids.length} email${ids.length !== 1 ? 's' : ''} marked as read` });
+      clearSelection();
+    } catch {
+      toast({ variant: "destructive", title: "Failed to mark as read" });
+    }
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: trashFolder } = await supabase
+        .from("folders")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("type", "trash")
+        .single();
+      if (!trashFolder) throw new Error("Trash not found");
+      const ids = Array.from(selectedIds);
+      if (isTrashFolder) {
+        for (const id of ids) {
+          await supabase.from("emails").delete().eq("id", id);
+        }
+        toast({ title: `${ids.length} email${ids.length !== 1 ? 's' : ''} permanently deleted` });
+      } else {
+        for (const id of ids) {
+          const em = emails.find(e => e.id === id);
+          await supabase.from("emails").update({
+            folder_id: trashFolder.id,
+            original_folder_id: em?.folder_id,
+            deleted_at: new Date().toISOString(),
+          }).eq("id", id);
+        }
+        toast({ title: `${ids.length} email${ids.length !== 1 ? 's' : ''} moved to trash` });
+      }
+      setEmails(emails.filter(e => !selectedIds.has(e.id)));
+      clearSelection();
+    } catch {
+      toast({ variant: "destructive", title: "Failed to delete emails" });
+    }
+  };
+
   const handleMarkAllAsRead = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -611,6 +689,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
   }
 
   const hasUnreadEmails = threads.some(thread => thread.unread_count > 0);
+  const allSelected = threads.length > 0 && threads.every(t => selectedIds.has(t.latest_email.id));
 
   return (
     <div className="flex flex-col h-full">
@@ -620,30 +699,69 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
           <span className="text-xs font-semibold">You're offline — showing cached emails</span>
         </div>
       )}
-      <div className="flex items-center justify-between px-4 py-3 bg-card flex-shrink-0">
-        <div className="text-xs font-black text-muted-foreground uppercase tracking-wider" data-testid="text-conversation-count">
-          {threads.length} conversation{threads.length !== 1 ? 's' : ''}
+
+      {/* Bulk selection bar */}
+      {selectMode ? (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-card border-b flex-shrink-0">
+          <button
+            onClick={allSelected ? () => setSelectedIds(new Set()) : selectAll}
+            className="flex items-center gap-2 text-xs font-medium text-foreground hover:text-primary transition-colors"
+          >
+            {allSelected
+              ? <CheckSquare className="h-4 w-4 text-primary" />
+              : <Square className="h-4 w-4" />
+            }
+            {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select all"}
+          </button>
+          <div className="flex-1" />
+          {selectedIds.size > 0 && (
+            <>
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={bulkMarkAsRead}>
+                <MailOpen className="h-3.5 w-3.5" />
+                Mark read
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 text-destructive hover:text-destructive" onClick={bulkDelete}>
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </Button>
+            </>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={clearSelection}>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="rounded-xl text-xs font-semibold h-8">
-              Actions
+      ) : (
+        <div className="flex items-center justify-between px-4 py-2.5 bg-card border-b flex-shrink-0">
+          <div className="text-xs font-semibold text-muted-foreground" data-testid="text-conversation-count">
+            {threads.length} conversation{threads.length !== 1 ? "s" : ""}
+          </div>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={toggleSelectMode}>
+              <CheckSquare className="h-3.5 w-3.5" />
+              Select
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-popover rounded-xl">
-            {hasUnreadEmails && (
-              <DropdownMenuItem onClick={handleMarkAllAsRead} className="rounded-lg">
-                <CheckCheck className="h-4 w-4 mr-2" />
-                Mark all as read
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={handleDeleteAll} className="text-destructive focus:text-destructive rounded-lg">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete all
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 text-xs">
+                  More
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {hasUnreadEmails && (
+                  <DropdownMenuItem onClick={handleMarkAllAsRead}>
+                    <CheckCheck className="h-4 w-4 mr-2" />
+                    Mark all as read
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleDeleteAll} className="text-destructive focus:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete all
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto divide-y divide-border scroll-smooth-ios">
         {threads.map((thread) => {
           const email = thread.latest_email;
@@ -660,19 +778,35 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
               rightIcon="star"
             >
             <div
-              onClick={() => onEmailSelect(email)}
+              onClick={() => selectMode ? toggleSelectId(email.id) : onEmailSelect(email)}
               className={cn(
                 "flex items-start gap-3 px-4 py-4 cursor-pointer transition-all duration-150 touch-active",
-                thread.unread_count > 0 ? "bg-accent/40" : "bg-card hover:bg-muted/50"
+                selectedIds.has(email.id)
+                  ? "bg-accent/60"
+                  : thread.unread_count > 0
+                    ? "bg-accent/30"
+                    : "bg-card hover:bg-muted/40"
               )}
               data-testid={`row-email-${email.id}`}
             >
-              {/* Avatar */}
+              {/* Checkbox or Avatar */}
+              {selectMode ? (
+                <button
+                  onClick={e => { e.stopPropagation(); toggleSelectId(email.id); }}
+                  className="flex-shrink-0 flex items-center justify-center h-10 w-10"
+                >
+                  {selectedIds.has(email.id)
+                    ? <CheckSquare className="h-5 w-5 text-primary" />
+                    : <Square className="h-5 w-5 text-muted-foreground" />
+                  }
+                </button>
+              ) : (
               <Avatar className="h-10 w-10 flex-shrink-0">
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
                   {getInitials(email.from_address)}
                 </AvatarFallback>
               </Avatar>
+              )}
               
               {/* Email Content */}
               <div className="flex-1 min-w-0 overflow-hidden">
