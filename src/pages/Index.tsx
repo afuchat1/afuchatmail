@@ -3,16 +3,24 @@ import { Mail, ArrowRight, Shield, Zap, Smartphone, Users, Globe, Check, Star, C
 import { useNavigate } from "react-router-dom";
 import { SiteHeader } from "@/components/SiteHeader";
 
+const LogoIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="40" height="40" rx="8" fill="#0052ff"/>
+    <rect x="9" y="14" width="22" height="14" rx="1.5" stroke="white" strokeWidth="1.5" fill="none"/>
+    <path d="M9 14l11 9 11-9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 const Index = () => {
   const navigate = useNavigate();
 
   const features = [
-    { icon: Mail, title: "Custom Addresses", description: "Create unlimited @afuchat.com emails for work, personal, or projects. Organize your life with separate inboxes.", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-    { icon: Shield, title: "Secure by Default", description: "AES-256 encryption, spam filtering, and phishing protection built in from day one.", color: "bg-green-500/10 text-green-600 dark:text-green-400" },
-    { icon: Zap, title: "Instant Delivery", description: "Real-time push notifications on all devices. Never miss an important email again.", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-    { icon: Smartphone, title: "Works Everywhere", description: "Progressive web app — install on iOS, Android, Mac, or Windows. One experience, every device.", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400" },
-    { icon: Users, title: "Professional Aliases", description: "Create aliases that forward to your main inbox. Perfect for newsletters, signups, and privacy.", color: "bg-pink-500/10 text-pink-600 dark:text-pink-400" },
-    { icon: Globe, title: "Universal Compatibility", description: "Send and receive from Gmail, Outlook, Yahoo, and any standard email provider.", color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" },
+    { icon: Mail, title: "Custom Addresses", description: "Create unlimited @afuchat.com emails for work, personal, or projects. Organize your life with separate inboxes." },
+    { icon: Shield, title: "Secure by Default", description: "AES-256 encryption, spam filtering, and phishing protection built in from day one." },
+    { icon: Zap, title: "Instant Delivery", description: "Real-time push notifications on all devices. Never miss an important email again." },
+    { icon: Smartphone, title: "Works Everywhere", description: "Progressive web app — install on iOS, Android, Mac, or Windows. One experience, every device." },
+    { icon: Users, title: "Professional Aliases", description: "Create aliases that forward to your main inbox. Perfect for newsletters, signups, and privacy." },
+    { icon: Globe, title: "Universal Compatibility", description: "Send and receive from Gmail, Outlook, Yahoo, and any standard email provider." },
   ];
 
   const advancedFeatures = [
@@ -52,290 +60,306 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background overflow-y-auto scroll-smooth-ios">
+    <div className="min-h-screen bg-white overflow-y-auto">
       <SiteHeader />
 
       {/* DARK HERO */}
       <section className="bg-[#0a0a0a]">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 pb-20 pt-16 sm:px-6 md:grid-cols-[1.1fr_0.9fr] md:items-center md:pb-24 md:pt-20">
+        <div className="mx-auto grid max-w-6xl gap-12 px-4 pb-24 pt-20 sm:px-6 md:grid-cols-[1.1fr_0.9fr] md:items-center md:pt-24">
           <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded border border-white/10 bg-white/5 px-3 py-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-[hsl(217,100%,60%)]" />
+            <div className="mb-6 inline-flex items-center gap-2 bg-white/8 rounded-full px-3.5 py-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#0052ff]" />
               <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Professional Email Platform</span>
             </div>
-            <h1 className="mb-5 max-w-xl text-4xl font-bold leading-[1.08] tracking-tight text-white md:text-5xl">
-              Professional email for focused teams and <span className="text-[hsl(217,100%,60%)]">everyday work.</span>
+            <h1 className="mb-5 max-w-xl text-5xl font-bold leading-[1.05] tracking-tight text-white md:text-6xl">
+              Email built for<br /><span className="text-[#0052ff]">focused teams.</span>
             </h1>
-            <p className="mb-8 max-w-lg text-base leading-relaxed text-white/55">
-              AfuChat Mail gives you clean addresses, aliases, secure inboxes, smart threading, and fast notifications in a calm workspace that feels ready for business.
+            <p className="mb-8 max-w-lg text-base leading-relaxed text-white/50">
+              Clean addresses, smart aliases, secure inboxes, and instant notifications — in a calm workspace that feels ready for business from day one.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" className="h-11 rounded px-6 font-semibold bg-white text-[#0a0a0a] hover:bg-white/90 shadow-none" onClick={() => navigate("/auth")} data-testid="button-hero-start">
+              <Button size="lg" className="h-12 rounded px-7 text-sm font-semibold bg-white text-[#0a0a0a] hover:bg-white/90 shadow-none" onClick={() => navigate("/auth")} data-testid="button-hero-start">
                 Get started free
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button size="lg" variant="outline" className="h-11 rounded px-6 font-semibold border-white/20 text-white bg-transparent hover:bg-white/8" onClick={() => navigate("/features")} data-testid="button-hero-features">
-                Explore features
+              <Button size="lg" variant="outline" className="h-12 rounded px-7 text-sm font-semibold border-white/15 text-white bg-transparent hover:bg-white/8" onClick={() => navigate("/features")} data-testid="button-hero-features">
+                See features
               </Button>
             </div>
-            <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-white/40">
-              <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[hsl(217,100%,60%)]" /> Free forever</span>
-              <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[hsl(217,100%,60%)]" /> No ads</span>
-              <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[hsl(217,100%,60%)]" /> Supabase powered</span>
+            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-white/35">
+              <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[#0052ff]" /> Free forever</span>
+              <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[#0052ff]" /> No ads or tracking</span>
+              <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[#0052ff]" /> Setup in 60 seconds</span>
             </div>
           </div>
 
-          <div className="rounded border border-white/10 bg-white/4 p-2">
-            <div className="rounded border border-white/10 bg-[#111111]">
-              <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
-                  <div className="h-2.5 w-2.5 rounded-full bg-amber-500/60" />
-                  <div className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
-                </div>
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Inbox</span>
+          {/* Inbox preview */}
+          <div className="rounded-xl overflow-hidden bg-[#111111]">
+            <div className="flex items-center justify-between px-4 py-3 bg-[#161616]">
+              <div className="flex items-center gap-1.5">
+                <div className="h-2.5 w-2.5 rounded-full bg-red-500/50" />
+                <div className="h-2.5 w-2.5 rounded-full bg-amber-500/50" />
+                <div className="h-2.5 w-2.5 rounded-full bg-green-500/50" />
               </div>
-              <div className="grid md:grid-cols-[140px_1fr]">
-                <aside className="hidden border-r border-white/8 p-3 md:block">
-                  {["Inbox", "Important", "Sent", "Archive"].map((item, index) => (
-                    <div key={item} className={`mb-1 rounded px-3 py-2 text-xs font-medium ${index === 0 ? "bg-white/10 text-white" : "text-white/40"}`}>
-                      {item}
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-white/25">Inbox</span>
+              <div className="w-12" />
+            </div>
+            <div className="grid md:grid-cols-[130px_1fr]">
+              <aside className="hidden bg-[#111111] p-3 md:block">
+                {["Inbox", "Important", "Sent", "Archive"].map((item, index) => (
+                  <div key={item} className={`mb-1 rounded px-3 py-2 text-xs font-medium ${index === 0 ? "bg-[#0052ff]/20 text-[#4d8bff]" : "text-white/35 hover:text-white/60"}`}>
+                    {item}
+                  </div>
+                ))}
+              </aside>
+              <div className="p-3 space-y-2">
+                {[
+                  ["AfuChat Team", "Your weekly delivery summary is ready", "2 min", true],
+                  ["Security", "New sign-in protection was enabled", "18 min", false],
+                  ["Support", "Re: custom alias setup", "1 hr", false],
+                ].map(([sender, subject, time, unread], index) => (
+                  <div key={String(sender)} className={`rounded-lg p-3 ${unread ? "bg-[#0052ff]/10" : "bg-white/4"}`}>
+                    <div className="mb-0.5 flex items-center justify-between gap-3">
+                      <p className={`truncate text-xs font-semibold ${unread ? "text-white" : "text-white/70"}`} data-testid={`text-preview-sender-${index}`}>{String(sender)}</p>
+                      <span className="text-[10px] text-white/25 shrink-0">{String(time)}</span>
                     </div>
-                  ))}
-                </aside>
-                <div className="p-3">
-                  {[
-                    ["AfuChat Team", "Your weekly delivery summary is ready", "2 min"],
-                    ["Security", "New sign-in protection was enabled", "18 min"],
-                    ["Support", "Re: custom alias setup", "1 hr"],
-                  ].map(([sender, subject, time], index) => (
-                    <div key={sender} className="mb-2 rounded border border-white/8 bg-white/4 p-3">
-                      <div className="mb-0.5 flex items-center justify-between gap-3">
-                        <p className="truncate text-xs font-semibold text-white" data-testid={`text-preview-sender-${index}`}>{sender}</p>
-                        <span className="text-[10px] text-white/30">{time}</span>
-                      </div>
-                      <p className="truncate text-xs font-medium text-white/70">{subject}</p>
-                      <p className="mt-0.5 truncate text-[10px] text-white/30">Clear, secure communication without visual noise.</p>
-                    </div>
-                  ))}
-                </div>
+                    <p className="truncate text-xs text-white/55">{String(subject)}</p>
+                    <p className="mt-0.5 truncate text-[10px] text-white/25">Secure, clean communication.</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* STATS — still on dark bg */}
-      <section className="bg-[#0a0a0a] border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/8 border border-white/8 rounded overflow-hidden">
+      {/* STATS — dark */}
+      <section className="bg-[#0a0a0a]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/5 overflow-hidden rounded-xl">
             {stats.map((stat, i) => (
-              <div key={i} className="bg-[#0a0a0a] p-6">
-                <p className="text-2xl md:text-3xl font-bold text-white mb-0.5" data-testid={`text-stat-${i}`}>{stat.value}</p>
-                <p className="text-xs text-white/40 font-medium uppercase tracking-wider">{stat.label}</p>
+              <div key={i} className="bg-[#0a0a0a] p-7">
+                <p className="text-3xl font-bold text-white mb-1" data-testid={`text-stat-${i}`}>{stat.value}</p>
+                <p className="text-xs text-white/35 font-medium uppercase tracking-wider">{stat.label}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trust bar */}
+      <section className="bg-neutral-50 py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
+          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-6">Trusted by individuals and teams worldwide</p>
+          <div className="flex flex-wrap justify-center gap-x-10 gap-y-4">
+            {["Founders", "Freelancers", "Startups", "Remote teams", "Developers", "Agencies"].map((type) => (
+              <span key={type} className="text-sm font-medium text-neutral-400">{type}</span>
             ))}
           </div>
         </div>
       </section>
 
       {/* Core Features */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-        <div className="mb-10">
-          <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Core Features</p>
-          <h2 className="text-3xl md:text-4xl font-black mb-3">Everything you need</h2>
-          <p className="text-muted-foreground max-w-lg font-medium">Professional-grade email tools built for individuals and teams who value simplicity and privacy.</p>
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+        <div className="mb-12">
+          <p className="text-xs font-bold text-[#0052ff] uppercase tracking-wider mb-3">Core Features</p>
+          <h2 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">Everything you need</h2>
+          <p className="text-neutral-500 max-w-lg text-base leading-relaxed">Professional-grade email tools built for individuals and teams who value simplicity and privacy.</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, i) => (
-            <div key={i} className="flex gap-4 items-start p-5 rounded border border-border bg-white">
-              <div className="h-9 w-9 rounded border border-border bg-accent flex items-center justify-center flex-shrink-0">
-                <feature.icon className="h-4 w-4 text-primary" />
+            <div key={i} className="flex gap-4 items-start p-6 rounded-xl bg-neutral-50">
+              <div className="h-9 w-9 rounded-lg bg-[#0052ff]/10 flex items-center justify-center flex-shrink-0">
+                <feature.icon className="h-4 w-4 text-[#0052ff]" />
               </div>
               <div>
-                <h3 className="font-semibold text-sm mb-1">{feature.title}</h3>
-                <p className="text-muted-foreground text-[13px] leading-relaxed">{feature.description}</p>
+                <h3 className="font-semibold text-sm mb-1.5 text-neutral-900">{feature.title}</h3>
+                <p className="text-neutral-500 text-[13px] leading-relaxed">{feature.description}</p>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-        <div className="mb-10">
-          <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Platform</p>
-          <h2 className="text-3xl md:text-4xl font-black mb-3">More than a simple inbox</h2>
-          <p className="text-muted-foreground max-w-2xl font-medium">AfuChat Mail now includes the public trust, support, and product pages expected from a professional email platform.</p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          {platformHighlights.map((item, i) => (
-            <div key={item.title} className="rounded border border-border bg-white p-6">
-              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded border border-border bg-accent">
-                <item.icon className="h-4 w-4 text-primary" />
+      {/* Platform highlights */}
+      <section className="bg-neutral-50 py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="mb-12">
+            <p className="text-xs font-bold text-[#0052ff] uppercase tracking-wider mb-3">Platform</p>
+            <h2 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">More than a simple inbox</h2>
+            <p className="text-neutral-500 max-w-2xl text-base leading-relaxed">AfuChat Mail includes all the trust, support, and product pages expected from a professional email platform.</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {platformHighlights.map((item, i) => (
+              <div key={item.title} className="rounded-xl bg-white p-7">
+                <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg bg-[#0052ff]/10">
+                  <item.icon className="h-5 w-5 text-[#0052ff]" />
+                </div>
+                <h3 className="text-base font-semibold mb-2 text-neutral-900" data-testid={`text-platform-highlight-${i}`}>{item.title}</h3>
+                <p className="text-sm leading-relaxed text-neutral-500">{item.description}</p>
               </div>
-              <h3 className="text-base font-semibold" data-testid={`text-platform-highlight-${i}`}>{item.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Advanced Features */}
-      <section className="border-y border-border bg-secondary/40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-          <div className="mb-10">
-            <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-2">Advanced</p>
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Power tools, zero complexity</h2>
-            <p className="text-muted-foreground max-w-lg text-sm">Features that make your workflow faster without adding clutter.</p>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {advancedFeatures.map((feature, i) => (
-              <div key={i} className="flex gap-3.5 items-start">
-                <div className="h-8 w-8 rounded border border-border bg-white flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <feature.icon className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm mb-0.5">{feature.title}</h3>
-                  <p className="text-muted-foreground text-[13px] leading-relaxed">{feature.description}</p>
-                </div>
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+        <div className="mb-12">
+          <p className="text-xs font-semibold text-[#0052ff] uppercase tracking-widest mb-3">Advanced</p>
+          <h2 className="text-4xl font-black mb-4 tracking-tight">Power tools, zero complexity</h2>
+          <p className="text-neutral-500 max-w-lg text-base leading-relaxed">Features that make your workflow faster without adding clutter.</p>
+        </div>
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {advancedFeatures.map((feature, i) => (
+            <div key={i} className="flex gap-4 items-start">
+              <div className="h-9 w-9 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <feature.icon className="h-4 w-4 text-neutral-600" />
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-        <div className="mb-10">
-          <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">How It Works</p>
-          <h2 className="text-3xl md:text-4xl font-black mb-3">Up and running in 60 seconds</h2>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          {[
-            { step: "01", title: "Create your account", desc: "Sign up with your existing email. No credit card, no hidden fees." },
-            { step: "02", title: "Pick your address", desc: "Choose yourname@afuchat.com — it's instantly active and ready to use." },
-            { step: "03", title: "Start communicating", desc: "Send and receive emails from any provider. Add aliases and customize notifications." },
-          ].map((item, i) => (
-            <div key={i} className="relative p-6 rounded border border-border bg-white">
-              <span className="text-4xl font-bold text-border absolute top-4 right-5">{item.step}</span>
-              <div className="relative">
-                <h3 className="font-semibold text-base mb-1.5">{item.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
+              <div>
+                <h3 className="font-semibold text-sm mb-1 text-neutral-900">{feature.title}</h3>
+                <p className="text-neutral-500 text-[13px] leading-relaxed">{feature.description}</p>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="border-y border-border bg-secondary/40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-          <div className="mb-10">
-            <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-2">Testimonials</p>
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Loved by users</h2>
+      {/* How It Works */}
+      <section className="bg-neutral-50 py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="mb-12">
+            <p className="text-xs font-bold text-[#0052ff] uppercase tracking-wider mb-3">How It Works</p>
+            <h2 className="text-4xl font-black mb-4 tracking-tight">Up and running in 60 seconds</h2>
           </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {testimonials.map((t, i) => (
-              <div key={i} className="p-6 rounded border border-border bg-white">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, j) => (
-                    <Star key={j} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  ))}
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              { step: "1", title: "Create your account", desc: "Sign up with your existing email. No credit card, no hidden fees." },
+              { step: "2", title: "Pick your address", desc: "Choose yourname@afuchat.com — it's instantly active and ready to use." },
+              { step: "3", title: "Start communicating", desc: "Send and receive emails from any provider. Add aliases and customize notifications." },
+            ].map((item, i) => (
+              <div key={i} className="rounded-xl bg-white p-7">
+                <div className="h-10 w-10 rounded-lg bg-[#0052ff] flex items-center justify-center mb-5">
+                  <span className="text-sm font-bold text-white">{item.step}</span>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">"{t.text}"</p>
-                <div>
-                  <p className="font-semibold text-sm">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
-                </div>
+                <h3 className="font-semibold text-base mb-2 text-neutral-900">{item.title}</h3>
+                <p className="text-neutral-500 text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+        <div className="mb-12">
+          <p className="text-xs font-semibold text-[#0052ff] uppercase tracking-widest mb-3">Testimonials</p>
+          <h2 className="text-4xl font-black mb-2 tracking-tight">Loved by users</h2>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {testimonials.map((t, i) => (
+            <div key={i} className="p-7 rounded-xl bg-neutral-50">
+              <div className="flex gap-1 mb-4">
+                {[...Array(5)].map((_, j) => (
+                  <Star key={j} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <p className="text-sm text-neutral-500 leading-relaxed mb-5">"{t.text}"</p>
+              <div>
+                <p className="font-semibold text-sm text-neutral-900">{t.name}</p>
+                <p className="text-xs text-neutral-400">{t.role}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-10 text-center">
-            <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-2">FAQ</p>
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Common questions</h2>
+      <section className="bg-neutral-50 py-20">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="mb-12 text-center">
+            <p className="text-xs font-semibold text-[#0052ff] uppercase tracking-widest mb-3">FAQ</p>
+            <h2 className="text-4xl font-black tracking-tight">Common questions</h2>
           </div>
-          <div className="space-y-px border border-border rounded overflow-hidden">
+          <div className="space-y-3">
             {faqs.map((faq, i) => (
-              <div key={i} className="p-5 bg-white border-b border-border last:border-b-0">
-                <h3 className="font-semibold text-sm mb-1.5">{faq.q}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
+              <div key={i} className="p-6 rounded-xl bg-white">
+                <h3 className="font-semibold text-sm mb-2 text-neutral-900">{faq.q}</h3>
+                <p className="text-sm text-neutral-500 leading-relaxed">{faq.a}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA — dark section */}
+      {/* CTA */}
       <section className="bg-[#0a0a0a]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-3 text-white">Ready to switch?</h2>
-          <p className="text-white/50 mb-8 max-w-md mx-auto text-base">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-24 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white tracking-tight">Ready to switch?</h2>
+          <p className="text-white/45 mb-10 max-w-md mx-auto text-base leading-relaxed">
             Join thousands of users who chose privacy, speed, and simplicity. No credit card required.
           </p>
-          <Button size="lg" className="rounded shadow-none h-11 px-8 font-semibold bg-white text-[#0a0a0a] hover:bg-white/90" onClick={() => navigate("/auth")}>
+          <Button size="lg" className="rounded shadow-none h-12 px-9 text-sm font-semibold bg-white text-[#0a0a0a] hover:bg-white/90" onClick={() => navigate("/auth")}>
             Create Free Account
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
-          <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-xs text-white/40 font-medium">
-            <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[hsl(217,100%,60%)]" /> Free forever</span>
-            <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[hsl(217,100%,60%)]" /> No ads or tracking</span>
-            <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[hsl(217,100%,60%)]" /> Privacy first</span>
-            <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[hsl(217,100%,60%)]" /> Setup in 60 seconds</span>
+          <div className="flex flex-wrap items-center justify-center gap-7 mt-10 text-xs text-white/30 font-medium">
+            <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[#0052ff]" /> Free forever</span>
+            <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[#0052ff]" /> No ads or tracking</span>
+            <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[#0052ff]" /> Privacy first</span>
+            <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[#0052ff]" /> Setup in 60 seconds</span>
           </div>
         </div>
       </section>
 
-      {/* Footer — dark */}
-      <footer className="bg-[#0a0a0a] border-t border-white/10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+      {/* Footer */}
+      <footer className="bg-[#0a0a0a]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div>
-              <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">Product</p>
-              <div className="space-y-2">
-                <button onClick={() => navigate("/features")} className="block text-sm text-white/50 hover:text-white transition-colors">Features</button>
-                <button onClick={() => navigate("/solutions")} className="block text-sm text-white/50 hover:text-white transition-colors">Solutions</button>
-                <button onClick={() => navigate("/pricing")} className="block text-sm text-white/50 hover:text-white transition-colors">Pricing</button>
-                <button onClick={() => navigate("/security")} className="block text-sm text-white/50 hover:text-white transition-colors">Security</button>
+              <p className="text-[10px] font-semibold text-white/25 uppercase tracking-widest mb-4">Product</p>
+              <div className="space-y-2.5">
+                {[["Features", "/features"], ["Solutions", "/solutions"], ["Pricing", "/pricing"], ["Security", "/security"]].map(([label, path]) => (
+                  <button key={path} onClick={() => navigate(path)} className="block text-sm text-white/45 hover:text-white transition-colors">{label}</button>
+                ))}
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">Developers</p>
-              <div className="space-y-2">
-                <button onClick={() => navigate("/docs")} className="block text-sm text-white/50 hover:text-white transition-colors">Documentation</button>
-                <button onClick={() => navigate("/developers")} className="block text-sm text-white/50 hover:text-white transition-colors">Developer Console</button>
+              <p className="text-[10px] font-semibold text-white/25 uppercase tracking-widest mb-4">Developers</p>
+              <div className="space-y-2.5">
+                {[["Documentation", "/docs"], ["Developer Console", "/developers"]].map(([label, path]) => (
+                  <button key={path} onClick={() => navigate(path)} className="block text-sm text-white/45 hover:text-white transition-colors">{label}</button>
+                ))}
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">Company</p>
-              <div className="space-y-2">
-                <button onClick={() => navigate("/about")} className="block text-sm text-white/50 hover:text-white transition-colors">About</button>
-                <button onClick={() => navigate("/contact")} className="block text-sm text-white/50 hover:text-white transition-colors">Contact</button>
-                <button onClick={() => navigate("/help")} className="block text-sm text-white/50 hover:text-white transition-colors">Help Center</button>
+              <p className="text-[10px] font-semibold text-white/25 uppercase tracking-widest mb-4">Company</p>
+              <div className="space-y-2.5">
+                {[["About", "/about"], ["Contact", "/contact"], ["Help Center", "/help"]].map(([label, path]) => (
+                  <button key={path} onClick={() => navigate(path)} className="block text-sm text-white/45 hover:text-white transition-colors">{label}</button>
+                ))}
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">Legal</p>
-              <div className="space-y-2">
-                <button onClick={() => navigate("/privacy")} className="block text-sm text-white/50 hover:text-white transition-colors">Privacy Policy</button>
-                <button onClick={() => navigate("/terms")} className="block text-sm text-white/50 hover:text-white transition-colors">Terms of Service</button>
-                <button onClick={() => navigate("/status")} className="block text-sm text-white/50 hover:text-white transition-colors">Status</button>
-                <button onClick={() => navigate("/changelog")} className="block text-sm text-white/50 hover:text-white transition-colors">Changelog</button>
-                <a href="mailto:support@afuchat.com" className="block text-sm text-white/50 hover:text-white transition-colors">Contact Support</a>
+              <p className="text-[10px] font-semibold text-white/25 uppercase tracking-widest mb-4">Legal</p>
+              <div className="space-y-2.5">
+                {[["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"], ["Status", "/status"], ["Changelog", "/changelog"]].map(([label, path]) => (
+                  <button key={path} onClick={() => navigate(path)} className="block text-sm text-white/45 hover:text-white transition-colors">{label}</button>
+                ))}
+                <a href="mailto:support@afuchat.com" className="block text-sm text-white/45 hover:text-white transition-colors">Support</a>
               </div>
             </div>
           </div>
-          <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="AfuChat Mail" className="h-6 w-6" width={24} height={24} />
+          <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4" style={{borderTop: '1px solid rgba(255,255,255,0.06)'}}>
+            <div className="flex items-center gap-2.5">
+              <svg width="22" height="22" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="8" fill="#0052ff"/>
+                <rect x="9" y="14" width="22" height="14" rx="1.5" stroke="white" strokeWidth="1.5" fill="none"/>
+                <path d="M9 14l11 9 11-9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
               <span className="text-sm font-semibold text-white">AfuChat Mail</span>
             </div>
-            <p className="text-xs text-white/30">&copy; {new Date().getFullYear()} AfuChat Mail. All rights reserved.</p>
+            <p className="text-xs text-white/25">&copy; {new Date().getFullYear()} AfuChat Mail. All rights reserved.</p>
           </div>
         </div>
       </footer>

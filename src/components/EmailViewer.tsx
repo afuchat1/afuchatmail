@@ -313,7 +313,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border p-3 flex items-center justify-between bg-card sticky top-0 z-10">
+      <div className="border-b p-3 flex items-center justify-between bg-card sticky top-0 z-10">
         <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl">
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -363,7 +363,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
               <div 
                 key={threadEmail.id} 
                 className={cn(
-                  "border border-border rounded transition-all bg-card",
+                  "border rounded transition-all bg-card",
                   isExpanded ? "shadow-md" : "shadow-xs cursor-pointer"
                 )}
               >
@@ -493,7 +493,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                               <button
                                 key={i}
                                 onClick={() => onReply(reply)}
-                                className="text-sm px-3.5 py-2 rounded-full bg-accent text-accent-foreground hover:bg-primary/10 border border-border transition-colors font-medium"
+                                className="text-sm px-3.5 py-2 rounded-full bg-accent text-accent-foreground hover:bg-primary/10 transition-colors font-medium"
                               >
                                 {reply.length > 60 ? reply.slice(0, 57) + "..." : reply}
                               </button>

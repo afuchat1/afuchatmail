@@ -54,7 +54,7 @@ export const PWAInstallPrompt = () => {
 
   return (
     <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-50 animate-in slide-in-from-bottom-5">
-      <div className="bg-card border border-border rounded-2xl shadow-xl p-4">
+      <div className="bg-card rounded-2xl shadow-xl p-4">
         <div className="flex items-start gap-3">
           <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-sm">
             <Download className="h-5 w-5 text-primary-foreground" />

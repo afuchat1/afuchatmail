@@ -162,7 +162,7 @@ const Dashboard = () => {
   // ── MAIL TAB ──
   const renderMailTab = () => (
     <div className="flex flex-col h-full">
-      <header className="flex items-center gap-3 px-4 py-3 bg-card border-b border-border sticky top-0 z-40">
+      <header className="flex items-center gap-3 px-4 py-3 bg-card sticky top-0 z-40">
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
@@ -233,14 +233,14 @@ const Dashboard = () => {
   // ── SEARCH TAB ──
   const renderSearchTab = () => (
     <div className="flex flex-col h-full">
-      <header className="px-4 py-3 bg-card border-b border-border sticky top-0 z-40">
+      <header className="px-4 py-3 bg-card sticky top-0 z-40">
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search emails..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-11 border border-border bg-muted rounded-xl focus:ring-2 focus:ring-primary/20"
+            className="pl-10 h-11 bg-muted rounded-xl focus:ring-2 focus:ring-primary/20"
             autoFocus
           />
           {searchQuery && (
@@ -282,7 +282,7 @@ const Dashboard = () => {
   return (
     initializing ? (
       <div className="h-[100dvh] bg-background">
-        <header className="border-b border-border bg-card">
+        <header className="border-b bg-card">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">
@@ -297,7 +297,7 @@ const Dashboard = () => {
           </div>
         </header>
         <div className="mx-auto grid h-[calc(100dvh-4rem)] max-w-7xl grid-cols-1 md:grid-cols-[18rem_1fr]">
-          <aside className="hidden border-r border-border bg-card p-4 md:block">
+          <aside className="hidden bg-card p-4 md:block">
             <Skeleton className="mb-5 h-12 rounded" />
             {[1, 2, 3, 4, 5].map((item) => (
               <Skeleton key={item} className="mb-3 h-10 rounded-xl" />
@@ -305,7 +305,7 @@ const Dashboard = () => {
           </aside>
           <main className="p-4">
             {[1, 2, 3, 4, 5].map((item) => (
-              <div key={item} className="mb-3 rounded border border-border bg-card p-4">
+              <div key={item} className="mb-3 rounded bg-card p-4">
                 <div className="flex items-start gap-3">
                   <Skeleton className="h-10 w-10 rounded-full" />
                   <div className="flex-1 space-y-2">
@@ -321,7 +321,7 @@ const Dashboard = () => {
       </div>
     ) : (
     <div className="h-[100dvh] flex flex-col bg-background">
-      <header className="hidden md:block bg-card border-b border-border sticky top-0 z-10">
+      <header className="hidden md:block bg-card sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
@@ -339,7 +339,7 @@ const Dashboard = () => {
                 placeholder="Search mail..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-72 h-9 rounded border-border bg-background shadow-none"
+                className="pl-9 w-72 h-9 rounded bg-background shadow-none"
                 data-testid="input-desktop-search"
               />
             </div>
@@ -375,7 +375,7 @@ const Dashboard = () => {
             onEmailAddressChange={setSelectedEmailAddressId}
           />
         </div>
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-l border-border">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {selectedEmail ? (
             <div className="flex-1 overflow-y-auto">
               <EmailViewer

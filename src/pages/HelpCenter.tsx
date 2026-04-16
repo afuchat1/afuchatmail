@@ -35,7 +35,7 @@ const HelpCenter = () => {
 
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {categories.map((category, index) => (
-          <article key={category.title} className="rounded-2xl border border-border bg-background p-5 shadow-xs">
+          <article key={category.title} className="rounded-2xl bg-background p-5 shadow-xs">
             <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
               <category.icon className="h-4 w-4" />
             </div>
@@ -46,7 +46,7 @@ const HelpCenter = () => {
       </section>
 
       <section className="mt-10 grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-3xl border border-border bg-background p-6">
+        <div className="rounded-3xl bg-background p-6">
           <p className="text-xs font-black uppercase tracking-wider text-primary">Popular articles</p>
           <div className="mt-4 divide-y divide-border">
             {articles.map((article, index) => (
@@ -61,7 +61,7 @@ const HelpCenter = () => {
             ))}
           </div>
         </div>
-        <aside className="rounded-3xl border border-border bg-accent/40 p-6">
+        <aside className="rounded-3xl bg-accent/40 p-6">
           <h2 className="text-xl font-black">Need direct help?</h2>
           <p className="mt-3 text-sm font-medium leading-7 text-muted-foreground">
             Send a message to support and include your account email, device, and what you were trying to do.

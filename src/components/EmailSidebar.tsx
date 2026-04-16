@@ -84,7 +84,7 @@ export const EmailSidebar = ({
   };
 
   return (
-    <div className="w-72 bg-card border-r border-border p-4 flex flex-col gap-4 h-full">
+    <div className="w-72 bg-card p-4 flex flex-col gap-4 h-full">
       <Button
         onClick={onCompose}
         className="w-full h-12 rounded shadow-none font-bold text-[15px] gap-2"
@@ -124,7 +124,7 @@ export const EmailSidebar = ({
       </nav>
 
       {isAdmin && (
-        <div className="flex-shrink-0 pt-2 border-t border-border">
+        <div className="flex-shrink-0 pt-2">
           <button
             onClick={() => navigate("/admin")}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all hover:bg-muted text-muted-foreground hover:text-foreground"

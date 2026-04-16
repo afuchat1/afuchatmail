@@ -34,7 +34,7 @@ const Changelog = () => {
 
       <section className="space-y-5">
         {releases.map((release, index) => (
-          <article key={release.version} className="rounded-3xl border border-border bg-background p-6 shadow-xs">
+          <article key={release.version} className="rounded-3xl bg-background p-6 shadow-xs">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex gap-4">
                 <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
@@ -51,7 +51,7 @@ const Changelog = () => {
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {release.items.map((item) => (
-                <div key={item} className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold">
+                <div key={item} className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-sm font-bold">
                   <CheckCircle className="h-4 w-4 text-primary" />
                   {item}
                 </div>

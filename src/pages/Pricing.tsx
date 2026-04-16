@@ -180,7 +180,7 @@ const Pricing = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b">
                 <th className="text-left py-2.5 pr-4 font-semibold text-foreground w-1/4">Feature</th>
                 <th className="text-center py-2.5 px-4 font-semibold text-foreground">Starter</th>
                 <th className="text-center py-2.5 px-4 font-semibold text-primary">Professional</th>
@@ -189,7 +189,7 @@ const Pricing = () => {
             </thead>
             <tbody className="text-muted-foreground">
               {comparisons.map((row) => (
-                <tr key={row.feature} className="border-b border-border">
+                <tr key={row.feature} className="border-b">
                   <td className="py-2.5 pr-4 text-foreground font-medium">{row.feature}</td>
                   <td className="py-2.5 px-4 text-center">{row.starter}</td>
                   <td className="py-2.5 px-4 text-center">{row.pro}</td>
@@ -202,7 +202,7 @@ const Pricing = () => {
       </section>
 
       {/* Payment info */}
-      <section className="rounded-xl border border-border p-6 mb-8">
+      <section className="rounded-xl p-6 mb-8">
         <div className="flex items-start gap-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
             <Zap className="h-4.5 w-4.5" />
@@ -222,7 +222,7 @@ const Pricing = () => {
       </section>
 
       {/* Fair pricing */}
-      <section className="rounded-xl border border-border bg-accent/30 p-6">
+      <section className="rounded-xl bg-accent/30 p-6">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-2">Fair by design</p>
         <h2 className="text-[20px] font-bold text-foreground">The core mail experience stays free.</h2>
         <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">

@@ -53,7 +53,7 @@ const Contact = () => {
         <p className="text-xs font-bold text-primary uppercase tracking-wider mb-4">Reach Out</p>
         <div className="space-y-3">
           {contacts.map((c, i) => (
-            <div key={i} className="flex items-start gap-4 p-4 rounded bg-card border border-border">
+            <div key={i} className="flex items-start gap-4 p-4 rounded bg-card">
               <div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
                 <c.icon className="h-4 w-4 text-accent-foreground" />
               </div>
@@ -71,7 +71,7 @@ const Contact = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       {/* Contact Form */}
       <section className="py-8">
@@ -81,20 +81,20 @@ const Contact = () => {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Name</Label>
-              <Input placeholder="Your full name" value={name} onChange={(e) => setName(e.target.value)} required className="border border-border bg-card rounded-xl" />
+              <Input placeholder="Your full name" value={name} onChange={(e) => setName(e.target.value)} required className="border bg-card rounded-xl" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</Label>
-              <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="border border-border bg-card rounded-xl" />
+              <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="border bg-card rounded-xl" />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Subject</Label>
-            <Input placeholder="What can we help with?" value={subject} onChange={(e) => setSubject(e.target.value)} required className="border border-border bg-card rounded-xl" />
+            <Input placeholder="What can we help with?" value={subject} onChange={(e) => setSubject(e.target.value)} required className="border bg-card rounded-xl" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Message</Label>
-            <Textarea placeholder="Describe your question or issue in detail..." value={message} onChange={(e) => setMessage(e.target.value)} rows={6} required className="border border-border bg-card rounded-xl resize-none" />
+            <Textarea placeholder="Describe your question or issue in detail..." value={message} onChange={(e) => setMessage(e.target.value)} rows={6} required className="border bg-card rounded-xl resize-none" />
           </div>
           <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={loading}>
             <Send className="mr-2 h-4 w-4" />
@@ -103,7 +103,7 @@ const Contact = () => {
         </form>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       {/* FAQ */}
       <section className="py-8">
@@ -111,7 +111,7 @@ const Contact = () => {
         <h2 className="text-xl font-black mb-5">Frequently asked questions</h2>
         <div className="space-y-3">
           {faqs.map((faq, i) => (
-            <div key={i} className="p-4 rounded bg-card border border-border">
+            <div key={i} className="p-4 rounded bg-card">
               <h3 className="font-bold text-sm mb-1.5">{faq.q}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed font-medium">{faq.a}</p>
             </div>

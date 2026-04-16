@@ -20,7 +20,7 @@ const Privacy = () => {
         </p>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">1. Information We Collect</h2>
@@ -44,7 +44,7 @@ const Privacy = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">2. How We Use Your Data</h2>
@@ -66,7 +66,7 @@ const Privacy = () => {
         </ul>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">3. Data Protection & Encryption</h2>
@@ -81,7 +81,7 @@ const Privacy = () => {
               { title: "Backups", desc: "Geographically redundant encrypted backups" },
               { title: "Auditing", desc: "Regular third-party security audits" },
             ].map((item, i) => (
-              <div key={i} className="p-3 rounded-xl bg-card border border-border">
+              <div key={i} className="p-3 rounded-xl bg-card">
                 <p className="font-bold text-foreground text-xs mb-0.5">{item.title}</p>
                 <p className="text-xs text-muted-foreground">{item.desc}</p>
               </div>
@@ -90,11 +90,11 @@ const Privacy = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">4. What We Don't Do</h2>
-        <div className="p-5 rounded-2xl bg-accent/50 border border-border space-y-2.5">
+        <div className="p-5 rounded-2xl bg-accent/50 space-y-2.5">
           {[
             "We never read or scan your email content for advertising",
             "We never sell, rent, or share your personal data with third parties",
@@ -110,7 +110,7 @@ const Privacy = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">5. Your Rights</h2>
@@ -134,7 +134,7 @@ const Privacy = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">6. Cookies</h2>
@@ -143,7 +143,7 @@ const Privacy = () => {
         </p>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">7. Data Retention</h2>
@@ -152,7 +152,7 @@ const Privacy = () => {
         </p>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">8. Compliance</h2>
@@ -161,7 +161,7 @@ const Privacy = () => {
         </p>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">9. Changes to This Policy</h2>
@@ -170,14 +170,14 @@ const Privacy = () => {
         </p>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">10. Contact Us</h2>
         <p className="text-sm text-muted-foreground leading-relaxed font-medium mb-4">
           If you have questions about this privacy policy or want to exercise your data rights, contact our privacy team:
         </p>
-        <div className="p-4 rounded-xl bg-card border border-border space-y-1">
+        <div className="p-4 rounded-xl bg-card space-y-1">
           <p className="text-sm font-bold">Email: <span className="text-primary">privacy@afuchat.com</span></p>
           <p className="text-sm font-bold">Response time: <span className="text-muted-foreground font-medium">Within 48 hours</span></p>
         </div>

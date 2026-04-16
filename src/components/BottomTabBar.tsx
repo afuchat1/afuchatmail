@@ -17,7 +17,7 @@ export const BottomTabBar = ({ activeTab, onTabChange, unreadCount = 0 }: Bottom
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border shadow-[0_-1px_3px_0_hsl(220_20%_10%/0.05)] safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl shadow-[0_-1px_3px_0_hsl(220_20%_10%/0.05)] safe-area-bottom">
       <div className="flex items-stretch max-w-lg mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;

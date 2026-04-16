@@ -575,13 +575,13 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
   if (loading) {
     return (
       <div className="flex h-full flex-col bg-background">
-        <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
+        <div className="flex items-center justify-between bg-card px-4 py-3">
           <Skeleton className="h-4 w-36" />
           <Skeleton className="h-8 w-20 rounded-xl" />
         </div>
         <div className="space-y-3 p-4">
         {[1, 2, 3, 4, 5, 6].map(i => (
-          <div key={i} className="flex items-start gap-3 rounded border border-border bg-card p-4">
+          <div key={i} className="flex items-start gap-3 rounded bg-card p-4">
             <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
@@ -620,7 +620,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
           <span className="text-xs font-semibold">You're offline — showing cached emails</span>
         </div>
       )}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 bg-card flex-shrink-0">
         <div className="text-xs font-black text-muted-foreground uppercase tracking-wider" data-testid="text-conversation-count">
           {threads.length} conversation{threads.length !== 1 ? 's' : ''}
         </div>
@@ -630,7 +630,7 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
               Actions
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-popover rounded-xl border-border">
+          <DropdownMenuContent align="end" className="bg-popover rounded-xl">
             {hasUnreadEmails && (
               <DropdownMenuItem onClick={handleMarkAllAsRead} className="rounded-lg">
                 <CheckCheck className="h-4 w-4 mr-2" />

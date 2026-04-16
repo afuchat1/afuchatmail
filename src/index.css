@@ -2,9 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* AfuChat Mail — Flat design system (pay.afuchat.com style) */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+/* AfuChat Mail — flat minimal design — Inter loaded in HTML for performance */
 
 @layer base {
   :root {

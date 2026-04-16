@@ -49,12 +49,12 @@ const Security = () => {
       </section>
 
       {/* Core Security Features */}
-      <section className="py-8 border-t border-border">
+      <section className="py-8">
         <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Protection</p>
         <h2 className="text-2xl font-black mb-6">How we protect your data</h2>
         <div className="space-y-5">
           {features.map((f, i) => (
-            <div key={i} className="flex gap-4 items-start p-4 rounded bg-card border border-border">
+            <div key={i} className="flex gap-4 items-start p-4 rounded bg-card">
               <div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
                 <f.icon className="h-5 w-5 text-accent-foreground" />
               </div>
@@ -68,12 +68,12 @@ const Security = () => {
       </section>
 
       {/* Threat Protection */}
-      <section className="py-8 border-t border-border">
+      <section className="py-8">
         <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Threat Defense</p>
         <h2 className="text-2xl font-black mb-6">Active threat protection</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {threats.map((t, i) => (
-            <div key={i} className="p-4 rounded bg-card border border-border">
+            <div key={i} className="p-4 rounded bg-card">
               <div className="flex items-center gap-2 mb-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                 <h3 className="font-bold text-sm">{t.title}</h3>
@@ -85,7 +85,7 @@ const Security = () => {
       </section>
 
       {/* Security Practices */}
-      <section className="py-8 border-t border-border">
+      <section className="py-8">
         <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Standards</p>
         <h2 className="text-2xl font-black mb-6">Our security practices</h2>
         <div className="space-y-3">
@@ -99,7 +99,7 @@ const Security = () => {
       </section>
 
       {/* Compliance */}
-      <section className="py-8 border-t border-border">
+      <section className="py-8">
         <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Compliance</p>
         <h2 className="text-2xl font-black mb-6">Regulatory compliance</h2>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -109,7 +109,7 @@ const Security = () => {
             { title: "SOC 2", desc: "Infrastructure designed to meet SOC 2 Type II standards for security, availability, and confidentiality." },
             { title: "ISO 27001", desc: "Information security management practices aligned with ISO 27001 standards." },
           ].map((item, i) => (
-            <div key={i} className="p-4 rounded bg-card border border-border">
+            <div key={i} className="p-4 rounded bg-card">
               <div className="flex items-center gap-2 mb-2">
                 <ShieldCheck className="h-4 w-4 text-primary" />
                 <h3 className="font-bold text-sm">{item.title}</h3>
@@ -121,8 +121,8 @@ const Security = () => {
       </section>
 
       {/* Report */}
-      <section className="py-8 border-t border-border">
-        <div className="p-5 rounded bg-accent/50 border border-border">
+      <section className="py-8">
+        <div className="p-5 rounded bg-accent/50">
           <h3 className="font-bold mb-2">Report a Vulnerability</h3>
           <p className="text-sm text-muted-foreground font-medium leading-relaxed mb-3">
             If you discover a security vulnerability, please report it responsibly. We take all reports seriously and will respond within 24 hours.
@@ -134,7 +134,7 @@ const Security = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-12 text-center border-t border-border">
+      <section className="py-12 text-center">
         <h2 className="text-2xl font-black mb-3">Start with confidence</h2>
         <p className="text-muted-foreground mb-6 font-medium">Your email, your data, your privacy.</p>
         <Button size="lg" className="rounded-xl font-bold" onClick={() => navigate("/auth")}>

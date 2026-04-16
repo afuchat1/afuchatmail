@@ -69,7 +69,7 @@ export const EmailAddressSwitcher = ({
 
   if (emailAddresses.length === 1 && !showAllInboxes) {
     return (
-      <div className="px-3 py-2.5 mb-3 border border-border rounded-xl bg-card shadow-xs">
+      <div className="px-3 py-2.5 mb-3 rounded-xl bg-card shadow-xs">
         <div className="flex items-center gap-2.5">
           <div className="h-7 w-7 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
             <Mail className="h-3.5 w-3.5 text-accent-foreground" />
@@ -84,7 +84,7 @@ export const EmailAddressSwitcher = ({
     <div className="mb-3">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-full justify-between h-auto py-2.5 px-3 rounded-xl border-border shadow-xs">
+          <Button variant="outline" className="w-full justify-between h-auto py-2.5 px-3 rounded-xl shadow-xs">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <div className="h-7 w-7 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
                 <Mail className="h-3.5 w-3.5 text-accent-foreground" />
@@ -96,7 +96,7 @@ export const EmailAddressSwitcher = ({
             <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[260px] max-h-[60vh] overflow-y-auto rounded-xl shadow-lg border-border">
+        <DropdownMenuContent align="start" className="w-[260px] max-h-[60vh] overflow-y-auto rounded-xl shadow-lg">
           {showAllInboxes && emailAddresses.length > 1 && (
             <DropdownMenuItem onClick={() => onEmailAddressChange("all")} className="cursor-pointer rounded-lg py-2.5">
               <div className="flex items-center justify-between w-full gap-2">

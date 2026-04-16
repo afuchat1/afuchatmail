@@ -289,8 +289,8 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-foreground/40 backdrop-blur-sm">
-      <div className="w-full max-w-3xl bg-card border border-border rounded-t-2xl md:rounded overflow-hidden max-h-[95dvh] md:max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-card">
+      <div className="w-full max-w-3xl bg-card rounded-t-2xl md:rounded overflow-hidden max-h-[95dvh] md:max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+        <div className="flex items-center justify-between px-5 py-3.5 bg-card">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-bold">New Message</h2>
             {aiLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
@@ -323,7 +323,7 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
           <div className="space-y-1.5">
             <Label htmlFor="from" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From</Label>
             <Select value={fromAddress} onValueChange={setFromAddress}>
-              <SelectTrigger id="from" className="w-full rounded-xl border-border">
+              <SelectTrigger id="from" className="w-full rounded-xl">
                 <SelectValue placeholder="Select email address" />
               </SelectTrigger>
               <SelectContent>
@@ -340,25 +340,25 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
               {!showCc && <button onClick={() => setShowCc(true)} className="text-xs text-primary font-semibold">Cc</button>}
               {!showBcc && <button onClick={() => setShowBcc(true)} className="text-xs text-primary font-semibold">Bcc</button>}
             </div>
-            <Input id="to" placeholder="recipient@example.com" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-xl border-border" />
+            <Input id="to" placeholder="recipient@example.com" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-xl" />
           </div>
 
           {showCc && (
             <div className="space-y-1.5">
               <Label htmlFor="cc" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cc</Label>
-              <Input id="cc" placeholder="cc@example.com" value={cc} onChange={(e) => setCc(e.target.value)} className="rounded-xl border-border" />
+              <Input id="cc" placeholder="cc@example.com" value={cc} onChange={(e) => setCc(e.target.value)} className="rounded-xl" />
             </div>
           )}
           {showBcc && (
             <div className="space-y-1.5">
               <Label htmlFor="bcc" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bcc</Label>
-              <Input id="bcc" placeholder="bcc@example.com" value={bcc} onChange={(e) => setBcc(e.target.value)} className="rounded-xl border-border" />
+              <Input id="bcc" placeholder="bcc@example.com" value={bcc} onChange={(e) => setBcc(e.target.value)} className="rounded-xl" />
             </div>
           )}
 
           <div className="space-y-1.5">
             <Label htmlFor="subject" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subject</Label>
-            <Input id="subject" placeholder="Email subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="rounded-xl border-border" />
+            <Input id="subject" placeholder="Email subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="rounded-xl" />
           </div>
 
           <div className="space-y-1.5">
@@ -396,14 +396,14 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
               <Textarea
                 id="body"
                 placeholder="Type your message here..."
-                className="min-h-[200px] resize-none rounded-xl border-border"
+                className="min-h-[200px] resize-none rounded-xl"
                 value={body}
                 onChange={(e) => handleBodyChange(e.target.value)}
               />
               {/* Autocomplete suggestion */}
               {autocompleteText && (
                 <div
-                  className="absolute bottom-2 left-2 right-2 bg-accent/80 backdrop-blur-sm border border-border rounded-xl p-3 cursor-pointer hover:bg-accent transition-colors animate-in fade-in slide-in-from-bottom-2 duration-200"
+                  className="absolute bottom-2 left-2 right-2 bg-accent/80 backdrop-blur-sm rounded-xl p-3 cursor-pointer hover:bg-accent transition-colors animate-in fade-in slide-in-from-bottom-2 duration-200"
                   onClick={acceptAutocomplete}
                 >
                   <div className="flex items-start gap-2">
@@ -451,7 +451,7 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
           )}
         </div>
 
-        <div className="flex items-center justify-between px-5 py-3.5 border-t border-border bg-muted/30 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 bg-muted/30 flex-shrink-0">
           <div className="flex gap-1">
             <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" />
             <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
@@ -479,7 +479,7 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
                     </button>
                   ))}
                 </div>
-                <div className="border-t border-border pt-3">
+                <div className="border-t pt-3">
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Custom</Label>
                   <Input
                     type="datetime-local"

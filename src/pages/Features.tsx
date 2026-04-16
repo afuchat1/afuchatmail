@@ -59,7 +59,7 @@ const Features = () => {
         <h2 className="text-2xl font-black mb-6">The essentials, done right</h2>
         <div className="space-y-4">
           {coreFeatures.map((feature, i) => (
-            <div key={i} className="flex gap-4 items-start p-4 rounded bg-card border border-border">
+            <div key={i} className="flex gap-4 items-start p-4 rounded bg-card">
               <div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
                 <feature.icon className="h-5 w-5 text-accent-foreground" />
               </div>
@@ -73,12 +73,12 @@ const Features = () => {
       </section>
 
       {/* Productivity Features */}
-      <section className="py-10 border-t border-border">
+      <section className="py-10">
         <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Productivity</p>
         <h2 className="text-2xl font-black mb-6">Work smarter, not harder</h2>
         <div className="space-y-4">
           {productivityFeatures.map((feature, i) => (
-            <div key={i} className="flex gap-4 items-start p-4 rounded bg-card border border-border">
+            <div key={i} className="flex gap-4 items-start p-4 rounded bg-card">
               <div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
                 <feature.icon className="h-5 w-5 text-accent-foreground" />
               </div>
@@ -92,12 +92,12 @@ const Features = () => {
       </section>
 
       {/* Advanced Features */}
-      <section className="py-10 border-t border-border">
+      <section className="py-10">
         <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Advanced</p>
         <h2 className="text-2xl font-black mb-6">Power user tools</h2>
         <div className="space-y-4">
           {advancedFeatures.map((feature, i) => (
-            <div key={i} className="flex gap-4 items-start p-4 rounded bg-card border border-border">
+            <div key={i} className="flex gap-4 items-start p-4 rounded bg-card">
               <div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
                 <feature.icon className="h-5 w-5 text-accent-foreground" />
               </div>
@@ -111,10 +111,10 @@ const Features = () => {
       </section>
 
       {/* Comparison */}
-      <section className="py-10 border-t border-border">
+      <section className="py-10">
         <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Comparison</p>
         <h2 className="text-2xl font-black mb-6">How we compare</h2>
-        <div className="rounded border border-border overflow-hidden">
+        <div className="rounded overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -127,7 +127,7 @@ const Features = () => {
               </thead>
               <tbody>
                 {comparison.map((row, i) => (
-                  <tr key={i} className="border-t border-border">
+                  <tr key={i} className="border-t">
                     <td className="px-4 py-3 font-medium">{row.feature}</td>
                     <td className="text-center px-4 py-3">{row.afuchat ? <span className="text-green-500 font-bold">✓</span> : <span className="text-muted-foreground">—</span>}</td>
                     <td className="text-center px-4 py-3">{row.gmail ? <span className="text-green-500 font-bold">✓</span> : <span className="text-muted-foreground">—</span>}</td>
@@ -141,7 +141,7 @@ const Features = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-12 text-center border-t border-border">
+      <section className="py-12 text-center">
         <h2 className="text-2xl font-black mb-3">Ready to try?</h2>
         <p className="text-muted-foreground mb-6 font-medium">All features included. No paywalls. No credit card.</p>
         <Button size="lg" className="rounded-xl font-bold" onClick={() => navigate("/auth")}>

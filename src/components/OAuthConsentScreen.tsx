@@ -349,7 +349,7 @@ const OAuthConsentScreen = ({ oauthParams, userEmail }: OAuthConsentScreenProps)
             <Skeleton className="h-12 w-12 rounded" />
             <Skeleton className="h-5 w-40" />
           </div>
-          <div className="bg-card rounded p-6 space-y-4 border border-border">
+          <div className="bg-card rounded p-6 space-y-4">
             <Skeleton className="h-4 w-3/4 mx-auto" />
             <div className="space-y-3">
               <Skeleton className="h-10 w-full rounded-xl" />

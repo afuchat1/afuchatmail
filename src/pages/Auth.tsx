@@ -136,8 +136,8 @@ const Auth = () => {
       <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:py-20">
         <section className="hidden lg:flex lg:flex-col">
           <div className="max-w-lg">
-            <div className="mb-5 inline-flex items-center gap-2 border border-border bg-secondary px-3 py-1.5 rounded text-xs font-medium text-muted-foreground">
-              <Shield className="h-3.5 w-3.5 text-primary" />
+            <div className="mb-5 inline-flex items-center gap-2 bg-neutral-100 px-3 py-1.5 rounded-full text-xs font-medium text-neutral-500">
+              <Shield className="h-3.5 w-3.5 text-[#0052ff]" />
               Secure access to your workspace
             </div>
             <h1 className="mb-4 text-4xl font-bold leading-tight tracking-tight">
@@ -148,8 +148,8 @@ const Auth = () => {
             </p>
             <div className="grid gap-2">
               {["Private by default", "No ads or tracking", "Fast inbox and alias management"].map((item, index) => (
-                <div key={item} className="flex items-center gap-3 border border-border bg-white p-4 rounded">
-                  <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                <div key={item} className="flex items-center gap-3 bg-neutral-50 p-4 rounded-xl">
+                  <CheckCircle className="h-4 w-4 text-[#0052ff] flex-shrink-0" />
                   <span className="text-sm font-medium" data-testid={`text-auth-benefit-${index}`}>{item}</span>
                 </div>
               ))}
@@ -157,7 +157,7 @@ const Auth = () => {
           </div>
         </section>
 
-        <div className="w-full max-w-md border border-border bg-white p-6 sm:p-8 rounded lg:justify-self-end">
+        <div className="w-full max-w-md bg-neutral-50 p-6 sm:p-8 rounded-2xl lg:justify-self-end">
           <div className="mb-7 flex items-center gap-3">
             <div className="h-9 w-9 rounded bg-primary flex items-center justify-center">
               <Mail className="h-4 w-4 text-primary-foreground" />
@@ -181,7 +181,7 @@ const Auth = () => {
                 <Label htmlFor="fullName" className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Full Name</Label>
                 <Input id="fullName" type="text" placeholder="Your name" value={fullName} onChange={(e) => setFullName(e.target.value)} required
                   autoComplete="name"
-                  className="h-10 border border-border bg-background rounded shadow-none"
+                  className="h-10 rounded"
                   data-testid="input-full-name" />
               </div>
             )}
@@ -189,14 +189,14 @@ const Auth = () => {
               <Label htmlFor="email" className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Email</Label>
               <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required
                 autoComplete="email"
-                className="h-10 border border-border bg-background rounded shadow-none"
+                className="h-10 rounded"
                 data-testid="input-email" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password" className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Password</Label>
               <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
                 autoComplete={isSignUp ? "new-password" : "current-password"}
-                className="h-10 border border-border bg-background rounded shadow-none"
+                className="h-10 rounded"
                 data-testid="input-password" />
             </div>
             <Button type="submit" className="w-full h-10 rounded font-semibold shadow-none" disabled={loading} data-testid="button-auth-submit">

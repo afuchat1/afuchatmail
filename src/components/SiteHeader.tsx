@@ -10,6 +10,14 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
+const LogoIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="40" height="40" rx="8" fill="#0052ff"/>
+    <rect x="9" y="14" width="22" height="14" rx="1.5" stroke="white" strokeWidth="1.5" fill="none"/>
+    <path d="M9 14l11 9 11-9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 const navGroups = [
   {
     label: "Platform",
@@ -45,10 +53,10 @@ export function SiteHeader() {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0a]">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2" data-testid="link-home">
-          <img src="/logo.png" alt="AfuChat Mail" className="h-7 w-7" width={28} height={28} />
+    <header className="sticky top-0 z-50 bg-[#0a0a0a]">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <Link to="/" className="flex items-center gap-2.5" data-testid="link-home">
+          <LogoIcon />
           <span className="text-sm font-semibold text-white tracking-tight">AfuChat Mail</span>
         </Link>
 
@@ -63,23 +71,22 @@ export function SiteHeader() {
                   >
                     {group.label}
                   </NavigationMenuTrigger>
-                  <NavigationMenuContent className="rounded border border-border bg-popover p-1 shadow-md">
-                    <div className="w-60">
-                      <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+                  <NavigationMenuContent className="rounded bg-white p-1">
+                    <div className="w-64">
+                      <p className="px-3 pt-2.5 pb-1.5 text-[10px] uppercase tracking-widest text-neutral-400 font-semibold">
                         {group.label}
                       </p>
-                      <div className="my-1 h-px bg-border" />
                       {group.items.map((item) => (
                         <Link
                           key={item.path}
                           to={item.path}
-                          className="flex items-center gap-2.5 rounded px-3 py-2 hover:bg-accent transition-colors"
+                          className="flex items-center gap-2.5 rounded px-3 py-2 hover:bg-neutral-50 transition-colors"
                           data-testid={`link-nav-${item.label.toLowerCase()}`}
                         >
-                          <item.icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <item.icon className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
                           <span>
-                            <span className="block text-sm font-medium text-foreground">{item.label}</span>
-                            <span className="block text-xs text-muted-foreground">{item.description}</span>
+                            <span className="block text-sm font-medium text-neutral-900">{item.label}</span>
+                            <span className="block text-xs text-neutral-400">{item.description}</span>
                           </span>
                         </Link>
                       ))}
@@ -103,7 +110,7 @@ export function SiteHeader() {
           </Button>
           <Button
             size="sm"
-            className="h-9 rounded px-4 text-sm font-medium bg-white text-[#0a0a0a] hover:bg-white/90 shadow-none"
+            className="h-9 rounded px-4 text-sm font-semibold bg-white text-[#0a0a0a] hover:bg-white/90 shadow-none"
             onClick={() => navigate("/auth")}
             data-testid="button-get-started"
           >
@@ -118,17 +125,17 @@ export function SiteHeader() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[85vw] max-w-sm p-0 bg-[#0a0a0a] border-white/10">
-              <div className="border-b border-white/10 p-5">
-                <SheetTitle className="flex items-center gap-2 text-sm font-semibold text-white">
-                  <img src="/logo.png" alt="AfuChat Mail" className="h-7 w-7" width={28} height={28} />
+            <SheetContent side="right" className="w-[85vw] max-w-sm p-0 bg-[#0a0a0a]">
+              <div className="p-5 pb-4">
+                <SheetTitle className="flex items-center gap-2.5 text-sm font-semibold text-white">
+                  <LogoIcon />
                   AfuChat Mail
                 </SheetTitle>
                 <SheetDescription className="mt-1 text-xs text-white/40">
                   Professional email platform
                 </SheetDescription>
               </div>
-              <div className="space-y-5 p-5">
+              <div className="space-y-5 px-5 pb-5">
                 {navGroups.map((group) => (
                   <div key={group.label}>
                     <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">{group.label}</p>
@@ -148,7 +155,7 @@ export function SiteHeader() {
                     </div>
                   </div>
                 ))}
-                <div className="grid gap-2 border-t border-white/10 pt-5">
+                <div className="grid gap-2 pt-3">
                   <SheetClose asChild>
                     <Button variant="outline" className="h-10 rounded font-medium border-white/20 text-white bg-transparent hover:bg-white/10" onClick={() => navigate("/auth")}>
                       Sign in

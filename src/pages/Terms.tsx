@@ -16,7 +16,7 @@ const Terms = () => {
         </p>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">1. Service Description</h2>
@@ -36,7 +36,7 @@ const Terms = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">2. Account Registration</h2>
@@ -52,7 +52,7 @@ const Terms = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">3. Acceptable Use</h2>
@@ -72,7 +72,7 @@ const Terms = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">4. Email Addresses & Aliases</h2>
@@ -88,7 +88,7 @@ const Terms = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">5. Content Ownership</h2>
@@ -102,7 +102,7 @@ const Terms = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">6. Service Availability</h2>
@@ -116,7 +116,7 @@ const Terms = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">7. API & Developer Access</h2>
@@ -134,7 +134,7 @@ const Terms = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">8. Termination</h2>
@@ -148,7 +148,7 @@ const Terms = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">9. Limitation of Liability</h2>
@@ -162,7 +162,7 @@ const Terms = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">10. Changes to Terms</h2>
@@ -173,14 +173,14 @@ const Terms = () => {
         </div>
       </section>
 
-      <div className="border-t border-border" />
+      <div className="border-t" />
 
       <section className="py-8">
         <h2 className="text-xl font-black mb-4">11. Contact</h2>
         <p className="text-sm text-muted-foreground leading-relaxed font-medium mb-4">
           If you have questions about these Terms, please contact us:
         </p>
-        <div className="p-4 rounded-xl bg-card border border-border space-y-1">
+        <div className="p-4 rounded-xl bg-card space-y-1">
           <p className="text-sm font-bold">Email: <span className="text-primary">legal@afuchat.com</span></p>
           <p className="text-sm font-bold">Response time: <span className="text-muted-foreground font-medium">Within 48 business hours</span></p>
         </div>

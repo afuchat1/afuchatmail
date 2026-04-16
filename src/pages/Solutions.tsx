@@ -44,7 +44,7 @@ const Solutions = () => {
 
       <section className="grid gap-4 md:grid-cols-2">
         {solutions.map((solution, index) => (
-          <article key={solution.title} className="rounded-3xl border border-border bg-background p-6 shadow-xs">
+          <article key={solution.title} className="rounded-3xl bg-background p-6 shadow-xs">
             <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
               <solution.icon className="h-5 w-5" />
             </div>
@@ -52,7 +52,7 @@ const Solutions = () => {
             <p className="mt-3 text-sm font-medium leading-7 text-muted-foreground">{solution.description}</p>
             <div className="mt-5 space-y-2">
               {solution.bullets.map((bullet) => (
-                <div key={bullet} className="rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold">
+                <div key={bullet} className="rounded-xl bg-card px-3 py-2 text-sm font-bold">
                   {bullet}
                 </div>
               ))}
@@ -61,7 +61,7 @@ const Solutions = () => {
         ))}
       </section>
 
-      <section className="mt-10 rounded-3xl border border-border bg-card p-6 text-center">
+      <section className="mt-10 rounded-3xl bg-card p-6 text-center">
         <h2 className="text-2xl font-black">Ready to set up your workspace?</h2>
         <p className="mx-auto mt-3 max-w-xl text-sm font-medium leading-7 text-muted-foreground">
           Start with a free address, then build aliases and workflows around how you actually work.

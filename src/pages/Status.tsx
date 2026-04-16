@@ -18,7 +18,7 @@ const Status = () => {
   return (
     <PageLayout title="Status">
       <section className="pb-10">
-        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-black text-primary">
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-background px-3 py-1.5 text-xs font-black text-primary">
           <CheckCircle className="h-3.5 w-3.5" />
           All systems operational
         </div>
@@ -30,7 +30,7 @@ const Status = () => {
 
       <section className="grid gap-4 md:grid-cols-2">
         {systems.map((system, index) => (
-          <article key={system.name} className="flex items-center justify-between rounded-2xl border border-border bg-background p-5 shadow-xs">
+          <article key={system.name} className="flex items-center justify-between rounded-2xl bg-background p-5 shadow-xs">
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                 <system.icon className="h-5 w-5" />
@@ -47,11 +47,11 @@ const Status = () => {
         ))}
       </section>
 
-      <section className="mt-10 rounded-3xl border border-border bg-background p-6">
+      <section className="mt-10 rounded-3xl bg-background p-6">
         <p className="text-xs font-black uppercase tracking-wider text-primary">Incident history</p>
         <div className="mt-5 space-y-4">
           {incidents.map((incident, index) => (
-            <div key={incident.title} className="flex gap-4 rounded-2xl border border-border bg-card p-4">
+            <div key={incident.title} className="flex gap-4 rounded-2xl bg-card p-4">
               <div className="mt-1 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                 <Clock className="h-4 w-4" />
               </div>

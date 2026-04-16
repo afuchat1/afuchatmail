@@ -48,7 +48,7 @@ const Docs = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-2">
@@ -85,7 +85,7 @@ const Docs = () => {
 
       <div className="max-w-6xl mx-auto flex">
         {/* Sidebar */}
-        <aside className="hidden lg:block w-56 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] border-r border-border overflow-y-auto py-6 px-4">
+        <aside className="hidden lg:block w-56 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto py-6 px-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Documentation</p>
           <nav className="space-y-0.5">
             {SECTIONS.map((s) => {
@@ -107,7 +107,7 @@ const Docs = () => {
             })}
           </nav>
 
-          <div className="mt-8 pt-6 border-t border-border">
+          <div className="mt-8 pt-6">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Resources</p>
             <div className="space-y-0.5 text-[13px]">
               <Link to="/developers" className="block px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50">
@@ -146,7 +146,7 @@ const Docs = () => {
                 { step: 3, title: "Implement OAuth 2.0 flow", desc: "Use the Authorization Code flow to get user consent and obtain access tokens." },
                 { step: 4, title: "Call the API", desc: "Include the access token in your Authorization header and start reading mailbox data." },
               ].map((item) => (
-                <div key={item.step} className="flex gap-4 py-4 border-b border-border last:border-0">
+                <div key={item.step} className="flex gap-4 py-4 last:border-0">
                   <div className="shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary text-[13px] font-bold flex items-center justify-center">
                     {item.step}
                   </div>
@@ -188,19 +188,19 @@ const Docs = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b">
                     <th className="text-left py-2.5 pr-4 font-semibold text-foreground">Token</th>
                     <th className="text-left py-2.5 pr-4 font-semibold text-foreground">Lifetime</th>
                     <th className="text-left py-2.5 font-semibold text-foreground">Usage</th>
                   </tr>
                 </thead>
                 <tbody className="text-muted-foreground">
-                  <tr className="border-b border-border">
+                  <tr className="border-b">
                     <td className="py-2.5 pr-4">Access token</td>
                     <td className="py-2.5 pr-4">1 hour</td>
                     <td className="py-2.5">API requests via Bearer header</td>
                   </tr>
-                  <tr className="border-b border-border">
+                  <tr className="border-b">
                     <td className="py-2.5 pr-4">Refresh token</td>
                     <td className="py-2.5 pr-4">30 days</td>
                     <td className="py-2.5">Exchange for new access token</td>
@@ -233,7 +233,7 @@ const Docs = () => {
                 { method: "GET", path: "/api/mail/message/{id}", desc: "Fetch full email content including body and attachments." },
                 { method: "GET", path: "/api/mail/search", desc: "Search emails. Query params: keyword, sender, date_from, date_to." },
               ].map((ep, i) => (
-                <div key={i} className="flex items-start gap-3 py-4 border-b border-border last:border-0">
+                <div key={i} className="flex items-start gap-3 py-4 last:border-0">
                   <Badge className="shrink-0 text-[11px] font-mono font-bold bg-primary/10 text-primary border-0 hover:bg-primary/10">
                     {ep.method}
                   </Badge>
@@ -259,7 +259,7 @@ const Docs = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b">
                     <th className="text-left py-2.5 pr-4 font-semibold text-foreground">Scope</th>
                     <th className="text-left py-2.5 pr-4 font-semibold text-foreground">Category</th>
                     <th className="text-left py-2.5 font-semibold text-foreground">Description</th>
@@ -277,7 +277,7 @@ const Docs = () => {
                     { id: "write:messages", cat: "Mail Write", desc: "Send emails on behalf of user" },
                     { id: "write:drafts", cat: "Mail Write", desc: "Create, edit, and delete drafts" },
                   ].map((s) => (
-                    <tr key={s.id} className="border-b border-border last:border-0">
+                    <tr key={s.id} className="border-b last:border-0">
                       <td className="py-2.5 pr-4">
                         <code className="text-[12px] px-1.5 py-0.5 bg-muted rounded font-mono">{s.id}</code>
                       </td>
@@ -341,7 +341,7 @@ token={access_token_or_refresh_token}
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b">
                     <th className="text-left py-2.5 pr-4 font-semibold text-foreground">Status</th>
                     <th className="text-left py-2.5 pr-4 font-semibold text-foreground">Error</th>
                     <th className="text-left py-2.5 font-semibold text-foreground">Description</th>
@@ -356,7 +356,7 @@ token={access_token_or_refresh_token}
                     { status: "429", error: "rate_limited", desc: "Too many requests — try again later" },
                     { status: "500", error: "server_error", desc: "Internal error — contact support" },
                   ].map((e) => (
-                    <tr key={e.error} className="border-b border-border last:border-0">
+                    <tr key={e.error} className="border-b last:border-0">
                       <td className="py-2.5 pr-4">
                         <code className="text-[12px] px-1.5 py-0.5 bg-muted rounded font-mono">{e.status}</code>
                       </td>
@@ -377,7 +377,7 @@ token={access_token_or_refresh_token}
           </section>
 
           {/* CTA */}
-          <section className="border border-border rounded-lg p-8 text-center">
+          <section className="border rounded-lg p-8 text-center">
             <h3 className="text-[18px] font-bold text-foreground mb-2">Ready to build on AfuMail?</h3>
             <p className="text-[14px] text-muted-foreground mb-6">
               Create your developer account and register your first OAuth application.
@@ -393,7 +393,7 @@ token={access_token_or_refresh_token}
           </section>
 
           {/* Footer */}
-          <footer className="pt-8 pb-12 border-t border-border text-[12px] text-muted-foreground flex items-center justify-between">
+          <footer className="pt-8 pb-12 text-[12px] text-muted-foreground flex items-center justify-between">
             <span>© {new Date().getFullYear()} AfuChat Mail. All rights reserved.</span>
             <div className="flex items-center gap-4">
               <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
