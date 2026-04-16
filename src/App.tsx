@@ -15,6 +15,7 @@ import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 import Security from "@/pages/Security";
 import Developers from "@/pages/Developers";
+import Docs from "@/pages/Docs";
 import Pricing from "@/pages/Pricing";
 import Solutions from "@/pages/Solutions";
 import HelpCenter from "@/pages/HelpCenter";
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/terms" element={<Terms />} />
             <Route path="/security" element={<Security />} />
             <Route path="/developers" element={<Developers />} />
+            <Route path="/docs" element={<Docs />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/solutions" element={<Solutions />} />
             <Route path="/help" element={<HelpCenter />} />
