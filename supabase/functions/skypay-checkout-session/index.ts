@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 
-const SKY_PAY_CHECKOUT_BASE = "https://pay.afuchat.com/checkout";
+const SKY_PAY_CHECKOUT_BASE = "https://fxdpbbscczpvmblyhnts.supabase.co/functions/v1/sdk/checkout";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -102,24 +102,15 @@ Deno.serve(async (req) => {
     cancelUrl.searchParams.set("payment", "cancelled");
     cancelUrl.searchParams.set("plan", planId);
 
+    // SkyPay hosted checkout only accepts: amount, merchant, seller_id, description, product_id, callback_url
     const checkoutParams = new URLSearchParams({
       amount: String(plan.amount),
-      currency: "UGX",
-      description: plan.description,
       merchant: "AfuChat Mail",
       seller_id: sellerId,
+      description: plan.description,
       product_id: clientReference,
-      reference: clientReference,
-      plan: planId,
-      billing_cycle: "monthly",
       callback_url: callbackUrl.toString(),
-      success_url: callbackUrl.toString(),
-      cancel_url: cancelUrl.toString(),
     });
-
-    if (userEmail) {
-      checkoutParams.set("buyer_email", userEmail);
-    }
 
     return new Response(
       JSON.stringify({
