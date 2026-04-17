@@ -408,6 +408,7 @@ const Dashboard = () => {
     selectedEmailAddressId,
     onEmailAddressChange: setSelectedEmailAddressId,
     userEmail: user?.email,
+    activePlan: activeSubscription?.plan_id,
     onSignOut: handleSignOut,
   };
 

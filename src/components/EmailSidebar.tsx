@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 interface Folder {
   id: string;
@@ -32,6 +33,7 @@ interface EmailSidebarProps {
   selectedEmailAddressId: string | null;
   onEmailAddressChange: (emailAddressId: string) => void;
   userEmail?: string;
+  activePlan?: string | null;
   onSignOut?: () => void;
 }
 
@@ -60,6 +62,7 @@ export const EmailSidebar = ({
   selectedEmailAddressId,
   onEmailAddressChange,
   userEmail,
+  activePlan,
   onSignOut,
 }: EmailSidebarProps) => {
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -178,6 +181,10 @@ export const EmailSidebar = ({
     ? userEmail.slice(0, 2).toUpperCase()
     : "AC";
 
+  const planLabel = activePlan
+    ? `${activePlan.charAt(0).toUpperCase()}${activePlan.slice(1)}`
+    : null;
+
   return (
     <div className="flex flex-col h-full w-[var(--sidebar-width)] bg-card border-r">
       {/* Logo + Account */}
@@ -190,6 +197,11 @@ export const EmailSidebar = ({
               <path d="M9 14l11 9 11-9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <span className="text-sm font-semibold tracking-tight">AfuChat Mail</span>
+            {planLabel && (
+              <Badge className="h-5 rounded-full bg-primary/10 px-2 text-[10px] font-bold text-primary hover:bg-primary/10">
+                {planLabel}
+              </Badge>
+            )}
           </div>
           {userEmail && (
             <DropdownMenu>
@@ -206,7 +218,9 @@ export const EmailSidebar = ({
               <DropdownMenuContent align="end" className="w-52">
                 <div className="px-2 py-1.5">
                   <p className="text-xs font-medium truncate">{userEmail}</p>
-                  <p className="text-[11px] text-muted-foreground">AfuChat Mail</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {planLabel ? `${planLabel} plan active` : "AfuChat Mail"}
+                  </p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/settings")}>
