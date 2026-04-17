@@ -164,7 +164,14 @@ const Dashboard = () => {
     const payment = params.get("payment");
     const status = params.get("status");
     const reference = params.get("reference");
-    const planId = params.get("plan");
+    let planId = params.get("plan");
+
+    // Derive planId from SkyPay product_id (clientReference is "afuchat-{planId}-{uuid}")
+    if (!planId) {
+      const productId = params.get("product_id");
+      const match = productId?.match(/^afuchat-(professional|business)-/);
+      if (match) planId = match[1];
+    }
 
     if (payment === "cancelled" || status === "cancelled") {
       toast({
@@ -180,7 +187,7 @@ const Dashboard = () => {
     if (!reference || !planId) {
       setPaymentConfirmation({
         status: "pending",
-        message: "SkyPay returned you safely, but no payment reference was included. Your plan will activate when the SkyPay webhook arrives.",
+        message: "SkyPay returned you safely, but we couldn't read the payment reference. Open Settings → Billing to check status manually.",
       });
       window.history.replaceState(null, "", "/dashboard");
       return;

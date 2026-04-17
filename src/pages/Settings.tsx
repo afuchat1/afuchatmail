@@ -8,11 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, ArrowLeft, Save, Plus, Trash2, Copy, LogOut, MessageCircle, Link2, Unlink } from "lucide-react";
+import { Mail, ArrowLeft, Save, Plus, Trash2, Copy, LogOut, MessageCircle, Link2, Unlink, CreditCard, Crown, ExternalLink } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 // Templates removed from settings
 import { EmailAddressSwitcher } from "@/components/EmailAddressSwitcher";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { usePlan, PLAN_LIMITS } from "@/hooks/usePlan";
+import { Badge } from "@/components/ui/badge";
 
 interface UserSettings {
   id?: string;
@@ -53,6 +55,10 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { plan, refresh: refreshPlan } = usePlan(user);
+  const planLimits = PLAN_LIMITS[plan.tier];
+  const primaryCount = emails.filter(e => !e.is_alias).length;
+  const atAddressLimit = primaryCount >= planLimits.primaryAddresses;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -228,6 +234,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
             <TabsList className="bg-muted rounded-xl p-1 h-auto inline-flex w-auto min-w-full">
               <TabsTrigger value="preferences" className="rounded-lg data-[state=active]:shadow-sm text-xs font-semibold px-4 py-2 flex-1 whitespace-nowrap">Preferences</TabsTrigger>
               <TabsTrigger value="addresses" className="rounded-lg data-[state=active]:shadow-sm text-xs font-semibold px-4 py-2 flex-1 whitespace-nowrap">Addresses</TabsTrigger>
+              <TabsTrigger value="billing" className="rounded-lg data-[state=active]:shadow-sm text-xs font-semibold px-4 py-2 flex-1 whitespace-nowrap">Billing</TabsTrigger>
             </TabsList>
           </div>
 
@@ -374,23 +381,50 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
           </TabsContent>
 
           <TabsContent value="addresses" className="space-y-5">
+            {/* Plan limit notice */}
+            <div className="bg-card rounded p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Your plan</p>
+                <p className="text-sm font-semibold mt-0.5">{planLimits.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {primaryCount} of {planLimits.primaryAddresses === Infinity ? "∞" : planLimits.primaryAddresses} primary address{planLimits.primaryAddresses === 1 ? "" : "es"} used
+                </p>
+              </div>
+              {atAddressLimit && plan.tier !== "business" && plan.tier !== "admin" && (
+                <Button size="sm" variant="outline" className="rounded-xl" onClick={() => navigate("/pricing")}>
+                  <Crown className="h-3.5 w-3.5 mr-1.5" />
+                  Upgrade
+                </Button>
+              )}
+            </div>
+
             {/* Create New Card */}
             <div className="bg-card rounded p-4">
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">New Address</h2>
-              <form onSubmit={handleCreateEmail} className="space-y-3">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input placeholder="yourname" value={newEmail} onChange={(e) => setNewEmail(e.target.value.toLowerCase())}
-                      pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]" minLength={3} maxLength={30} required
-                      className="pr-28 bg-background rounded-xl" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">@afuchat.com</span>
-                  </div>
-                  <Button type="submit" disabled={creatingEmail} size="icon" className="rounded-xl h-10 w-10">
-                    <Plus className="h-4 w-4" />
-                  </Button>
+              {atAddressLimit ? (
+                <div className="text-sm text-muted-foreground py-2">
+                  You've reached the {planLimits.name} plan limit of {planLimits.primaryAddresses} primary address{planLimits.primaryAddresses === 1 ? "" : "es"}.{" "}
+                  <button onClick={() => navigate("/pricing")} className="text-primary font-semibold hover:underline">
+                    Upgrade your plan
+                  </button>{" "}
+                  to add more.
                 </div>
-                <p className="text-xs text-muted-foreground">3-30 characters, lowercase letters, numbers, dots, hyphens</p>
-              </form>
+              ) : (
+                <form onSubmit={handleCreateEmail} className="space-y-3">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input placeholder="yourname" value={newEmail} onChange={(e) => setNewEmail(e.target.value.toLowerCase())}
+                        pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]" minLength={3} maxLength={30} required
+                        className="pr-28 bg-background rounded-xl" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">@afuchat.com</span>
+                    </div>
+                    <Button type="submit" disabled={creatingEmail} size="icon" className="rounded-xl h-10 w-10">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">3-30 characters, lowercase letters, numbers, dots, hyphens</p>
+                </form>
+              )}
             </div>
 
             {/* Existing Addresses Card */}
@@ -435,6 +469,16 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
             </div>
           </TabsContent>
 
+          <TabsContent value="billing" className="space-y-5">
+            <BillingPanel
+              plan={plan}
+              planLimits={planLimits}
+              userId={user?.id}
+              onRefresh={refreshPlan}
+              onUpgrade={() => navigate("/pricing")}
+            />
+          </TabsContent>
+
         </Tabs>
       </main>
     </div>
@@ -442,3 +486,182 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
 };
 
 export default Settings;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Billing Panel
+// ────────────────────────────────────────────────────────────────────────────
+
+interface PaymentRow {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  plan_id: string | null;
+  skypay_reference_id: string | null;
+  created_at: string;
+}
+
+function BillingPanel({
+  plan,
+  planLimits,
+  userId,
+  onRefresh,
+  onUpgrade,
+}: {
+  plan: ReturnType<typeof usePlan>["plan"];
+  planLimits: typeof PLAN_LIMITS[keyof typeof PLAN_LIMITS];
+  userId: string | undefined;
+  onRefresh: () => void;
+  onUpgrade: () => void;
+}) {
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [checkingPending, setCheckingPending] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const fetchPayments = async () => {
+    if (!userId) return;
+    setLoadingPayments(true);
+    const { data } = await supabase
+      .from("payment_transactions")
+      .select("id,amount,currency,status,plan_id,skypay_reference_id,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setPayments((data as PaymentRow[]) || []);
+    setLoadingPayments(false);
+  };
+
+  useEffect(() => {
+    fetchPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  const checkPending = async (row: PaymentRow) => {
+    if (!row.skypay_reference_id || !row.plan_id) {
+      toast({ title: "No SkyPay reference yet", description: "This payment hasn't been registered with SkyPay yet. Try again in a few seconds." });
+      return;
+    }
+    setCheckingPending(row.id);
+    const { data, error } = await supabase.functions.invoke("skypay-confirm-payment", {
+      body: { reference: row.skypay_reference_id, planId: row.plan_id },
+    });
+    setCheckingPending(null);
+    if (!error && data?.success) {
+      toast({ title: "Payment confirmed", description: "Your plan is now active." });
+      onRefresh();
+      fetchPayments();
+    } else {
+      toast({
+        title: "Still pending",
+        description: data?.error || "SkyPay hasn't confirmed this payment yet.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <>
+      {/* Active plan card */}
+      <div className="bg-card rounded p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current plan</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-lg font-bold">{planLimits.name}</p>
+              {plan.status === "active" && (
+                <Badge variant="secondary" className="text-[10px]">Active</Badge>
+              )}
+              {plan.isAdmin && (
+                <Badge className="text-[10px]">Admin</Badge>
+              )}
+            </div>
+            {plan.currentPeriodEnd && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Renews on {new Date(plan.currentPeriodEnd).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+          {plan.tier !== "business" && plan.tier !== "admin" && (
+            <Button size="sm" className="rounded-xl" onClick={onUpgrade}>
+              <Crown className="h-3.5 w-3.5 mr-1.5" />
+              Upgrade
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center mt-4">
+          <div className="bg-muted/40 rounded-lg p-2">
+            <p className="text-[10px] uppercase text-muted-foreground font-semibold">Addresses</p>
+            <p className="text-sm font-bold mt-0.5">
+              {planLimits.primaryAddresses === Infinity ? "∞" : planLimits.primaryAddresses}
+            </p>
+          </div>
+          <div className="bg-muted/40 rounded-lg p-2">
+            <p className="text-[10px] uppercase text-muted-foreground font-semibold">Custom domain</p>
+            <p className="text-sm font-bold mt-0.5">{planLimits.customDomain ? "Yes" : "—"}</p>
+          </div>
+          <div className="bg-muted/40 rounded-lg p-2">
+            <p className="text-[10px] uppercase text-muted-foreground font-semibold">OAuth API</p>
+            <p className="text-sm font-bold mt-0.5">{planLimits.oauthApi ? "Yes" : "—"}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment history */}
+      <div className="bg-card rounded p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Payment history</h2>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={fetchPayments}>
+            Refresh
+          </Button>
+        </div>
+        {loadingPayments ? (
+          <p className="text-xs text-muted-foreground py-4 text-center">Loading…</p>
+        ) : payments.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-4 text-center">No payments yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {payments.map((row) => (
+              <div key={row.id} className="flex items-center justify-between border rounded-lg px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">
+                    {row.plan_id ? row.plan_id.charAt(0).toUpperCase() + row.plan_id.slice(1) : "Payment"} ·{" "}
+                    {row.currency} {row.amount.toLocaleString()}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(row.created_at).toLocaleString()}
+                    {row.skypay_reference_id && <> · <span className="font-mono">{row.skypay_reference_id.slice(0, 12)}…</span></>}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge
+                    variant={row.status === "completed" ? "default" : row.status === "failed" ? "destructive" : "secondary"}
+                    className="text-[10px] capitalize"
+                  >
+                    {row.status}
+                  </Badge>
+                  {row.status === "pending" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      disabled={checkingPending === row.id}
+                      onClick={() => checkPending(row)}
+                    >
+                      {checkingPending === row.id ? "Checking…" : "Check"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <Button variant="outline" size="sm" className="w-full mt-4 rounded-xl" onClick={onUpgrade}>
+          <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+          View pricing plans
+          <ExternalLink className="h-3 w-3 ml-1.5" />
+        </Button>
+      </div>
+    </>
+  );
+}

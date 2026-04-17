@@ -738,6 +738,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_trash_emails: { Args: never; Returns: undefined }
+      get_user_plan: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
