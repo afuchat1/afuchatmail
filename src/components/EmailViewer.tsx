@@ -141,7 +141,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
       if (error) throw error;
       
       // Cast attachments to proper type
-      const typedEmails = ((data || []) as Email[]).map(normalizeEmail);
+      const typedEmails = ((data || []) as unknown as Email[]).map(normalizeEmail);
       
       setThreadEmails(typedEmails.length > 0 ? typedEmails : [normalizeEmail(email)]);
     } catch (error: any) {
