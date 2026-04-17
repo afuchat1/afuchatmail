@@ -418,6 +418,57 @@ export type Database = {
           },
         ]
       }
+      payment_transactions: {
+        Row: {
+          amount: number
+          buyer_email: string | null
+          client_reference: string | null
+          created_at: string
+          currency: string
+          id: string
+          method: string | null
+          plan_id: string | null
+          raw_payload: Json
+          seller_id: string | null
+          skypay_reference_id: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          buyer_email?: string | null
+          client_reference?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          method?: string | null
+          plan_id?: string | null
+          raw_payload?: Json
+          seller_id?: string | null
+          skypay_reference_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          buyer_email?: string | null
+          client_reference?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          method?: string | null
+          plan_id?: string | null
+          raw_payload?: Json
+          seller_id?: string | null
+          skypay_reference_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ban_reason: string | null
@@ -477,6 +528,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string
+          id: string
+          plan_id: string
+          skypay_reference_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string
+          id?: string
+          plan_id: string
+          skypay_reference_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string
+          id?: string
+          plan_id?: string
+          skypay_reference_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_skypay_reference_id_fkey"
+            columns: ["skypay_reference_id"]
+            isOneToOne: true
+            referencedRelation: "payment_transactions"
+            referencedColumns: ["skypay_reference_id"]
+          },
+        ]
       }
       telegram_links: {
         Row: {
