@@ -8,7 +8,7 @@ export default defineConfig(() => ({
   server: {
     host: "::",
     port: 5000,
-    allowedHosts: true,
+    allowedHosts: true as const,
     watch: {
       ignored: ["**/.local/**"],
     },

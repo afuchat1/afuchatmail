@@ -170,12 +170,8 @@ const Auth = () => {
   if (isOAuthFlow && isAuthenticated && oauthParams) {
     return (
       <OAuthConsentScreen
-        clientId={oauthParams.clientId}
-        redirectUri={oauthParams.redirectUri}
-        scope={oauthParams.scope}
-        state={oauthParams.state}
-        responseType={oauthParams.responseType}
-        userEmail={userEmail}
+        oauthParams={oauthParams}
+        userEmail={userEmail ?? ""}
       />
     );
   }
