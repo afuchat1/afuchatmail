@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText, Clock, ChevronDown, ChevronUp, Undo2, Sparkles, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Reply, Star, Trash2, Download, Paperclip, FileText, Clock, ChevronDown, ChevronUp, Undo2, Sparkles, Loader2, Lock } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -410,14 +410,15 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
         onSnooze={onBack}
       />
 
-      <div className="flex-1 overflow-y-auto p-5 scroll-smooth-ios">
-        <h1 className="text-xl font-bold mb-5">{email.subject}</h1>
-        
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 scroll-smooth-ios">
+        <h1 className="text-2xl font-semibold mb-6 leading-tight">{email.subject}</h1>
+
         {/* Thread conversation view */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {threadEmails.map((threadEmail, index) => {
             const isExpanded = expandedEmails.has(threadEmail.id);
             const isLastEmail = index === threadEmails.length - 1;
+            const isOnlyEmail = threadEmails.length === 1;
             const { name: senderName, email: senderEmail } = parseFromAddress(threadEmail.from_address);
             const avatarColor = avatarColorFor(senderEmail || senderName || threadEmail.id);
             const initial = initialFor(senderName, senderEmail);
@@ -425,16 +426,21 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
             const senderDomain = (senderEmail.split("@")[1] || "").toLowerCase();
 
             return (
-              <div 
-                key={threadEmail.id} 
+              <div
+                key={threadEmail.id}
                 className={cn(
-                  "border rounded transition-all bg-card",
-                  isExpanded ? "shadow-md" : "shadow-xs cursor-pointer"
+                  "transition-all bg-card",
+                  isOnlyEmail
+                    ? ""
+                    : cn("border rounded", isExpanded ? "shadow-md" : "shadow-xs cursor-pointer")
                 )}
               >
                 {/* Email header */}
-                <div 
-                  className="p-4 flex items-start justify-between gap-4"
+                <div
+                  className={cn(
+                    "flex items-start justify-between gap-4",
+                    isOnlyEmail ? "py-2" : "p-4"
+                  )}
                   onClick={() => !isExpanded && toggleEmailExpanded(threadEmail.id)}
                 >
                   <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -583,8 +589,8 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
 
                 {/* Expanded email body */}
                 {isExpanded && (
-                  <div className="px-4 pb-4">
-                    <div className="border-t mb-4" />
+                  <div className={cn(isOnlyEmail ? "" : "px-4 pb-4")}>
+                    {!isOnlyEmail && <div className="border-t mb-4" />}
                     <div className="email-body mb-4">
                       <EmailBodyFrame
                         html={threadEmail.body_html}
@@ -632,7 +638,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
 
                     {/* Smart replies + Reply button for last email in thread */}
                     {isLastEmail && (
-                      <div className="mt-4 pt-4 border-t space-y-3">
+                      <div className="mt-6 pt-4 space-y-3">
                         {/* Smart Reply Chips */}
                         {smartReplies.length > 0 && (
                           <div className="flex flex-wrap gap-2">
@@ -647,10 +653,24 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                             ))}
                           </div>
                         )}
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => onReply()}>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-full px-5"
+                            onClick={() => onReply()}
+                          >
                             <Reply className="h-4 w-4 mr-2" />
                             Reply
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-full px-5"
+                            onClick={() => onReply(`\n\n---------- Forwarded message ----------\nFrom: ${threadEmail.from_address}\nDate: ${format(sentDate, "PPpp")}\nSubject: ${threadEmail.subject}\nTo: ${threadEmail.to_addresses?.join(", ") || ""}\n\n${threadEmail.body_text || ""}`)}
+                          >
+                            <ArrowRight className="h-4 w-4 mr-2" />
+                            Forward
                           </Button>
                           {smartReplies.length === 0 && (
                             <Button
