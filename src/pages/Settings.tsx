@@ -250,7 +250,86 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
     }
   };
 
-  return (
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, avatar_url")
+      .eq("id", userId)
+      .maybeSingle();
+    if (data) {
+      setProfileName((data as any).full_name ?? "");
+      setAvatarUrl((data as any).avatar_url ?? null);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ full_name: profileName.trim() })
+        .eq("id", user.id);
+      if (error) throw error;
+      toast({ title: "Profile updated" });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Couldn't save", description: err.message });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleAvatarUpload = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ variant: "destructive", title: "Pick an image file" });
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "Image too large", description: "Max 4 MB." });
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, cacheControl: "3600", contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+      const newUrl = pub.publicUrl;
+      const { error: dbErr } = await supabase
+        .from("profiles")
+        .update({ avatar_url: newUrl })
+        .eq("id", user.id);
+      if (dbErr) throw dbErr;
+      setAvatarUrl(newUrl);
+      toast({ title: "Profile picture updated" });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Upload failed", description: err.message });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user) return;
+    setUploadingAvatar(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: null })
+        .eq("id", user.id);
+      if (error) throw error;
+      setAvatarUrl(null);
+      toast({ title: "Profile picture removed" });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Couldn't remove", description: err.message });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
     <div className={embedded ? "h-full" : "min-h-screen bg-background"}>
       {!embedded && (
         <header className="sticky top-0 z-10 bg-card/80 backdrop-blur-xl">
