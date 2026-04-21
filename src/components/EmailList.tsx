@@ -26,6 +26,8 @@ interface Email {
   from_address: string;
   to_addresses: string[];
   cc_addresses?: string[] | null;
+  bcc_addresses?: string[] | null;
+  reply_to?: string | null;
   subject: string;
   body_html: string;
   body_text: string;
