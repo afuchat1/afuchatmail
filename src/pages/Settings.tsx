@@ -366,6 +366,75 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
           </div>
 
           <TabsContent value="preferences" className="space-y-5">
+            {/* Profile Card — avatar + name */}
+            <div className="bg-card rounded p-4">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Profile</h2>
+              <div className="flex items-start gap-4">
+                <div className="relative shrink-0">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={profileName || user?.email || "Profile"}
+                      className="h-16 w-16 rounded-full object-cover border border-border"
+                    />
+                  ) : (
+                    <div
+                      className="h-16 w-16 rounded-full flex items-center justify-center text-white font-semibold text-lg select-none"
+                      style={{ backgroundColor: avatarColor(user?.id ?? user?.email ?? "u") }}
+                      aria-hidden
+                    >
+                      {initials(profileName, user?.email)}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={uploadingAvatar}
+                    className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow hover:bg-primary/90 disabled:opacity-50"
+                    aria-label="Change profile picture"
+                  >
+                    {uploadingAvatar ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                  </button>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleAvatarUpload(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="profileName" className="text-xs font-medium">Display name</Label>
+                    <Input
+                      id="profileName"
+                      type="text"
+                      placeholder="Your name"
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      maxLength={80}
+                      className="h-9 rounded text-sm"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" className="h-8 rounded-lg text-xs" onClick={handleSaveProfile} disabled={savingProfile}>
+                      {savingProfile ? "Saving…" : "Save"}
+                    </Button>
+                    {avatarUrl && (
+                      <Button size="sm" variant="outline" className="h-8 rounded-lg text-xs" onClick={handleRemoveAvatar} disabled={uploadingAvatar}>
+                        Remove picture
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Account Card */}
             <div className="bg-card rounded p-4">
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Account</h2>
