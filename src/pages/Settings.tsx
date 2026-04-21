@@ -63,6 +63,9 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   const [linkingTelegram, setLinkingTelegram] = useState(false);
   const [telegramLinked, setTelegramLinked] = useState(false);
   const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { plan, refresh: refreshPlan } = usePlan(user);
