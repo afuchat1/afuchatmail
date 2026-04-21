@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Eye, EyeOff } from "lucide-react";
+import { Mail, Eye, EyeOff, AtSign, Check, X, Loader2 } from "lucide-react";
 import OAuthConsentScreen from "@/components/OAuthConsentScreen";
 
 const LogoIcon = () => (
@@ -25,10 +25,16 @@ interface OAuthParams {
 }
 
 const VALID_SCOPES = ["openid", "profile", "email", "read:mailbox", "read:messages", "read:folders", "search:messages", "write:messages", "write:drafts"];
+const MAIL_DOMAIN = "afuchat.com";
+const USERNAME_RE = /^[a-z0-9](?:[a-z0-9._-]{1,28}[a-z0-9])?$/;
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState("");
+  // Sign-in uses the @afuchat.com address (or local-part — we append the domain)
+  const [signInId, setSignInId] = useState("");
+  // Sign-up takes a username only — that becomes username@afuchat.com
+  const [username, setUsername] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -54,35 +60,16 @@ const Auth = () => {
       }
     : null;
 
-  const fetchOrCreateEmailAddress = async (userId: string, authEmail: string | undefined) => {
-    const { data: emailAddress } = await supabase
+  // Resolve any existing primary mailbox for the signed-in user (used for OAuth consent screen).
+  const fetchPrimaryAddress = async (userId: string, fallbackEmail: string | undefined) => {
+    const { data } = await supabase
       .from("email_addresses")
       .select("full_email, local_part")
       .eq("user_id", userId)
       .eq("is_primary", true)
       .maybeSingle();
-    if (emailAddress) return emailAddress.full_email || `${emailAddress.local_part}@afuchat.com`;
-    if (!authEmail) return null;
-    const baseUsername = authEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
-    let username = baseUsername;
-    let suffix = 1;
-    while (true) {
-      const { data: existing } = await supabase
-        .from("email_addresses")
-        .select("id")
-        .eq("local_part", username)
-        .maybeSingle();
-      if (!existing) break;
-      username = `${baseUsername}${suffix}`;
-      suffix++;
-    }
-    const { data: newEmail, error: createError } = await supabase
-      .from("email_addresses")
-      .insert({ user_id: userId, local_part: username, is_primary: true, is_alias: false })
-      .select("local_part")
-      .single();
-    if (createError || !newEmail) return authEmail;
-    return `${newEmail.local_part}@afuchat.com`;
+    if (data) return data.full_email || `${data.local_part}@${MAIL_DOMAIN}`;
+    return fallbackEmail ?? null;
   };
 
   useEffect(() => {
@@ -92,7 +79,7 @@ const Auth = () => {
         setIsAuthenticated(true);
         if (isOAuthFlow) {
           setPreparingOAuth(true);
-          const em = await fetchOrCreateEmailAddress(session.user.id, session.user.email);
+          const em = await fetchPrimaryAddress(session.user.id, session.user.email);
           setUserEmail(em);
           setPreparingOAuth(false);
         } else {
@@ -108,7 +95,7 @@ const Auth = () => {
         if (isOAuthFlow) {
           setPreparingOAuth(true);
           setTimeout(async () => {
-            const em = await fetchOrCreateEmailAddress(session.user.id, session.user.email);
+            const em = await fetchPrimaryAddress(session.user.id, session.user.email);
             setUserEmail(em);
             setPreparingOAuth(false);
           }, 0);
@@ -123,24 +110,81 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate, isOAuthFlow]);
 
+  // Live username availability check while typing (sign-up only)
+  useEffect(() => {
+    if (!isSignUp) return;
+    const u = username.trim().toLowerCase();
+    if (!u) { setUsernameStatus("idle"); return; }
+    if (!USERNAME_RE.test(u)) { setUsernameStatus("invalid"); return; }
+    setUsernameStatus("checking");
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from("email_addresses")
+        .select("id")
+        .eq("local_part", u)
+        .maybeSingle();
+      setUsernameStatus(data ? "taken" : "available");
+    }, 350);
+    return () => clearTimeout(t);
+  }, [username, isSignUp]);
+
+  // Normalize a sign-in identifier to a full email. Accepts "jane" or "jane@afuchat.com".
+  const resolveSignInEmail = (id: string) => {
+    const v = id.trim().toLowerCase();
+    if (!v) return "";
+    if (v.includes("@")) return v;
+    return `${v}@${MAIL_DOMAIN}`;
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
+        const u = username.trim().toLowerCase();
+        if (!USERNAME_RE.test(u)) {
+          throw new Error("Username must be 2-30 chars: lowercase letters, numbers, dot, hyphen.");
+        }
+        if (usernameStatus === "taken") {
+          throw new Error("That username is already taken. Try another.");
+        }
+        const newEmail = `${u}@${MAIL_DOMAIN}`;
+
+        const { data: signUpData, error } = await supabase.auth.signUp({
+          email: newEmail,
           password,
           options: {
             emailRedirectTo: isOAuthFlow
               ? `${window.location.origin}/auth?${searchParams.toString()}`
               : `${window.location.origin}/dashboard`,
-            data: { full_name: fullName },
+            data: { full_name: fullName, username: u },
           },
         });
         if (error) throw error;
-        toast({ title: "Account created!", description: "Check your email to verify your account." });
+
+        // Reserve the mailbox immediately so nobody else can claim the local_part,
+        // even before email confirmation. RLS allows this only for auth.uid() === user_id,
+        // which is satisfied when signUp returns a session (auto-confirm) — otherwise we
+        // skip and let the post-confirm flow create it.
+        if (signUpData.session && signUpData.user) {
+          await supabase
+            .from("email_addresses")
+            .insert({
+              user_id: signUpData.user.id,
+              local_part: u,
+              full_email: newEmail,
+              is_primary: true,
+              is_alias: false,
+            });
+        }
+
+        toast({
+          title: "Account created",
+          description: `Your AfuChat Mail address is ${newEmail}. Check your inbox to verify.`,
+        });
       } else {
+        const email = resolveSignInEmail(signInId);
+        if (!email) throw new Error("Enter your AfuChat Mail address or username.");
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast({ title: "Welcome back!" });
@@ -176,6 +220,8 @@ const Auth = () => {
     );
   }
 
+  const usernamePreview = username.trim().toLowerCase();
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left: Form */}
@@ -189,12 +235,12 @@ const Auth = () => {
 
           <div className="mb-6">
             <h1 className="text-2xl font-bold tracking-tight mb-1">
-              {isSignUp ? "Create your account" : "Sign in to your account"}
+              {isSignUp ? "Create your AfuChat Mail address" : "Sign in to AfuChat Mail"}
             </h1>
             <p className="text-sm text-muted-foreground">
               {isSignUp
-                ? "Get a free @afuchat.com email address"
-                : "Access your AfuChat Mail inbox"}
+                ? `Pick a username — it becomes your @${MAIL_DOMAIN} email.`
+                : `Use your @${MAIL_DOMAIN} address or just your username.`}
             </p>
           </div>
 
@@ -214,23 +260,64 @@ const Auth = () => {
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  className="pl-9 h-10 rounded text-sm"
-                  autoComplete="email"
-                  autoFocus
-                />
+            {isSignUp ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="username" className="text-sm font-medium">Choose your address</Label>
+                <div className="relative">
+                  <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="yourname"
+                    value={username}
+                    onChange={e => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ""))}
+                    required
+                    minLength={2}
+                    maxLength={30}
+                    className="pl-9 pr-32 h-10 rounded text-sm"
+                    autoComplete="username"
+                    autoFocus
+                    spellCheck={false}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium pointer-events-none">
+                    @{MAIL_DOMAIN}
+                  </span>
+                </div>
+                <div className="min-h-[18px] flex items-center gap-1.5 text-xs">
+                  {usernameStatus === "checking" && (
+                    <><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /><span className="text-muted-foreground">Checking…</span></>
+                  )}
+                  {usernameStatus === "available" && usernamePreview && (
+                    <><Check className="h-3 w-3 text-green-600" /><span className="text-green-600 font-medium">{usernamePreview}@{MAIL_DOMAIN} is available</span></>
+                  )}
+                  {usernameStatus === "taken" && (
+                    <><X className="h-3 w-3 text-destructive" /><span className="text-destructive">That address is already taken</span></>
+                  )}
+                  {usernameStatus === "invalid" && (
+                    <><X className="h-3 w-3 text-destructive" /><span className="text-destructive">Use lowercase letters, numbers, dot, hyphen (2–30)</span></>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="signInId" className="text-sm font-medium">Email or username</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="signInId"
+                    type="text"
+                    placeholder={`yourname or yourname@${MAIL_DOMAIN}`}
+                    value={signInId}
+                    onChange={e => setSignInId(e.target.value)}
+                    required
+                    className="pl-9 h-10 rounded text-sm"
+                    autoComplete="username"
+                    autoFocus
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="password" className="text-sm font-medium">Password</Label>
@@ -260,11 +347,11 @@ const Auth = () => {
             <Button
               type="submit"
               className="w-full h-10 rounded font-semibold shadow-none mt-2"
-              disabled={loading}
+              disabled={loading || (isSignUp && (usernameStatus === "taken" || usernameStatus === "invalid" || usernameStatus === "checking"))}
             >
               {loading
                 ? (isSignUp ? "Creating account…" : "Signing in…")
-                : (isSignUp ? "Create account" : "Sign in")}
+                : (isSignUp ? "Create my address" : "Sign in")}
             </Button>
           </form>
 
@@ -294,7 +381,7 @@ const Auth = () => {
         <div>
           <div className="inline-flex items-center gap-2 bg-white/8 rounded-full px-3 py-1.5 mb-8">
             <span className="h-1.5 w-1.5 rounded-full bg-[#0052ff]" />
-            <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Professional Email</span>
+            <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Your own @afuchat.com</span>
           </div>
 
           <h2 className="text-3xl font-bold text-white leading-tight mb-4">
@@ -302,17 +389,17 @@ const Auth = () => {
             <span className="text-[#0052ff]">professionals.</span>
           </h2>
           <p className="text-sm text-white/40 leading-relaxed">
-            Get a free @afuchat.com address with AI-powered features, threaded conversations, and real-time notifications.
+            Sign up with a username and instantly own <span className="text-white/70">yourname@{MAIL_DOMAIN}</span>. Send and receive mail like Gmail or Yahoo — only better.
           </p>
         </div>
 
         <div className="space-y-4">
           {[
-            { title: "Smart AI assist", desc: "Auto-complete, smart replies, and writing improvements" },
+            { title: "Pick your address", desc: "Your username is your real, sendable email" },
+            { title: "Smart AI assist", desc: "Auto-complete, smart replies, writing improvements" },
             { title: "Threaded conversations", desc: "Group related emails automatically for context" },
             { title: "Scheduled send", desc: "Write now, deliver at the perfect time" },
             { title: "Real-time notifications", desc: "Push alerts on all devices instantly" },
-            { title: "Multiple aliases", desc: "Different addresses for work, personal, and projects" },
           ].map(item => (
             <div key={item.title} className="flex items-start gap-3">
               <div className="h-5 w-5 rounded-full bg-[#0052ff]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
