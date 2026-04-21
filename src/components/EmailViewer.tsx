@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText, Clock, ChevronDown, ChevronUp, Undo2, Sparkles, Loader2 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ArrowLeft, Reply, Star, Trash2, Download, Paperclip, FileText, Clock, ChevronDown, ChevronUp, Undo2, Sparkles, Loader2, Lock } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
@@ -20,6 +21,9 @@ interface Email {
   id: string;
   from_address: string;
   to_addresses: string[];
+  cc_addresses?: string[] | null;
+  bcc_addresses?: string[] | null;
+  reply_to?: string | null;
   subject: string;
   body_html: string;
   body_text: string;
@@ -429,13 +433,8 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
             const { name: senderName, email: senderEmail } = parseFromAddress(threadEmail.from_address);
             const avatarColor = avatarColorFor(senderEmail || senderName || threadEmail.id);
             const initial = initialFor(senderName, senderEmail);
-            const showRecipients = (e: React.MouseEvent) => {
-              e.stopPropagation();
-              toast({
-                title: "Recipients",
-                description: threadEmail.to_addresses.join(", ") || "—",
-              });
-            };
+            const sentDate = new Date(threadEmail.sent_at || threadEmail.received_at);
+            const senderDomain = (senderEmail.split("@")[1] || "").toLowerCase();
 
             return (
               <div 
@@ -466,14 +465,94 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                               <span className="text-muted-foreground"> &lt;{senderEmail}&gt;</span>
                             )}
                           </p>
-                          <button
-                            type="button"
-                            onClick={showRecipients}
-                            className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            to me
-                            <ChevronDown className="h-3 w-3" />
-                          </button>
+                          <Popover>
+                            <PopoverTrigger
+                              asChild
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                to me
+                                <ChevronDown className="h-3 w-3" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              align="start"
+                              side="bottom"
+                              sideOffset={6}
+                              className="w-[360px] p-3 text-xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <dl className="grid grid-cols-[80px_1fr] gap-y-1.5 gap-x-3">
+                                <dt className="text-right text-muted-foreground">from:</dt>
+                                <dd className="text-foreground break-all">
+                                  {senderName ? (
+                                    <>
+                                      <span className="font-semibold">{senderName}</span>
+                                      {senderEmail && <span className="text-muted-foreground"> &lt;{senderEmail}&gt;</span>}
+                                    </>
+                                  ) : (
+                                    senderEmail
+                                  )}
+                                </dd>
+
+                                {threadEmail.reply_to && (
+                                  <>
+                                    <dt className="text-right text-muted-foreground">reply-to:</dt>
+                                    <dd className="text-foreground break-all">{threadEmail.reply_to}</dd>
+                                  </>
+                                )}
+
+                                <dt className="text-right text-muted-foreground">to:</dt>
+                                <dd className="text-foreground break-all">
+                                  {threadEmail.to_addresses?.join(", ") || "—"}
+                                </dd>
+
+                                {threadEmail.cc_addresses && threadEmail.cc_addresses.length > 0 && (
+                                  <>
+                                    <dt className="text-right text-muted-foreground">cc:</dt>
+                                    <dd className="text-foreground break-all">
+                                      {threadEmail.cc_addresses.join(", ")}
+                                    </dd>
+                                  </>
+                                )}
+
+                                {threadEmail.bcc_addresses && threadEmail.bcc_addresses.length > 0 && (
+                                  <>
+                                    <dt className="text-right text-muted-foreground">bcc:</dt>
+                                    <dd className="text-foreground break-all">
+                                      {threadEmail.bcc_addresses.join(", ")}
+                                    </dd>
+                                  </>
+                                )}
+
+                                <dt className="text-right text-muted-foreground">date:</dt>
+                                <dd className="text-foreground">
+                                  {format(sentDate, "MMM d, yyyy, h:mm a")}
+                                </dd>
+
+                                <dt className="text-right text-muted-foreground">subject:</dt>
+                                <dd className="text-foreground break-words">{threadEmail.subject || "—"}</dd>
+
+                                {senderDomain && (
+                                  <>
+                                    <dt className="text-right text-muted-foreground">mailed-by:</dt>
+                                    <dd className="text-foreground break-all">{senderDomain}</dd>
+                                    <dt className="text-right text-muted-foreground">signed-by:</dt>
+                                    <dd className="text-foreground break-all">{senderDomain}</dd>
+                                  </>
+                                )}
+
+                                <dt className="text-right text-muted-foreground">security:</dt>
+                                <dd className="text-foreground flex items-center gap-1.5">
+                                  <Lock className="h-3 w-3" />
+                                  Standard encryption (TLS)
+                                </dd>
+                              </dl>
+                            </PopoverContent>
+                          </Popover>
                         </>
                       ) : (
                         <>
