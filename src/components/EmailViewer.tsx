@@ -69,6 +69,35 @@ const normalizeEmail = (value: Email): Email => ({
   attachments: normalizeAttachments(value.attachments),
 });
 
+const parseFromAddress = (raw: string): { name: string; email: string } => {
+  if (!raw) return { name: "", email: "" };
+  const match = raw.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  if (match) {
+    return { name: match[1].trim(), email: match[2].trim() };
+  }
+  const email = raw.trim();
+  const local = email.split("@")[0] || email;
+  return { name: local, email };
+};
+
+const avatarColorFor = (key: string) => {
+  const palette = [
+    "bg-sky-100 text-sky-600",
+    "bg-emerald-100 text-emerald-600",
+    "bg-violet-100 text-violet-600",
+    "bg-amber-100 text-amber-600",
+    "bg-rose-100 text-rose-600",
+    "bg-indigo-100 text-indigo-600",
+    "bg-teal-100 text-teal-600",
+  ];
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return palette[hash % palette.length];
+};
+
+const initialFor = (name: string, email: string) =>
+  (name?.trim()?.[0] || email?.trim()?.[0] || "?").toUpperCase();
+
 const sanitizeEmailHtml = (html: string) =>
   DOMPurify.sanitize(html, {
     ADD_ATTR: ["target"],
@@ -397,7 +426,17 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
           {threadEmails.map((threadEmail, index) => {
             const isExpanded = expandedEmails.has(threadEmail.id);
             const isLastEmail = index === threadEmails.length - 1;
-            
+            const { name: senderName, email: senderEmail } = parseFromAddress(threadEmail.from_address);
+            const avatarColor = avatarColorFor(senderEmail || senderName || threadEmail.id);
+            const initial = initialFor(senderName, senderEmail);
+            const showRecipients = (e: React.MouseEvent) => {
+              e.stopPropagation();
+              toast({
+                title: "Recipients",
+                description: threadEmail.to_addresses.join(", ") || "—",
+              });
+            };
+
             return (
               <div 
                 key={threadEmail.id} 
@@ -411,24 +450,45 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                   className="p-4 flex items-start justify-between gap-4"
                   onClick={() => !isExpanded && toggleEmailExpanded(threadEmail.id)}
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold truncate">{threadEmail.from_address}</p>
-                      {!isExpanded && (
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(threadEmail.sent_at || threadEmail.received_at), { addSuffix: true })}
-                        </span>
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className={cn(
+                      "h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm",
+                      avatarColor
+                    )}>
+                      {initial}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {isExpanded ? (
+                        <>
+                          <p className="text-sm leading-snug truncate">
+                            <span className="font-semibold text-foreground">{senderName || senderEmail}</span>
+                            {senderEmail && senderName !== senderEmail && (
+                              <span className="text-muted-foreground"> &lt;{senderEmail}&gt;</span>
+                            )}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={showRecipients}
+                            className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            to me
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className="font-semibold truncate text-sm">{senderName || senderEmail}</p>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {formatDistanceToNow(new Date(threadEmail.sent_at || threadEmail.received_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {threadEmail.body_text?.substring(0, 100)}...
+                          </p>
+                        </>
                       )}
                     </div>
-                    {isExpanded ? (
-                      <p className="text-sm text-muted-foreground">
-                        to {threadEmail.to_addresses.join(", ")}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground truncate">
-                        {threadEmail.body_text?.substring(0, 100)}...
-                      </p>
-                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {isExpanded && (
@@ -457,6 +517,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                 {/* Expanded email body */}
                 {isExpanded && (
                   <div className="px-4 pb-4">
+                    <div className="border-t mb-4" />
                     <div className="email-body mb-4">
                       {threadEmail.body_html ? (
                         <div 
