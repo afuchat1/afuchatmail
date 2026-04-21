@@ -91,8 +91,10 @@ ${bodyHtml}
 </html>`;
 
 export const EmailBodyFrame = ({ html, text }: EmailBodyFrameProps) => {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [height, setHeight] = useState(120);
+  const [contentHeight, setContentHeight] = useState(120);
+  const [availableHeight, setAvailableHeight] = useState(0);
 
   const inner = html?.trim()
     ? sanitize(html)
@@ -107,20 +109,53 @@ export const EmailBodyFrame = ({ html, text }: EmailBodyFrameProps) => {
         event.data?.type === "email-frame-height" &&
         typeof event.data.height === "number"
       ) {
-        setHeight(Math.max(60, Math.ceil(event.data.height) + 8));
+        setContentHeight(Math.max(60, Math.ceil(event.data.height) + 8));
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    const measure = () => {
+      let scrollParent: HTMLElement | null = wrapper.parentElement;
+      while (scrollParent) {
+        const overflowY = window.getComputedStyle(scrollParent).overflowY;
+        if (overflowY === "auto" || overflowY === "scroll" || scrollParent === document.body) break;
+        scrollParent = scrollParent.parentElement;
+      }
+      const containerH = scrollParent?.clientHeight ?? window.innerHeight;
+      const top = wrapper.getBoundingClientRect().top;
+      const parentTop = scrollParent?.getBoundingClientRect().top ?? 0;
+      const offsetWithin = top - parentTop;
+      setAvailableHeight(Math.max(0, containerH - offsetWithin - 24));
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrapper);
+    if (wrapper.parentElement) ro.observe(wrapper.parentElement);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  const height = Math.max(contentHeight, availableHeight);
+
   return (
-    <iframe
-      ref={iframeRef}
-      title="Email content"
-      sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
-      srcDoc={srcDoc}
-      style={{ width: "100%", height, border: 0, display: "block", background: "transparent" }}
-    />
+    <div ref={wrapperRef} style={{ width: "100%" }}>
+      <iframe
+        ref={iframeRef}
+        title="Email content"
+        sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+        srcDoc={srcDoc}
+        style={{ width: "100%", height, border: 0, display: "block", background: "transparent" }}
+      />
+    </div>
   );
 };
