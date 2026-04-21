@@ -108,7 +108,60 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set([email.id]));
   const [isTrashFolder, setIsTrashFolder] = useState(false);
+  const [senderAvatars, setSenderAvatars] = useState<Record<string, string>>({});
   const { loading: aiLoading, smartReplies, getSmartReplies } = useAIEmailAssist();
+
+  useEffect(() => {
+    const senders = Array.from(
+      new Set(
+        threadEmails
+          .map((e) => parseFromAddress(e.from_address).email.toLowerCase())
+          .filter(Boolean)
+      )
+    );
+    const missing = senders.filter((s) => !(s in senderAvatars));
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: addrs, error } = await supabase
+          .from("email_addresses")
+          .select("full_email, user_id")
+          .in("full_email", missing);
+        if (error || !addrs || addrs.length === 0) return;
+
+        const userIds = Array.from(new Set(addrs.map((a) => a.user_id).filter(Boolean)));
+        if (userIds.length === 0) return;
+
+        const { data: profs, error: profErr } = await supabase
+          .from("profiles")
+          .select("id, avatar_url")
+          .in("id", userIds);
+        if (profErr || !profs) return;
+
+        const userIdToAvatar: Record<string, string> = {};
+        for (const p of profs) {
+          if (p.avatar_url) userIdToAvatar[p.id] = p.avatar_url;
+        }
+
+        const newMap: Record<string, string> = {};
+        for (const a of addrs) {
+          const url = a.user_id ? userIdToAvatar[a.user_id] : undefined;
+          if (a.full_email && url) newMap[a.full_email.toLowerCase()] = url;
+        }
+
+        if (!cancelled && Object.keys(newMap).length > 0) {
+          setSenderAvatars((prev) => ({ ...prev, ...newMap }));
+        }
+      } catch {
+        /* silent */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [threadEmails]);
 
   useEffect(() => {
     if (!email.is_read) {
@@ -444,12 +497,23 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                   onClick={() => !isExpanded && toggleEmailExpanded(threadEmail.id)}
                 >
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className={cn(
-                      "h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm",
-                      avatarColor
-                    )}>
-                      {initial}
-                    </div>
+                    {senderAvatars[senderEmail.toLowerCase()] ? (
+                      <img
+                        src={senderAvatars[senderEmail.toLowerCase()]}
+                        alt={senderName || senderEmail}
+                        className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className={cn(
+                        "h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm",
+                        avatarColor
+                      )}>
+                        {initial}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       {isExpanded ? (
                         <>
