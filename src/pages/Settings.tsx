@@ -384,16 +384,20 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
           </TabsContent>
 
           <TabsContent value="addresses" className="space-y-5">
-            {/* Plan limit notice */}
+            {/* Plan / role notice */}
             <div className="bg-card rounded p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Your plan</p>
-                <p className="text-sm font-semibold mt-0.5">{planLimits.name}</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  {isAdmin ? "Administrator" : "Your plan"}
+                </p>
+                <p className="text-sm font-semibold mt-0.5">{isAdmin ? "Admin · unlimited" : planLimits.name}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {primaryCount} of {planLimits.primaryAddresses === Infinity ? "∞" : planLimits.primaryAddresses} primary address{planLimits.primaryAddresses === 1 ? "" : "es"} used
+                  {isAdmin
+                    ? `${primaryCount} primary · ${emails.filter(e => e.is_alias).length} alias${emails.filter(e => e.is_alias).length === 1 ? "" : "es"}`
+                    : `Your address: ${emails.find(e => e.is_primary)?.full_email ?? "—"}`}
                 </p>
               </div>
-              {atAddressLimit && plan.tier !== "business" && plan.tier !== "admin" && (
+              {!isAdmin && (
                 <Button size="sm" variant="outline" className="rounded-xl" onClick={() => navigate("/pricing")}>
                   <Crown className="h-3.5 w-3.5 mr-1.5" />
                   Upgrade
@@ -401,18 +405,10 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
               )}
             </div>
 
-            {/* Create New Card */}
-            <div className="bg-card rounded p-4">
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">New Address</h2>
-              {atAddressLimit ? (
-                <div className="text-sm text-muted-foreground py-2">
-                  You've reached the {planLimits.name} plan limit of {planLimits.primaryAddresses} primary address{planLimits.primaryAddresses === 1 ? "" : "es"}.{" "}
-                  <button onClick={() => navigate("/pricing")} className="text-primary font-semibold hover:underline">
-                    Upgrade your plan
-                  </button>{" "}
-                  to add more.
-                </div>
-              ) : (
+            {/* Create New Card — admins only */}
+            {isAdmin ? (
+              <div className="bg-card rounded p-4">
+                <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">New address or alias</h2>
                 <form onSubmit={handleCreateEmail} className="space-y-3">
                   <div className="flex gap-2">
                     <div className="relative flex-1">
@@ -425,10 +421,17 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">3-30 characters, lowercase letters, numbers, dots, hyphens</p>
+                  <p className="text-xs text-muted-foreground">3-30 characters, lowercase letters, numbers, dots, hyphens. Admins can create unlimited mailboxes and aliases.</p>
                 </form>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="bg-card rounded p-4">
+                <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Adding more addresses</h2>
+                <p className="text-sm text-muted-foreground">
+                  Each AfuChat Mail account has exactly one address — the one you chose at signup. Additional addresses and aliases are managed by administrators only.
+                </p>
+              </div>
+            )}
 
             {/* Existing Addresses Card */}
             <div className="bg-card rounded p-4">
