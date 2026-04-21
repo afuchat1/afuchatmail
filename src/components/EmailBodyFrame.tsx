@@ -41,13 +41,17 @@ const buildSrcDoc = (bodyHtml: string) => `<!doctype html>
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-size: 14px;
     line-height: 1.5;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
     word-wrap: break-word;
+    word-break: break-word;
   }
+  html, body { overflow-x: hidden; max-width: 100%; }
   body { padding: 4px 2px; }
+  * { max-width: 100%; box-sizing: border-box; }
   img { max-width: 100%; height: auto; }
-  a { color: #1a73e8; }
-  table { border-collapse: collapse; max-width: 100%; }
+  a { color: #1a73e8; overflow-wrap: anywhere; word-break: break-word; }
+  table { border-collapse: collapse; max-width: 100%; table-layout: auto; }
+  td, th { word-break: break-word; overflow-wrap: anywhere; }
   blockquote {
     margin: 0;
     padding-left: 12px;
