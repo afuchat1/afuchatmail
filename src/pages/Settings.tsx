@@ -412,7 +412,74 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
               <Save className="h-4 w-4 mr-2" />
               {loading ? "Saving..." : "Save Settings"}
             </Button>
+
+            {/* Danger Zone */}
+            <div className="bg-card rounded p-4 border border-destructive/20">
+              <h2 className="text-xs font-bold text-destructive uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Danger Zone
+              </h2>
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Delete account</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Permanently remove your account, mailbox, all emails, drafts, settings, and subscriptions. This cannot be undone.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive flex-shrink-0"
+                  onClick={() => { setDeleteConfirmText(""); setDeleteOpen(true); }}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  Delete
+                </Button>
+              </div>
+            </div>
           </TabsContent>
+
+          <AlertDialog open={deleteOpen} onOpenChange={(o) => { if (!deletingAccount) setDeleteOpen(o); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  Delete your account?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <span className="block">
+                    This will <strong>permanently delete</strong> your AfuChat Mail account
+                    {user?.email ? <> (<span className="font-mono">{user.email}</span>)</> : null}, your mailbox address, all received and sent emails, drafts, OAuth apps, subscriptions, and settings.
+                  </span>
+                  <span className="block text-destructive font-medium">This action cannot be undone.</span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmDelete" className="text-xs font-medium">
+                  Type <span className="font-mono font-semibold">DELETE</span> to confirm
+                </Label>
+                <Input
+                  id="confirmDelete"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className="rounded-xl"
+                  autoFocus
+                  disabled={deletingAccount}
+                />
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deletingAccount} className="rounded-xl">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => { e.preventDefault(); handleDeleteAccount(); }}
+                  disabled={deleteConfirmText !== "DELETE" || deletingAccount}
+                  className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deletingAccount ? "Deleting…" : "Delete account"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <TabsContent value="addresses" className="space-y-5">
             {/* Plan / role notice */}
