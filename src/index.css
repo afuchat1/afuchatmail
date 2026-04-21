@@ -213,3 +213,10 @@
     padding-bottom: max(3.5rem, calc(3.5rem + env(safe-area-inset-bottom)));
   }
 }
+
+/* Rich email editor placeholder */
+.rich-editor:empty:before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+}

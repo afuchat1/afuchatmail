@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { X, Send, Paperclip, FileText, Clock, Sparkles, Wand2, CheckCheck, ArrowDownToLine, ArrowUpToLine, Loader2, GripHorizontal } from "lucide-react";
+import { RichEmailEditor, RichEmailEditorHandle } from "@/components/RichEmailEditor";
+import { RecipientAutocomplete } from "@/components/RecipientAutocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAIEmailAssist } from "@/hooks/useAIEmailAssist";
@@ -55,6 +56,25 @@ interface Attachment {
 
 const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
 
+const escapeHtml = (s: string): string =>
+  s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const htmlToPlainText = (html: string): string => {
+  if (!html) return "";
+  try {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return (tmp.textContent || tmp.innerText || "").trim();
+  } catch {
+    return html.replace(/<[^>]+>/g, "").trim();
+  }
+};
+
 const buildSafeAttachmentPath = (userId: string, file: File) => {
   const fileExt = file.name.includes(".") ? file.name.split(".").pop() : "bin";
   const baseName = file.name
@@ -84,7 +104,9 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
   const [uploading, setUploading] = useState(false);
   const [scheduledAt, setScheduledAt] = useState<string>("");
   const [showSchedule, setShowSchedule] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<RichEmailEditorHandle>(null);
   const autocompleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
 
@@ -159,44 +181,75 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
   useEffect(() => {
     fetchUserEmails();
     fetchUserSettings();
-    fetchTemplates();
+    checkAdminAndFetchTemplates();
   }, []);
 
-  // Debounced autocomplete
+  const checkAdminAndFetchTemplates = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      const admin = !!roleRow;
+      setIsAdmin(admin);
+      if (admin) {
+        const { data } = await supabase
+          .from("email_templates")
+          .select("id, name, subject, body_text")
+          .order("name");
+        setTemplates(data || []);
+      }
+    } catch { /* silent */ }
+  };
+
+  // Debounced autocomplete – feeds AI a plain-text view of the HTML body
   const handleBodyChange = useCallback(
-    (newBody: string) => {
-      setBody(newBody);
+    (newHtml: string) => {
+      setBody(newHtml);
       clearAutocomplete();
+      const plain = htmlToPlainText(newHtml);
       if (autocompleteTimerRef.current) clearTimeout(autocompleteTimerRef.current);
       autocompleteTimerRef.current = setTimeout(() => {
-        if (newBody.length > 15) {
-          getAutocomplete(newBody, subject);
+        if (plain.length > 15) {
+          getAutocomplete(plain, subject);
         }
-      }, 1500);
+      }, 900);
     },
     [subject, getAutocomplete, clearAutocomplete]
   );
 
   const acceptAutocomplete = () => {
-    if (autocompleteText) {
-      setBody((prev) => prev + " " + autocompleteText);
-      clearAutocomplete();
-    }
+    if (!autocompleteText) return;
+    const current = editorRef.current?.getHtml() || body;
+    const needsSpace = current && !/[\s>]$/.test(current);
+    const next = `${current}${needsSpace ? " " : ""}${escapeHtml(autocompleteText)} `;
+    editorRef.current?.setHtml(next);
+    setBody(next);
+    clearAutocomplete();
   };
 
   const handleAIAction = async (action: "improve_tone" | "fix_grammar" | "make_shorter" | "make_longer") => {
-    if (!body.trim()) {
+    const plain = htmlToPlainText(body);
+    if (!plain.trim()) {
       toast({ title: "No content", description: "Write something first", variant: "destructive" });
       return;
     }
     let result: string | null = null;
     switch (action) {
-      case "improve_tone": result = await improveTone(body); break;
-      case "fix_grammar": result = await fixGrammar(body); break;
-      case "make_shorter": result = await makeShorter(body); break;
-      case "make_longer": result = await makeLonger(body); break;
+      case "improve_tone": result = await improveTone(plain); break;
+      case "fix_grammar": result = await fixGrammar(plain); break;
+      case "make_shorter": result = await makeShorter(plain); break;
+      case "make_longer": result = await makeLonger(plain); break;
     }
-    if (result) setBody(result);
+    if (result) {
+      const html = `<p>${escapeHtml(result).replace(/\n/g, "<br>")}</p>`;
+      setBody(html);
+      editorRef.current?.setHtml(html);
+    }
   };
 
   const fetchUserEmails = async () => {
@@ -237,16 +290,13 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
     } catch (error) { /* silent */ }
   };
 
-  const fetchTemplates = async () => {
-    try {
-      const { data } = await supabase.from("email_templates").select("id, name, subject, body_text").order("name");
-      setTemplates(data || []);
-    } catch (error) { /* silent */ }
-  };
-
   const handleTemplateSelect = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
-    if (template) { setSubject(template.subject); setBody(template.body_text); }
+    if (template) {
+      setSubject(template.subject);
+      setBody(template.body_text);
+      editorRef.current?.setHtml(template.body_text);
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,7 +364,8 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
   };
 
   const handleSend = async () => {
-    if (!to || !subject || !body) {
+    const plain = htmlToPlainText(body);
+    if (!to || !subject || !plain.trim()) {
       toast({ title: "Missing fields", description: "Please fill in recipient, subject, and message", variant: "destructive" });
       return;
     }
@@ -322,13 +373,16 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) throw new Error("You must be logged in to send emails.");
-      const toAddresses = to.split(",").map(email => email.trim());
-      const ccAddresses = cc ? cc.split(",").map(email => email.trim()) : [];
-      const bccAddresses = bcc ? bcc.split(",").map(email => email.trim()) : [];
-      const fullBody = signature ? `${body}\n\n${signature}` : body;
-      const fullBodyHtml = signature
-        ? `<p>${body.replace(/\n/g, "<br>")}</p><br><p>${signature.replace(/\n/g, "<br>")}</p>`
-        : `<p>${body.replace(/\n/g, "<br>")}</p>`;
+      const extractEmail = (s: string) => {
+        const m = s.match(/<([^>]+)>/);
+        return (m ? m[1] : s).trim();
+      };
+      const toAddresses = to.split(",").map(extractEmail).filter(Boolean);
+      const ccAddresses = cc ? cc.split(",").map(extractEmail).filter(Boolean) : [];
+      const bccAddresses = bcc ? bcc.split(",").map(extractEmail).filter(Boolean) : [];
+      const sigHtml = signature ? `<br><div>${escapeHtml(signature).replace(/\n/g, "<br>")}</div>` : "";
+      const fullBodyHtml = `${body}${sigHtml}`;
+      const fullBody = signature ? `${plain}\n\n${signature}` : plain;
       const attachmentData = attachments.map(att => ({ name: att.name, size: att.size, path: att.path }));
 
       const { data, error } = await supabase.functions.invoke("send-email", {
@@ -397,8 +451,8 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
           </Button>
         </div>
 
-        {/* Template Selector */}
-        {templates.length > 0 && (
+        {/* Template Selector — admins only */}
+        {isAdmin && templates.length > 0 && (
           <div className="px-5 pt-4">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
@@ -437,19 +491,19 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
               {!showCc && <button onClick={() => setShowCc(true)} className="text-xs text-primary font-semibold">Cc</button>}
               {!showBcc && <button onClick={() => setShowBcc(true)} className="text-xs text-primary font-semibold">Bcc</button>}
             </div>
-            <Input id="to" placeholder="recipient@example.com" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-xl" />
+            <RecipientAutocomplete id="to" placeholder="recipient@example.com" value={to} onChange={setTo} />
           </div>
 
           {showCc && (
             <div className="space-y-1.5">
               <Label htmlFor="cc" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cc</Label>
-              <Input id="cc" placeholder="cc@example.com" value={cc} onChange={(e) => setCc(e.target.value)} className="rounded-xl" />
+              <RecipientAutocomplete id="cc" placeholder="cc@example.com" value={cc} onChange={setCc} />
             </div>
           )}
           {showBcc && (
             <div className="space-y-1.5">
               <Label htmlFor="bcc" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bcc</Label>
-              <Input id="bcc" placeholder="bcc@example.com" value={bcc} onChange={(e) => setBcc(e.target.value)} className="rounded-xl" />
+              <RecipientAutocomplete id="bcc" placeholder="bcc@example.com" value={bcc} onChange={setBcc} />
             </div>
           )}
 
@@ -489,30 +543,15 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="relative">
-              <Textarea
-                id="body"
-                placeholder="Type your message here..."
-                className="min-h-[200px] resize-none rounded-xl"
-                value={body}
-                onChange={(e) => handleBodyChange(e.target.value)}
-              />
-              {/* Autocomplete suggestion */}
-              {autocompleteText && (
-                <div
-                  className="absolute bottom-2 left-2 right-2 bg-accent/80 backdrop-blur-sm rounded-xl p-3 cursor-pointer hover:bg-accent transition-colors animate-in fade-in slide-in-from-bottom-2 duration-200"
-                  onClick={acceptAutocomplete}
-                >
-                  <div className="flex items-start gap-2">
-                    <Sparkles className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground font-semibold mb-0.5">Tap to accept suggestion</p>
-                      <p className="text-sm text-foreground line-clamp-2">{autocompleteText}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <RichEmailEditor
+              ref={editorRef}
+              value={body}
+              onChange={handleBodyChange}
+              ghostText={autocompleteText}
+              onAcceptGhost={acceptAutocomplete}
+              placeholder="Type your message here, or paste HTML to keep its design..."
+              minHeight={220}
+            />
           </div>
 
           {/* Schedule indicator */}
