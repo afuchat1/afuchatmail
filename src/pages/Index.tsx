@@ -93,41 +93,36 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Inbox preview */}
-          <div className="rounded-xl overflow-hidden bg-[#111111]">
-            <div className="flex items-center justify-between px-4 py-3 bg-[#161616]">
-              <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-red-500/50" />
-                <div className="h-2.5 w-2.5 rounded-full bg-amber-500/50" />
-                <div className="h-2.5 w-2.5 rounded-full bg-green-500/50" />
+          {/* Email preview */}
+          <div className="rounded-2xl bg-white border border-neutral-200 shadow-sm p-6 sm:p-8">
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 rounded-full border border-neutral-200 flex items-center justify-center flex-shrink-0">
+                <svg width="22" height="22" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="20" cy="20" r="17" stroke="#0aa5d9" strokeWidth="2.5" fill="none" />
+                  <line x1="9" y1="31" x2="31" y2="9" stroke="#0aa5d9" strokeWidth="2.5" strokeLinecap="round" />
+                </svg>
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-white/25">Inbox</span>
-              <div className="w-12" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] text-neutral-900" data-testid="text-preview-sender">
+                  <span className="font-semibold">Your Name</span>{" "}
+                  <span className="text-neutral-500">&lt;youremail@afuchat.com&gt;</span>
+                </p>
+                <p className="text-[13px] text-neutral-500 mt-0.5 flex items-center gap-1">
+                  to me
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="text-neutral-400">
+                    <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </p>
+              </div>
             </div>
-            <div className="grid md:grid-cols-[130px_1fr]">
-              <aside className="hidden bg-[#111111] p-3 md:block">
-                {["Inbox", "Important", "Sent", "Archive"].map((item, index) => (
-                  <div key={item} className={`mb-1 rounded px-3 py-2 text-xs font-medium ${index === 0 ? "bg-[#0052ff]/20 text-[#4d8bff]" : "text-white/35 hover:text-white/60"}`}>
-                    {item}
-                  </div>
-                ))}
-              </aside>
-              <div className="p-3 space-y-2">
-                {[
-                  ["AfuChat Team", "Your weekly delivery summary is ready", "2 min", true],
-                  ["Security", "New sign-in protection was enabled", "18 min", false],
-                  ["Support", "Re: custom alias setup", "1 hr", false],
-                ].map(([sender, subject, time, unread], index) => (
-                  <div key={String(sender)} className={`rounded-lg p-3 ${unread ? "bg-[#0052ff]/10" : "bg-white/4"}`}>
-                    <div className="mb-0.5 flex items-center justify-between gap-3">
-                      <p className={`truncate text-xs font-semibold ${unread ? "text-white" : "text-white/70"}`} data-testid={`text-preview-sender-${index}`}>{String(sender)}</p>
-                      <span className="text-[10px] text-white/25 shrink-0">{String(time)}</span>
-                    </div>
-                    <p className="truncate text-xs text-white/55">{String(subject)}</p>
-                    <p className="mt-0.5 truncate text-[10px] text-white/25">Secure, clean communication.</p>
-                  </div>
-                ))}
-              </div>
+            <div className="mt-5 border-t border-neutral-100 pt-5 space-y-3 text-[15px] text-neutral-800 leading-relaxed">
+              <p>Hi!</p>
+              <p>
+                Your link:{" "}
+                <a href="#" className="text-[#1a73e8] underline hover:text-[#1558b8]">
+                  mail.afuchat.com/your-link
+                </a>
+              </p>
             </div>
           </div>
         </div>
