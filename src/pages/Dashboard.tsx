@@ -357,7 +357,6 @@ const Dashboard = () => {
 
   const handleEmailBack = useCallback(() => {
     setSelectedEmail(null);
-    setRefreshTrigger(p => p + 1);
   }, []);
 
   const handleReply = useCallback((initialBody?: string) => {

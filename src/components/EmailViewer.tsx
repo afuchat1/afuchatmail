@@ -7,9 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { SnoozeDialog } from "./SnoozeDialog";
-import DOMPurify from "dompurify";
-import { linkifyText } from "@/lib/linkify";
 import { useAIEmailAssist } from "@/hooks/useAIEmailAssist";
+import { EmailBodyFrame } from "./EmailBodyFrame";
 
 interface Attachment {
   name: string;
@@ -101,17 +100,6 @@ const avatarColorFor = (key: string) => {
 
 const initialFor = (name: string, email: string) =>
   (name?.trim()?.[0] || email?.trim()?.[0] || "?").toUpperCase();
-
-const sanitizeEmailHtml = (html: string) =>
-  DOMPurify.sanitize(html, {
-    ADD_ATTR: ["target"],
-    ALLOWED_TAGS: [
-      "a", "p", "br", "strong", "em", "u", "h1", "h2", "h3", "h4", "h5", "h6",
-      "ul", "ol", "li", "blockquote", "pre", "code", "div", "span", "img",
-      "table", "thead", "tbody", "tfoot", "tr", "td", "th", "button"
-    ],
-    ALLOWED_ATTR: ["href", "target", "rel", "src", "alt", "title", "class", "role", "aria-label", "colspan", "rowspan"],
-  });
 
 export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
   const { toast } = useToast();
@@ -598,25 +586,10 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                   <div className="px-4 pb-4">
                     <div className="border-t mb-4" />
                     <div className="email-body mb-4">
-                      {threadEmail.body_html ? (
-                        <div 
-                          dangerouslySetInnerHTML={{ 
-                            __html: sanitizeEmailHtml(threadEmail.body_html)
-                          }} 
-                          onClick={(e) => {
-                            const target = e.target as HTMLElement;
-                            const link = target.closest("a");
-                            if (link?.href) {
-                              e.preventDefault();
-                              window.open(link.href, "_blank", "noopener,noreferrer");
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="whitespace-pre-wrap font-sans">
-                          {linkifyText(threadEmail.body_text || '')}
-                        </div>
-                      )}
+                      <EmailBodyFrame
+                        html={threadEmail.body_html}
+                        text={threadEmail.body_text}
+                      />
                     </div>
 
                     {/* Attachments */}
