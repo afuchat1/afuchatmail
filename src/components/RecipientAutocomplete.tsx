@@ -52,7 +52,7 @@ export const RecipientAutocomplete = ({ id, value, onChange, placeholder }: Reci
         if (!user) return;
         const { data } = await supabase
           .from("emails")
-          .select("from_address, from_name, to_addresses, cc_addresses")
+          .select("from_address, to_addresses, cc_addresses")
           .eq("user_id", user.id)
           .order("received_at", { ascending: false })
           .limit(500);
