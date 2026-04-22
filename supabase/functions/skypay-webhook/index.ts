@@ -77,30 +77,32 @@ serve(async (req) => {
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
     const clientReference = typeof data.product_id === "string" ? data.product_id : null;
-    let userId: string | null = null;
 
-    const { data: existingTransaction } = await serviceClient
+    // Try to locate an existing row, preferring skypay_reference_id, then client_reference
+    let { data: existingTransaction } = await serviceClient
       .from("payment_transactions")
-      .select("user_id, client_reference")
+      .select("id, user_id, client_reference, plan_id")
       .eq("skypay_reference_id", referenceId)
       .maybeSingle();
 
-    userId = existingTransaction?.user_id || null;
-
-    if (!userId && clientReference) {
+    if (!existingTransaction && clientReference) {
       const { data: pendingTransaction } = await serviceClient
         .from("payment_transactions")
-        .select("user_id")
+        .select("id, user_id, client_reference, plan_id")
         .eq("client_reference", clientReference)
         .maybeSingle();
-      userId = pendingTransaction?.user_id || null;
+      existingTransaction = pendingTransaction || null;
     }
 
-    const transaction = {
+    const userId = existingTransaction?.user_id || null;
+    const finalPlanId = planId || existingTransaction?.plan_id || null;
+    const finalClientRef = clientReference || existingTransaction?.client_reference || null;
+
+    const transactionFields = {
       user_id: userId,
-      client_reference: clientReference || existingTransaction?.client_reference || null,
+      client_reference: finalClientRef,
       skypay_reference_id: referenceId,
-      plan_id: planId,
+      plan_id: finalPlanId,
       amount,
       currency: String(data.currency || "UGX"),
       status,
@@ -110,12 +112,22 @@ serve(async (req) => {
       raw_payload: payload,
     };
 
-    const { error: upsertError } = await serviceClient
-      .from("payment_transactions")
-      .upsert(transaction, { onConflict: "skypay_reference_id" });
-
-    if (upsertError) {
-      throw new Error(upsertError.message);
+    if (existingTransaction) {
+      // Update the existing row in place — this enriches the pending row with the SkyPay reference
+      const { error: updateError } = await serviceClient
+        .from("payment_transactions")
+        .update(transactionFields)
+        .eq("id", existingTransaction.id);
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+    } else {
+      const { error: insertError } = await serviceClient
+        .from("payment_transactions")
+        .insert(transactionFields);
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
     }
 
     if (status === "completed" && userId && planId) {

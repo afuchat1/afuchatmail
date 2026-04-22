@@ -40,55 +40,100 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const reference = String(body.reference || "").trim();
+    const paymentId = String(body.paymentId || "").trim();
     const planId = String(body.planId || "").trim() as keyof typeof plans;
 
-    if (!reference || !plans[planId]) {
-      return Response.json({ error: "Payment reference and valid plan are required." }, { status: 400, headers: corsHeaders });
+    if (!plans[planId]) {
+      return Response.json({ error: "Valid plan is required." }, { status: 400, headers: corsHeaders });
+    }
+    if (!reference && !paymentId) {
+      return Response.json({ error: "Payment reference or payment id is required." }, { status: 400, headers: corsHeaders });
     }
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
-    let { data: transaction, error: transactionError } = await serviceClient
-      .from("payment_transactions")
-      .select("*")
-      .eq("skypay_reference_id", reference)
-      .maybeSingle();
 
-    if (transactionError) {
-      throw new Error(transactionError.message);
+    // Look up the local row first — by reference, otherwise by payment row id (used when the webhook hasn't enriched yet)
+    let transaction: any = null;
+    if (reference) {
+      const { data, error } = await serviceClient
+        .from("payment_transactions")
+        .select("*")
+        .eq("skypay_reference_id", reference)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      transaction = data;
+    }
+    if (!transaction && paymentId) {
+      const { data, error } = await serviceClient
+        .from("payment_transactions")
+        .select("*")
+        .eq("id", paymentId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      transaction = data;
     }
 
-    if (!transaction) {
-      const statusResponse = await fetch(`${SKY_PAY_STATUS_BASE}/${encodeURIComponent(reference)}`, {
-        headers: skyPayApiKey ? { "X-Api-Key": skyPayApiKey } : undefined,
-      }).catch(() => null);
-      const statusPayload = statusResponse ? await statusResponse.json().catch(() => null) : null;
-      const remoteStatus = String(statusPayload?.status || "").toLowerCase();
+    // Resolve the SkyPay reference to query: prefer the explicit one, then the row's stored ref, then the client_reference (product_id used when creating checkout)
+    const lookupRef =
+      reference ||
+      (transaction?.skypay_reference_id ?? "") ||
+      (transaction?.client_reference ?? "");
+
+    // If the local row says it's still pending (or we have no row at all), poll SkyPay to see if it actually completed
+    if (!transaction || transaction.status !== "completed") {
+      let remoteStatus: string = "";
+      let statusPayload: any = null;
+      let resolvedReference: string = transaction?.skypay_reference_id || reference || "";
+
+      if (lookupRef) {
+        const statusResponse = await fetch(`${SKY_PAY_STATUS_BASE}/${encodeURIComponent(lookupRef)}`, {
+          headers: skyPayApiKey ? { "X-Api-Key": skyPayApiKey } : undefined,
+        }).catch(() => null);
+        statusPayload = statusResponse ? await statusResponse.json().catch(() => null) : null;
+        remoteStatus = String(statusPayload?.status || "").toLowerCase();
+        if (statusPayload?.reference_id) resolvedReference = String(statusPayload.reference_id);
+      }
 
       if (remoteStatus === "success" || remoteStatus === "successful") {
-        const { data: insertedTransaction, error: insertError } = await serviceClient
-          .from("payment_transactions")
-          .insert({
-            user_id: user.id,
-            skypay_reference_id: reference,
-            plan_id: planId,
-            amount: plans[planId],
-            currency: "UGX",
-            status: "completed",
-            raw_payload: { source: "skypay-status", status: statusPayload },
-          })
-          .select("*")
-          .single();
-
-        if (insertError) {
-          throw new Error(insertError.message);
+        if (transaction) {
+          const { data: updated, error: updErr } = await serviceClient
+            .from("payment_transactions")
+            .update({
+              status: "completed",
+              skypay_reference_id: resolvedReference || transaction.skypay_reference_id,
+              plan_id: planId,
+              raw_payload: { ...(transaction.raw_payload || {}), confirm_status: statusPayload },
+            })
+            .eq("id", transaction.id)
+            .select("*")
+            .single();
+          if (updErr) throw new Error(updErr.message);
+          transaction = updated;
+        } else {
+          const { data: inserted, error: insErr } = await serviceClient
+            .from("payment_transactions")
+            .insert({
+              user_id: user.id,
+              skypay_reference_id: resolvedReference,
+              plan_id: planId,
+              amount: plans[planId],
+              currency: "UGX",
+              status: "completed",
+              raw_payload: { source: "skypay-status", status: statusPayload },
+            })
+            .select("*")
+            .single();
+          if (insErr) throw new Error(insErr.message);
+          transaction = inserted;
         }
-
-        transaction = insertedTransaction;
       } else {
         return Response.json({
           success: false,
           pending: true,
-          error: "Waiting for SkyPay webhook confirmation.",
+          error: lookupRef
+            ? "Waiting for SkyPay confirmation. Try again in a few seconds."
+            : "This payment hasn't been registered with SkyPay yet. Complete the checkout, then try again.",
         }, { status: 202, headers: corsHeaders });
       }
     }
@@ -113,10 +158,12 @@ serve(async (req) => {
     const periodEnd = new Date(now);
     periodEnd.setMonth(periodEnd.getMonth() + 1);
 
+    const finalRef = transaction.skypay_reference_id || reference;
+
     const { error: updatePaymentError } = await serviceClient
       .from("payment_transactions")
       .update({ user_id: user.id, plan_id: planId })
-      .eq("skypay_reference_id", reference);
+      .eq("id", transaction.id);
 
     if (updatePaymentError) {
       throw new Error(updatePaymentError.message);
@@ -128,7 +175,7 @@ serve(async (req) => {
         user_id: user.id,
         plan_id: planId,
         status: "active",
-        skypay_reference_id: reference,
+        skypay_reference_id: finalRef,
         current_period_start: now.toISOString(),
         current_period_end: periodEnd.toISOString(),
       }, { onConflict: "user_id" });
