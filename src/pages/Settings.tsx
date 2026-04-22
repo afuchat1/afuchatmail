@@ -326,34 +326,41 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
         </header>
       )}
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 lg:py-10 lg:grid lg:grid-cols-[240px,1fr] lg:gap-10">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-10 lg:grid lg:grid-cols-[260px,1fr] lg:gap-12">
         {/* ─── Sidebar nav ─────────────────────────────────────────── */}
-        <aside className="lg:sticky lg:top-20 lg:self-start mb-6 lg:mb-0">
+        <aside className="lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
           {embedded && (
-            <div className="hidden lg:block mb-5">
-              <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">Manage your account and preferences</p>
+            <div className="hidden lg:block mb-6">
+              <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+              <p className="text-sm text-muted-foreground mt-1">Manage your account and preferences</p>
             </div>
           )}
 
-          {/* Mobile pill nav */}
-          <div className="lg:hidden -mx-4 px-4 overflow-x-auto pb-1 scrollbar-none">
-            <div className="inline-flex gap-1.5 bg-muted/50 p-1 rounded-xl border border-border/40">
+          {/* Mobile section picker — 2 col grid, no scroll */}
+          <div className="lg:hidden mb-5">
+            <div className="grid grid-cols-2 gap-1.5">
               {SECTIONS.map(s => {
                 const Icon = s.icon;
+                const active = activeSection === s.id;
+                const isDanger = s.id === "danger";
                 return (
                   <button
                     key={s.id}
-                    onClick={() => setActiveSection(s.id)}
+                    onClick={() => {
+                      setActiveSection(s.id);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors",
-                      activeSection === s.id
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
+                      "flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all text-left",
+                      active
+                        ? isDanger
+                          ? "bg-destructive/10 border-destructive/30 text-destructive"
+                          : "bg-accent border-border text-foreground shadow-sm"
+                        : "bg-card border-border/50 text-muted-foreground active:scale-[0.98]"
                     )}
                   >
-                    <Icon className="h-3.5 w-3.5" />
-                    {s.label}
+                    <Icon className={cn("h-4 w-4 shrink-0", active && !isDanger && "text-primary")} />
+                    <span className="truncate">{s.label}</span>
                   </button>
                 );
               })}
@@ -364,25 +371,38 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
           <nav className="hidden lg:block space-y-6">
             {Object.entries(groupedSections).map(([group, items]) => (
               <div key={group}>
-                <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1.5">{group}</p>
+                <p className="px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60 mb-2">{group}</p>
                 <div className="space-y-0.5">
                   {items.map(s => {
                     const Icon = s.icon;
                     const active = activeSection === s.id;
+                    const isDanger = s.id === "danger";
                     return (
                       <button
                         key={s.id}
                         onClick={() => setActiveSection(s.id)}
                         className={cn(
-                          "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all group",
+                          "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all group relative",
                           active
-                            ? "bg-accent text-accent-foreground"
-                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                            ? isDanger
+                              ? "bg-destructive/10 text-destructive"
+                              : "bg-accent text-accent-foreground"
+                            : isDanger
+                              ? "text-muted-foreground hover:bg-destructive/5 hover:text-destructive"
+                              : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                         )}
                       >
-                        <Icon className={cn("h-4 w-4 transition-colors", active ? "text-foreground" : "text-muted-foreground/70 group-hover:text-foreground")} />
-                        <span className="flex-1 text-left">{s.label}</span>
-                        {active && <ChevronRight className="h-3.5 w-3.5 opacity-60" />}
+                        {active && !isDanger && (
+                          <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary" />
+                        )}
+                        <Icon className={cn(
+                          "h-4 w-4 transition-colors shrink-0",
+                          active
+                            ? isDanger ? "text-destructive" : "text-foreground"
+                            : "text-muted-foreground/70 group-hover:text-foreground"
+                        )} />
+                        <span className="flex-1 text-left truncate">{s.label}</span>
+                        {active && !isDanger && <ChevronRight className="h-3.5 w-3.5 opacity-60" />}
                       </button>
                     );
                   })}
@@ -393,17 +413,17 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
         </aside>
 
         {/* ─── Content ─────────────────────────────────────────────── */}
-        <main className="min-w-0 pb-24">
+        <main className="min-w-0 pb-[max(env(safe-area-inset-bottom),6rem)]">
           {/* Section header */}
-          <div className="mb-6 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">{activeMeta.label}</h2>
-              <p className="text-sm text-muted-foreground mt-1">{sectionDescription(activeSection)}</p>
+          <div className="mb-5 sm:mb-6 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{activeMeta.label}</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">{sectionDescription(activeSection)}</p>
             </div>
             {(activeSection === "email" || activeSection === "notifications") && selectedEmailAddressId && (
-              <Button onClick={handleSave} disabled={loading} size="sm" className="rounded-lg shrink-0">
-                {loading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
-                Save
+              <Button onClick={handleSave} disabled={loading} size="sm" className="rounded-lg shrink-0 h-9">
+                {loading ? <Loader2 className="h-3.5 w-3.5 sm:mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 sm:mr-1.5" />}
+                <span className="hidden sm:inline">Save</span>
               </Button>
             )}
           </div>
@@ -419,7 +439,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
           {activeSection === "profile" && (
             <div className="space-y-6">
               <Section title="Identity" desc="How you appear across AfuChat Mail.">
-                <div className="flex items-start gap-5">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-5">
                   <div className="relative shrink-0">
                     {avatarUrl ? (
                       <img src={avatarUrl} alt={profileName || user?.email || "Profile"} className="h-20 w-20 rounded-full object-cover ring-2 ring-border" />
@@ -804,7 +824,7 @@ function Section({
 }) {
   return (
     <section className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-      <header className="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-border/40">
+      <header className="px-4 sm:px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-border/40">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             {titleIcon}
@@ -814,7 +834,7 @@ function Section({
         </div>
         {trailing}
       </header>
-      <div className="p-5 space-y-4">{children}</div>
+      <div className="p-4 sm:p-5 space-y-4">{children}</div>
     </section>
   );
 }
@@ -846,7 +866,7 @@ function Row({
 }
 
 function Divider() {
-  return <div className="h-px bg-border/50 -mx-5" />;
+  return <div className="h-px bg-border/50 -mx-4 sm:-mx-5" />;
 }
 
 function sectionDescription(id: SectionId): string {
