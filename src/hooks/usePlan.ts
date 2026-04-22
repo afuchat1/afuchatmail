@@ -85,8 +85,8 @@ export function usePlan(user: User | null) {
 }
 
 export const PLAN_LIMITS = {
-  starter: { primaryAddresses: 1, customDomain: false, oauthApi: false, name: "Starter" },
-  professional: { primaryAddresses: 3, customDomain: true, oauthApi: false, name: "Professional" },
-  business: { primaryAddresses: Infinity, customDomain: true, oauthApi: true, name: "Business" },
-  admin: { primaryAddresses: Infinity, customDomain: true, oauthApi: true, name: "Admin" },
+  starter: { primaryAddresses: 1, aliases: 0, customDomain: false, oauthApi: false, name: "Starter" },
+  professional: { primaryAddresses: 3, aliases: 5, customDomain: true, oauthApi: false, name: "Professional" },
+  business: { primaryAddresses: Infinity, aliases: 25, customDomain: true, oauthApi: true, name: "Business" },
+  admin: { primaryAddresses: Infinity, aliases: Infinity, customDomain: true, oauthApi: true, name: "Admin" },
 } as const;

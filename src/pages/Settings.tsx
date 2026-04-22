@@ -78,9 +78,13 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   const { plan, refresh: refreshPlan } = usePlan(user);
   const planLimits = PLAN_LIMITS[plan.tier];
   const primaryCount = emails.filter(e => !e.is_alias).length;
+  const aliasCount = emails.filter(e => e.is_alias).length;
   const isAdmin = plan.isAdmin;
-  // Non-admins get exactly one mailbox: the address they signed up with.
-  // Only admins can mint additional primaries or aliases.
+  const canCreateAliases = isAdmin || plan.tier === "professional" || plan.tier === "business";
+  const aliasLimit = planLimits.aliases;
+  const atAliasLimit = aliasCount >= aliasLimit;
+  const primaryAddress = emails.find(e => e.is_primary);
+  // Non-admins cannot create new primary mailboxes.
   const atAddressLimit = !isAdmin || primaryCount >= planLimits.primaryAddresses;
 
   useEffect(() => {
@@ -653,8 +657,10 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                 <p className="text-sm font-semibold mt-0.5">{isAdmin ? "Admin · unlimited" : planLimits.name}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {isAdmin
-                    ? `${primaryCount} primary · ${emails.filter(e => e.is_alias).length} alias${emails.filter(e => e.is_alias).length === 1 ? "" : "es"}`
-                    : `Your address: ${emails.find(e => e.is_primary)?.full_email ?? "—"}`}
+                    ? `${primaryCount} primary · ${aliasCount} alias${aliasCount === 1 ? "" : "es"}`
+                    : canCreateAliases
+                      ? `${primaryAddress?.full_email ?? "—"} · ${aliasCount}/${aliasLimit} aliases used`
+                      : `Your address: ${primaryAddress?.full_email ?? "—"}`}
                 </p>
               </div>
               {!isAdmin && (
@@ -665,8 +671,8 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
               )}
             </div>
 
-            {/* Create New Card — admins only */}
-            {isAdmin ? (
+            {/* Create New Card — admins only (mints brand-new mailboxes) */}
+            {isAdmin && (
               <div className="bg-card rounded p-4">
                 <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">New address or alias</h2>
                 <form onSubmit={handleCreateEmail} className="space-y-3">
@@ -681,15 +687,52 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">3-30 characters, lowercase letters, numbers, dots, hyphens. Admins can create unlimited mailboxes and aliases.</p>
+                  <p className="text-xs text-muted-foreground">3-30 characters, lowercase letters, numbers, dots, hyphens.</p>
                 </form>
               </div>
-            ) : (
+            )}
+
+            {/* Alias creation — paid (Professional / Business) users */}
+            {!isAdmin && canCreateAliases && primaryAddress && (
               <div className="bg-card rounded p-4">
-                <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Adding more addresses</h2>
-                <p className="text-sm text-muted-foreground">
-                  Each AfuChat Mail account has exactly one address — the one you chose at signup. Additional addresses and aliases are managed by administrators only.
-                </p>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Add an alias</h2>
+                  <span className="text-[11px] text-muted-foreground font-medium">{aliasCount}/{aliasLimit} used</span>
+                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!primaryAddress) return;
+                    setSelectedAliasTarget(primaryAddress.id);
+                    handleCreateAlias(e);
+                  }}
+                  className="space-y-3"
+                >
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        placeholder="alias-name"
+                        value={newAlias}
+                        onChange={(e) => setNewAlias(e.target.value.toLowerCase())}
+                        pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]"
+                        minLength={3}
+                        maxLength={30}
+                        required
+                        disabled={atAliasLimit}
+                        className="pr-28 bg-background rounded-xl"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">@afuchat.com</span>
+                    </div>
+                    <Button type="submit" disabled={creatingAlias || atAliasLimit} size="icon" className="rounded-xl h-10 w-10">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {atAliasLimit
+                      ? "You've reached your alias limit. Upgrade for more."
+                      : `Aliases forward to ${primaryAddress.full_email}. 3-30 chars, lowercase letters, numbers, dots, hyphens.`}
+                  </p>
+                </form>
               </div>
             )}
 
@@ -724,7 +767,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { navigator.clipboard.writeText(email.full_email); toast({ title: "Copied!" }); }}>
                           <Copy className="h-3.5 w-3.5" />
                         </Button>
-                        {isAdmin && !email.is_primary && (
+                        {((isAdmin && !email.is_primary) || (!isAdmin && email.is_alias)) && (
                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:text-destructive" onClick={() => handleDeleteEmail(email.id)}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
