@@ -26,6 +26,13 @@ interface Folder {
   icon: string;
 }
 
+// ─── Module-level caches ────────────────────────────────────────────────────
+// Keep folders / admin / unread counts in memory so the drawer renders
+// instantly on every reopen instead of flashing empty while refetching.
+let foldersCache: Folder[] = [];
+let isAdminCache = false;
+const unreadCache = new Map<string, Record<string, number>>();
+
 interface EmailSidebarProps {
   onCompose: () => void;
   onFolderSelect: (folderId: string) => void;
@@ -65,9 +72,11 @@ export const EmailSidebar = ({
   activePlan,
   onSignOut,
 }: EmailSidebarProps) => {
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [folders, setFolders] = useState<Folder[]>(foldersCache);
+  const [isAdmin, setIsAdmin] = useState(isAdminCache);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>(
+    () => unreadCache.get(selectedEmailAddressId ?? "all") ?? {}
+  );
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -108,7 +117,9 @@ export const EmailSidebar = ({
         .eq("user_id", user.id)
         .eq("role", "admin")
         .maybeSingle();
-      setIsAdmin(!!data);
+      const value = !!data;
+      isAdminCache = value;
+      setIsAdmin(value);
     } catch {}
   };
 
@@ -122,8 +133,10 @@ export const EmailSidebar = ({
         .eq("user_id", user.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      setFolders(data || []);
-      const inboxFolder = data?.find((f) => f.type === "inbox");
+      const list = (data || []) as Folder[];
+      foldersCache = list;
+      setFolders(list);
+      const inboxFolder = list.find((f) => f.type === "inbox");
       if (inboxFolder && !selectedFolderId) {
         onFolderSelect(inboxFolder.id);
       }
@@ -154,6 +167,7 @@ export const EmailSidebar = ({
           counts[email.folder_id] = (counts[email.folder_id] || 0) + 1;
         }
       }
+      unreadCache.set(selectedEmailAddressId ?? "all", counts);
       setUnreadCounts(counts);
     } catch {}
   }, [selectedEmailAddressId]);

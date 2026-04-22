@@ -508,13 +508,19 @@ const Dashboard = () => {
               </Button>
             </header>
 
-            {selectedEmail ? (
+            {/* Always mount EmailList — toggle visibility so leaving the
+                viewer doesn't trigger a remount/reload (matches desktop). */}
+            <div
+              className={cn(
+                "flex-1 overflow-y-auto scroll-smooth-ios",
+                selectedEmail && "hidden"
+              )}
+            >
+              <EmailList {...listProps} />
+            </div>
+            {selectedEmail && viewerProps && (
               <div className="flex-1 overflow-y-auto scroll-smooth-ios">
-                <EmailViewer {...viewerProps!} />
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto scroll-smooth-ios">
-                <EmailList {...listProps} />
+                <EmailViewer {...viewerProps} />
               </div>
             )}
           </div>
