@@ -806,25 +806,43 @@ function BillingPanel({
   }, [userId]);
 
   const checkPending = async (row: PaymentRow) => {
-    if (!row.skypay_reference_id || !row.plan_id) {
-      toast({ title: "No SkyPay reference yet", description: "This payment hasn't been registered with SkyPay yet. Try again in a few seconds." });
+    if (!row.plan_id) {
+      toast({ title: "Missing plan", description: "This payment row has no plan associated.", variant: "destructive" });
       return;
     }
     setCheckingPending(row.id);
+
+    // Re-fetch the latest row in case the SkyPay webhook just enriched it with a reference
+    let liveRow: PaymentRow | null = row;
+    const { data: fresh } = await supabase
+      .from("payment_transactions")
+      .select("id,amount,currency,status,plan_id,skypay_reference_id,created_at")
+      .eq("id", row.id)
+      .maybeSingle();
+    if (fresh) liveRow = fresh as PaymentRow;
+
     const { data, error } = await supabase.functions.invoke("skypay-confirm-payment", {
-      body: { reference: row.skypay_reference_id, planId: row.plan_id },
+      body: {
+        reference: liveRow?.skypay_reference_id || undefined,
+        paymentId: liveRow?.id,
+        planId: liveRow?.plan_id || row.plan_id,
+      },
     });
     setCheckingPending(null);
+
     if (!error && data?.success) {
       toast({ title: "Payment confirmed", description: "Your plan is now active." });
       onRefresh();
       fetchPayments();
     } else {
+      const desc = data?.error || error?.message || "SkyPay hasn't confirmed this payment yet.";
       toast({
         title: "Still pending",
-        description: data?.error || "SkyPay hasn't confirmed this payment yet.",
+        description: desc,
         variant: "destructive",
       });
+      // Refresh the list anyway so any new state from the webhook shows up
+      fetchPayments();
     }
   };
 
