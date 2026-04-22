@@ -71,7 +71,7 @@ export const RecipientAutocomplete = ({ id, value, onChange, placeholder }: Reci
               color: colorFor(email),
             });
           };
-          add(row.from_address as string, (row as any).from_name as string);
+          add(row.from_address as string);
           (row.to_addresses as string[] | null)?.forEach((a) => add(a));
           ((row as any).cc_addresses as string[] | null)?.forEach((a) => add(a));
         }
