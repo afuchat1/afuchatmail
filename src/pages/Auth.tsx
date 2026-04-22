@@ -212,7 +212,7 @@ const Auth = () => {
       }
 
       const newEmail = `${u}@${MAIL_DOMAIN}`;
-      const { error } = await supabase.auth.signUp({
+      const { error: signUpError } = await supabase.auth.signUp({
         email: newEmail,
         password,
         options: {
@@ -222,11 +222,24 @@ const Auth = () => {
           data: { full_name: fullName, username: u, first_name: firstName.trim(), last_name: lastName.trim() },
         },
       });
-      if (error) throw error;
+      if (signUpError) throw signUpError;
+
+      // Auto sign-in so the user lands in their inbox immediately and can start receiving mail right away.
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: newEmail, password });
+      if (signInError) {
+        // Account was created; just ask them to sign in manually.
+        toast({
+          title: "Account created",
+          description: `Your address is ${newEmail}. Please sign in to continue.`,
+        });
+        setMode("signin");
+        setSignInId(u);
+        return;
+      }
 
       toast({
-        title: "Account created",
-        description: `Your AfuChat Mail address is ${newEmail}. Check your inbox to verify.`,
+        title: "Welcome to AfuChat Mail!",
+        description: `Your inbox ${newEmail} is ready — you can receive mail right away.`,
       });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Sign-up failed", description: err.message });
