@@ -684,13 +684,6 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                   <p className="text-xs text-muted-foreground">3-30 characters, lowercase letters, numbers, dots, hyphens. Admins can create unlimited mailboxes and aliases.</p>
                 </form>
               </div>
-            ) : (
-              <div className="bg-card rounded p-4">
-                <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Adding more addresses</h2>
-                <p className="text-sm text-muted-foreground">
-                  Each AfuChat Mail account has exactly one address — the one you chose at signup. Additional addresses and aliases are managed by administrators only.
-                </p>
-              </div>
             )}
 
             {/* Existing Addresses Card */}
