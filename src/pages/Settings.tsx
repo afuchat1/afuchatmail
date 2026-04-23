@@ -891,6 +891,7 @@ interface PaymentRow {
   status: string;
   plan_id: string | null;
   skypay_reference_id: string | null;
+  client_reference: string | null;
   created_at: string;
 }
 
@@ -913,7 +914,7 @@ function BillingPanel({
     setLoadingPayments(true);
     const { data } = await supabase
       .from("payment_transactions")
-      .select("id,amount,currency,status,plan_id,skypay_reference_id,created_at")
+        .select("id,amount,currency,status,plan_id,skypay_reference_id,client_reference,created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(20);
@@ -936,14 +937,16 @@ function BillingPanel({
     let liveRow: PaymentRow | null = row;
     const { data: fresh } = await supabase
       .from("payment_transactions")
-      .select("id,amount,currency,status,plan_id,skypay_reference_id,created_at")
+      .select("id,amount,currency,status,plan_id,skypay_reference_id,client_reference,created_at")
       .eq("id", row.id)
       .maybeSingle();
     if (fresh) liveRow = fresh as PaymentRow;
 
+    const realReference = liveRow?.skypay_reference_id?.startsWith("afuchat-") ? undefined : liveRow?.skypay_reference_id || undefined;
     const { data, error } = await supabase.functions.invoke("skypay-confirm-payment", {
       body: {
-        reference: liveRow?.skypay_reference_id || undefined,
+        reference: realReference,
+        productId: liveRow?.client_reference || (liveRow?.skypay_reference_id?.startsWith("afuchat-") ? liveRow.skypay_reference_id : undefined),
         paymentId: liveRow?.id,
         planId: liveRow?.plan_id || row.plan_id,
       },

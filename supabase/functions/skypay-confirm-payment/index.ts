@@ -39,9 +39,11 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const reference = String(body.reference || "").trim();
+    const rawReference = String(body.reference || "").trim();
     const paymentId = String(body.paymentId || "").trim();
-    const productId = String(body.productId || body.product_id || "").trim();
+    const rawProductId = String(body.productId || body.product_id || "").trim();
+    const reference = rawReference && !rawReference.startsWith("afuchat-") ? rawReference : "";
+    const productId = rawProductId || (rawReference.startsWith("afuchat-") ? rawReference : "");
     const planId = String(body.planId || "").trim() as keyof typeof plans;
 
     if (!plans[planId]) {
@@ -53,7 +55,7 @@ serve(async (req) => {
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Look up the local row first — by reference, then payment row id, then client_reference (product_id)
+    // Look up the local row first — by real SkyPay reference, then payment row id, then client_reference (product_id)
     let transaction: any = null;
     if (reference) {
       const { data, error } = await serviceClient
@@ -79,22 +81,42 @@ serve(async (req) => {
         .from("payment_transactions")
         .select("*")
         .eq("client_reference", productId)
+        .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw new Error(error.message);
       transaction = data;
     }
 
-    // Resolve the SkyPay reference to query: prefer the explicit one, then the row's stored ref, then the client_reference (product_id used when creating checkout)
+    // Last-resort recovery: attach the latest pending transaction for this user + plan.
+    if (!transaction && reference) {
+      const { data, error } = await serviceClient
+        .from("payment_transactions")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("plan_id", planId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      transaction = data;
+    }
+
+    const isRealSkyPayReference = (value: string | null | undefined) => !!value && !String(value).startsWith("afuchat-");
+
+    // Resolve the identifier to query: prefer the real SkyPay reference, otherwise fall back to the checkout product_id
     const lookupRef =
       reference ||
-      (transaction?.skypay_reference_id ?? "") ||
-      (transaction?.client_reference ?? "");
+      (isRealSkyPayReference(transaction?.skypay_reference_id) ? transaction?.skypay_reference_id : "") ||
+      (productId || transaction?.client_reference || "");
 
     // If the local row says it's still pending (or we have no row at all), poll SkyPay to see if it actually completed
     if (!transaction || transaction.status !== "completed") {
       let remoteStatus: string = "";
       let statusPayload: any = null;
-      let resolvedReference: string = transaction?.skypay_reference_id || reference || "";
+      let resolvedReference: string = isRealSkyPayReference(transaction?.skypay_reference_id)
+        ? String(transaction.skypay_reference_id)
+        : reference;
 
       if (lookupRef) {
         const statusResponse = await fetch(`${SKY_PAY_STATUS_BASE}/${encodeURIComponent(lookupRef)}`, {
@@ -102,7 +124,9 @@ serve(async (req) => {
         }).catch(() => null);
         statusPayload = statusResponse ? await statusResponse.json().catch(() => null) : null;
         remoteStatus = String(statusPayload?.status || "").toLowerCase();
-        if (statusPayload?.reference_id) resolvedReference = String(statusPayload.reference_id);
+        if (statusPayload?.reference_id && isRealSkyPayReference(statusPayload.reference_id)) {
+          resolvedReference = String(statusPayload.reference_id);
+        }
       }
 
       if (remoteStatus === "success" || remoteStatus === "successful") {
@@ -112,6 +136,7 @@ serve(async (req) => {
             .update({
               status: "completed",
               skypay_reference_id: resolvedReference || transaction.skypay_reference_id,
+              client_reference: transaction.client_reference || productId || null,
               plan_id: planId,
               raw_payload: { ...(transaction.raw_payload || {}), confirm_status: statusPayload },
             })
@@ -125,7 +150,8 @@ serve(async (req) => {
             .from("payment_transactions")
             .insert({
               user_id: user.id,
-              skypay_reference_id: resolvedReference,
+              skypay_reference_id: resolvedReference || null,
+              client_reference: productId || null,
               plan_id: planId,
               amount: plans[planId],
               currency: "UGX",
@@ -138,12 +164,12 @@ serve(async (req) => {
           transaction = inserted;
         }
       } else {
-        // Persist the SkyPay reference on the pending row so the webhook (or next poll) can match it
-        if (transaction && resolvedReference && transaction.skypay_reference_id !== resolvedReference) {
+        if (transaction) {
           await serviceClient
             .from("payment_transactions")
             .update({
-              skypay_reference_id: resolvedReference,
+              skypay_reference_id: resolvedReference || transaction.skypay_reference_id,
+              client_reference: transaction.client_reference || productId || null,
               raw_payload: { ...(transaction.raw_payload || {}), last_poll: statusPayload },
             })
             .eq("id", transaction.id);
@@ -153,7 +179,7 @@ serve(async (req) => {
           pending: true,
           remoteStatus: remoteStatus || "unknown",
           error: lookupRef
-            ? "Mobile-money confirmation is still pending on SkyPay. This usually takes 1–3 minutes — approve the prompt on your phone, then try again."
+            ? "Payment is still pending on SkyPay. If you paid from your SkyPay balance, give it a moment and try again."
             : "This payment hasn't been registered with SkyPay yet. Complete the checkout, then try again.",
         }, { status: 202, headers: corsHeaders });
       }
