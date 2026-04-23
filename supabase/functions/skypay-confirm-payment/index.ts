@@ -138,11 +138,22 @@ serve(async (req) => {
           transaction = inserted;
         }
       } else {
+        // Persist the SkyPay reference on the pending row so the webhook (or next poll) can match it
+        if (transaction && resolvedReference && transaction.skypay_reference_id !== resolvedReference) {
+          await serviceClient
+            .from("payment_transactions")
+            .update({
+              skypay_reference_id: resolvedReference,
+              raw_payload: { ...(transaction.raw_payload || {}), last_poll: statusPayload },
+            })
+            .eq("id", transaction.id);
+        }
         return Response.json({
           success: false,
           pending: true,
+          remoteStatus: remoteStatus || "unknown",
           error: lookupRef
-            ? "Waiting for SkyPay confirmation. Try again in a few seconds."
+            ? "Mobile-money confirmation is still pending on SkyPay. This usually takes 1–3 minutes — approve the prompt on your phone, then try again."
             : "This payment hasn't been registered with SkyPay yet. Complete the checkout, then try again.",
         }, { status: 202, headers: corsHeaders });
       }
