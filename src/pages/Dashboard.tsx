@@ -16,6 +16,7 @@ import { BottomTabBar, TabId } from "@/components/BottomTabBar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { StatusDot } from "@/components/StatusDot";
+import { StatusBanner } from "@/components/StatusBanner";
 
 interface EmailAddress {
   id: string;
@@ -441,6 +442,7 @@ const Dashboard = () => {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
+      <StatusBanner />
       {activeSubscription && (
         <div className="border-b bg-primary/5 px-4 py-2 text-xs text-primary">
           Active plan: <span className="font-semibold">{formatPlanName(activeSubscription.plan_id)}</span>

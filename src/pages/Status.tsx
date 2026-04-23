@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
-  Activity, CheckCircle2, AlertCircle, AlertTriangle, Mail, Shield,
+  Activity, Mail, Shield,
   Database, Radio, HardDrive, Sparkles, MessageCircle, CreditCard, Bell,
   RefreshCw, Loader2, Globe,
 } from "lucide-react";
@@ -266,74 +266,28 @@ const Status = () => {
     return () => { if (tickRef.current) window.clearInterval(tickRef.current); };
   }, [runChecks]);
 
-  // ── Aggregate ────────────────────────────────────────────────────────────
-  const overall: ServiceState = useMemo(() => {
-    const states = Object.values(results).map(r => r.state);
-    if (states.length === 0) return "checking";
-    if (states.some(s => s === "down")) return "down";
-    if (states.some(s => s === "degraded")) return "degraded";
-    return "operational";
-  }, [results]);
-
-  const overallCopy = {
-    operational: { title: "All systems operational", desc: "Every monitored service is responding normally.", icon: CheckCircle2 },
-    degraded:    { title: "Degraded performance",    desc: "Some services are responding slower than usual.",  icon: AlertTriangle },
-    down:        { title: "Service disruption",       desc: "One or more services are not responding.",         icon: AlertCircle },
-    checking:    { title: "Checking systems…",        desc: "Running fresh probes against every endpoint.",     icon: Loader2 },
-  }[overall];
-
-  const overallTone = {
-    operational: "from-emerald-500/15 to-emerald-500/0 border-emerald-500/30 text-emerald-700 dark:text-emerald-300",
-    degraded:    "from-amber-500/15 to-amber-500/0 border-amber-500/30 text-amber-700 dark:text-amber-300",
-    down:        "from-red-500/15 to-red-500/0 border-red-500/30 text-red-700 dark:text-red-300",
-    checking:    "from-muted/40 to-transparent border-border text-muted-foreground",
-  }[overall];
-
   return (
     <PageLayout title="Status">
-      {/* ── Hero ───────────────────────────────────────────────────────── */}
-      <section className="pb-8">
-        <div className={cn("rounded-3xl border p-6 sm:p-8 bg-gradient-to-br", overallTone)}>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4 min-w-0">
-              <div className={cn(
-                "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0",
-                overall === "operational" && "bg-emerald-500/15",
-                overall === "degraded"    && "bg-amber-500/15",
-                overall === "down"        && "bg-red-500/15",
-                overall === "checking"    && "bg-muted",
-              )}>
-                <overallCopy.icon className={cn("h-6 w-6", overall === "checking" && "animate-spin")} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">{overallCopy.title}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">{overallCopy.desc}</p>
-                {lastChecked && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Last checked {timeAgo(lastChecked)} · auto-refreshes every 30s
-                  </p>
-                )}
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={runChecks}
-              disabled={refreshing}
-              className="rounded-lg shrink-0 bg-background/50 backdrop-blur"
-            >
-              {refreshing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
-          </div>
-        </div>
-      </section>
-
       {/* ── Services ───────────────────────────────────────────────────── */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-semibold text-foreground">Services</h2>
-          <p className="text-xs text-muted-foreground">{HISTORY_BUCKETS}-check uptime history</p>
+      <section className="space-y-3 pt-2">
+        <div className="flex items-center justify-between mb-1 gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-foreground">Services</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {HISTORY_BUCKETS}-check uptime history
+              {lastChecked && <> · checked {timeAgo(lastChecked)}</>}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={runChecks}
+            disabled={refreshing}
+            className="rounded-lg shrink-0"
+          >
+            {refreshing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
         </div>
         <div className="rounded-2xl border bg-card overflow-hidden">
           {SERVICES.map((svc, i) => {
