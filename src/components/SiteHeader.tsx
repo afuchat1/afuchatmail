@@ -125,8 +125,8 @@ export function SiteHeader() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[85vw] max-w-sm p-0 bg-[#0a0a0a]">
-              <div className="p-5 pb-4">
+            <SheetContent side="right" className="w-[85vw] max-w-sm p-0 bg-[#0a0a0a] flex flex-col">
+              <div className="p-5 pb-4 shrink-0 border-b border-white/5">
                 <SheetTitle className="flex items-center gap-2.5 text-sm font-semibold text-white">
                   <LogoIcon />
                   AfuChat Mail
@@ -135,7 +135,7 @@ export function SiteHeader() {
                   Professional email platform
                 </SheetDescription>
               </div>
-              <div className="space-y-5 px-5 pb-5">
+              <div className="flex-1 overflow-y-auto overscroll-contain thin-scrollbar px-5 py-5 space-y-5">
                 {navGroups.map((group) => (
                   <div key={group.label}>
                     <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">{group.label}</p>
@@ -155,18 +155,18 @@ export function SiteHeader() {
                     </div>
                   </div>
                 ))}
-                <div className="grid gap-2 pt-3">
-                  <SheetClose asChild>
-                    <Button variant="outline" className="h-10 rounded font-medium border-white/20 text-white bg-transparent hover:bg-white/10" onClick={() => navigate("/auth")}>
-                      Sign in
-                    </Button>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Button className="h-10 rounded font-medium bg-white text-[#0a0a0a] hover:bg-white/90 shadow-none" onClick={() => navigate("/auth")}>
-                      Get started
-                    </Button>
-                  </SheetClose>
-                </div>
+              </div>
+              <div className="shrink-0 grid gap-2 px-5 py-4 border-t border-white/5 pb-[max(env(safe-area-inset-bottom),1rem)]">
+                <SheetClose asChild>
+                  <Button variant="outline" className="h-10 rounded font-medium border-white/20 text-white bg-transparent hover:bg-white/10" onClick={() => navigate("/auth")}>
+                    Sign in
+                  </Button>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Button className="h-10 rounded font-medium bg-white text-[#0a0a0a] hover:bg-white/90 shadow-none" onClick={() => navigate("/auth")}>
+                    Get started
+                  </Button>
+                </SheetClose>
               </div>
             </SheetContent>
           </Sheet>
