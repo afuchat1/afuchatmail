@@ -228,8 +228,15 @@ const Dashboard = () => {
         return;
       }
 
-      if ((data?.pending || error) && attempt < 8) {
-        retryTimer = window.setTimeout(() => confirmPayment(attempt + 1), 3000);
+      if ((data?.pending || error) && attempt < 40) {
+        // Poll for up to ~2 minutes (mobile-money confirmation can take 1-3 minutes)
+        const delay = attempt < 10 ? 3000 : 5000;
+        setPaymentConfirmation({
+          status: "checking",
+          message: `Waiting for SkyPay to confirm your ${formatPlanName(planId)} payment… approve the mobile-money prompt on your phone. (${attempt}/40)`,
+          reference: reference || productId,
+        });
+        retryTimer = window.setTimeout(() => confirmPayment(attempt + 1), delay);
         return;
       }
 
