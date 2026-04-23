@@ -41,18 +41,19 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const reference = String(body.reference || "").trim();
     const paymentId = String(body.paymentId || "").trim();
+    const productId = String(body.productId || body.product_id || "").trim();
     const planId = String(body.planId || "").trim() as keyof typeof plans;
 
     if (!plans[planId]) {
       return Response.json({ error: "Valid plan is required." }, { status: 400, headers: corsHeaders });
     }
-    if (!reference && !paymentId) {
-      return Response.json({ error: "Payment reference or payment id is required." }, { status: 400, headers: corsHeaders });
+    if (!reference && !paymentId && !productId) {
+      return Response.json({ error: "Payment reference, payment id, or product id is required." }, { status: 400, headers: corsHeaders });
     }
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Look up the local row first — by reference, otherwise by payment row id (used when the webhook hasn't enriched yet)
+    // Look up the local row first — by reference, then payment row id, then client_reference (product_id)
     let transaction: any = null;
     if (reference) {
       const { data, error } = await serviceClient
@@ -69,6 +70,15 @@ serve(async (req) => {
         .select("*")
         .eq("id", paymentId)
         .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      transaction = data;
+    }
+    if (!transaction && productId) {
+      const { data, error } = await serviceClient
+        .from("payment_transactions")
+        .select("*")
+        .eq("client_reference", productId)
         .maybeSingle();
       if (error) throw new Error(error.message);
       transaction = data;

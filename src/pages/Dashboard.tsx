@@ -165,13 +165,19 @@ const Dashboard = () => {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     const status = params.get("status");
-    const reference = params.get("reference");
+    // SkyPay may send the reference under different names — accept all
+    const reference =
+      params.get("reference") ||
+      params.get("reference_id") ||
+      params.get("referenceId") ||
+      params.get("payment_reference") ||
+      undefined;
+    const productId = params.get("product_id") || params.get("productId") || undefined;
     let planId = params.get("plan");
 
     // Derive planId from SkyPay product_id (clientReference is "afuchat-{planId}-{uuid}")
-    if (!planId) {
-      const productId = params.get("product_id");
-      const match = productId?.match(/^afuchat-(professional|business)-/);
+    if (!planId && productId) {
+      const match = productId.match(/^afuchat-(professional|business)-/);
       if (match) planId = match[1];
     }
 
@@ -186,7 +192,7 @@ const Dashboard = () => {
 
     if (payment !== "success" && status !== "success") return;
 
-    if (!reference || !planId) {
+    if ((!reference && !productId) || !planId) {
       setPaymentConfirmation({
         status: "pending",
         message: "SkyPay returned you safely, but we couldn't read the payment reference. Open Settings → Billing to check status manually.",
@@ -202,11 +208,11 @@ const Dashboard = () => {
       setPaymentConfirmation({
         status: "checking",
         message: `Confirming your ${formatPlanName(planId)} payment with SkyPay...`,
-        reference,
+        reference: reference || productId,
       });
 
       const { data, error } = await supabase.functions.invoke("skypay-confirm-payment", {
-        body: { reference, planId },
+        body: { reference, productId, planId },
       });
 
       if (cancelled) return;
