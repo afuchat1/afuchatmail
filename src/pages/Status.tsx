@@ -7,6 +7,7 @@ import {
 import { PageLayout } from "@/components/PageLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -27,16 +28,50 @@ interface ServiceResult {
   checkedAt: number;
 }
 
-interface HistoryPoint {
-  t: number;       // timestamp
-  ok: boolean;
-  ms: number;
+interface DayBucket {
+  day: string;       // YYYY-MM-DD (local)
+  total: number;     // total checks recorded that day
+  ok: number;        // successful checks
+  fail: number;      // failed checks
+  slow: number;      // ok but >1500ms
+  msMin: number;
+  msMax: number;
+  msSum: number;
+  lastFailAt?: number;
 }
 
-const HISTORY_BUCKETS = 90;          // Supabase uses 90 dots
+const HISTORY_BUCKETS = 90;          // 90 days, like Supabase
 const REFRESH_MS      = 30_000;      // auto-refresh every 30s
 const TIMEOUT_MS      = 8_000;
-const STORAGE_KEY     = "afuchat:status:v1";
+const STORAGE_KEY     = "afuchat:status:v2";
+
+function dayKey(ts: number): string {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function parseDayKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDayLabel(key: string): string {
+  return parseDayKey(key).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function lastNDays(n: number): string[] {
+  const out: string[] = [];
+  const today = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    out.push(dayKey(d.getTime()));
+  }
+  return out;
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -199,7 +234,8 @@ const SERVICES: ServiceCheck[] = [
 
 // ─── Persistence ────────────────────────────────────────────────────────────
 
-type HistoryMap = Record<string, HistoryPoint[]>;
+type HistoryMap = Record<string, Record<string, DayBucket>>;
+//                          serviceId    dayKey    bucket
 
 function loadHistory(): HistoryMap {
   try {
@@ -246,11 +282,39 @@ const Status = () => {
 
     setHistory((prev) => {
       const updated: HistoryMap = { ...prev };
+      const cutoff = lastNDays(HISTORY_BUCKETS); // keep only days we display
+      const cutoffSet = new Set(cutoff);
       for (const [id, r] of settled) {
-        const series = updated[id] ? [...updated[id]] : [];
-        series.push({ t: r.checkedAt, ok: r.state !== "down", ms: r.ms });
-        if (series.length > HISTORY_BUCKETS) series.splice(0, series.length - HISTORY_BUCKETS);
-        updated[id] = series;
+        const byDay: Record<string, DayBucket> = { ...(updated[id] ?? {}) };
+        const key = dayKey(r.checkedAt);
+        const ok = r.state !== "down";
+        const slow = ok && r.ms > 1500;
+        const existing = byDay[key];
+        if (existing) {
+          existing.total += 1;
+          existing.ok   += ok ? 1 : 0;
+          existing.fail += ok ? 0 : 1;
+          existing.slow += slow ? 1 : 0;
+          existing.msMin = Math.min(existing.msMin, r.ms);
+          existing.msMax = Math.max(existing.msMax, r.ms);
+          existing.msSum += r.ms;
+          if (!ok) existing.lastFailAt = r.checkedAt;
+        } else {
+          byDay[key] = {
+            day: key,
+            total: 1,
+            ok:   ok ? 1 : 0,
+            fail: ok ? 0 : 1,
+            slow: slow ? 1 : 0,
+            msMin: r.ms,
+            msMax: r.ms,
+            msSum: r.ms,
+            lastFailAt: ok ? undefined : r.checkedAt,
+          };
+        }
+        // Garbage-collect days outside the visible window
+        for (const k of Object.keys(byDay)) if (!cutoffSet.has(k)) delete byDay[k];
+        updated[id] = byDay;
       }
       saveHistory(updated);
       return updated;
@@ -290,19 +354,15 @@ const Status = () => {
           </Button>
         </div>
         <div className="rounded-2xl border bg-card overflow-hidden">
-          {SERVICES.map((svc, i) => {
-            const r = results[svc.id];
-            const series = history[svc.id] ?? [];
-            return (
-              <ServiceRow
-                key={svc.id}
-                service={svc}
-                result={r}
-                history={series}
-                divider={i !== SERVICES.length - 1}
-              />
-            );
-          })}
+          {SERVICES.map((svc, i) => (
+            <ServiceRow
+              key={svc.id}
+              service={svc}
+              result={results[svc.id]}
+              byDay={history[svc.id] ?? {}}
+              divider={i !== SERVICES.length - 1}
+            />
+          ))}
         </div>
       </section>
 
@@ -315,21 +375,26 @@ export default Status;
 // ─── Service row ────────────────────────────────────────────────────────────
 
 function ServiceRow({
-  service, result, history, divider,
+  service, result, byDay, divider,
 }: {
   service: ServiceCheck;
   result?: ServiceResult;
-  history: HistoryPoint[];
+  byDay: Record<string, DayBucket>;
   divider: boolean;
 }) {
   const Icon = service.icon;
   const state: ServiceState = result?.state ?? "checking";
 
-  const upPct = useMemo(() => {
-    if (history.length === 0) return null;
-    const ok = history.filter(h => h.ok).length;
-    return (ok / history.length) * 100;
-  }, [history]);
+  const days = useMemo(() => lastNDays(HISTORY_BUCKETS), []);
+  const buckets = useMemo(() => days.map(d => byDay[d]), [days, byDay]);
+
+  const { upPct, recordedDays } = useMemo(() => {
+    const recorded = buckets.filter(Boolean) as DayBucket[];
+    if (recorded.length === 0) return { upPct: null as number | null, recordedDays: 0 };
+    const total = recorded.reduce((s, b) => s + b.total, 0);
+    const ok    = recorded.reduce((s, b) => s + b.ok, 0);
+    return { upPct: total > 0 ? (ok / total) * 100 : 100, recordedDays: recorded.length };
+  }, [buckets]);
 
   return (
     <div className={cn("p-4 sm:p-5", divider && "border-b border-border/60")}>
@@ -350,39 +415,110 @@ function ServiceRow({
           </p>
           {upPct !== null && (
             <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">
-              {upPct.toFixed(1)}% up
+              {upPct.toFixed(2)}% uptime
             </p>
           )}
         </div>
       </div>
 
-      {/* Uptime history bars */}
+      {/* Daily uptime bars (clickable) */}
       <div className="mt-3 ml-0 sm:ml-14">
-        <div className="flex items-end gap-[2px] h-7">
-          {Array.from({ length: HISTORY_BUCKETS }).map((_, i) => {
-            const offset = HISTORY_BUCKETS - history.length;
-            const point  = i >= offset ? history[i - offset] : undefined;
-            const tone =
-              !point ? "bg-muted/40"
-              : !point.ok ? "bg-red-500/80"
-              : point.ms > 1500 ? "bg-amber-500/80"
-              : "bg-emerald-500/70";
-            return (
-              <div
-                key={i}
-                className={cn("flex-1 min-w-0 rounded-sm transition-colors", tone)}
-                style={{ height: point ? "100%" : "30%" }}
-                title={point
-                  ? `${new Date(point.t).toLocaleTimeString()} · ${point.ok ? "OK" : "DOWN"} · ${point.ms}ms`
-                  : "no data"}
-              />
-            );
-          })}
+        <div className="flex items-stretch gap-[2px] h-7">
+          {days.map((d, i) => (
+            <DayBar key={d} day={d} bucket={buckets[i]} serviceName={service.name} />
+          ))}
         </div>
         <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
-          <span>{history.length > 0 ? `${history.length} checks ago` : "no history yet"}</span>
-          <span>now</span>
+          <span>{recordedDays > 0 ? `${recordedDays} of ${HISTORY_BUCKETS} days recorded` : "no history yet"}</span>
+          <span>today</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Day bar with click popover ─────────────────────────────────────────────
+
+function DayBar({
+  day, bucket, serviceName,
+}: { day: string; bucket?: DayBucket; serviceName: string }) {
+  const tone =
+    !bucket ? "bg-muted/40 hover:bg-muted/60"
+    : bucket.fail > 0 ? "bg-red-500/80 hover:bg-red-500"
+    : bucket.slow > 0 ? "bg-amber-500/80 hover:bg-amber-500"
+    : "bg-emerald-500/70 hover:bg-emerald-500";
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${serviceName} on ${formatDayLabel(day)}`}
+          className={cn(
+            "flex-1 min-w-0 rounded-sm transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40",
+            tone,
+          )}
+          data-testid={`status-bar-${day}`}
+        />
+      </PopoverTrigger>
+      <PopoverContent side="top" className="w-64 p-3">
+        <DayDetails day={day} bucket={bucket} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function DayDetails({ day, bucket }: { day: string; bucket?: DayBucket }) {
+  if (!bucket) {
+    return (
+      <div>
+        <p className="text-xs font-semibold">{formatDayLabel(day)}</p>
+        <p className="mt-1 text-xs text-muted-foreground">No checks recorded for this day.</p>
+      </div>
+    );
+  }
+  const upPct = bucket.total > 0 ? (bucket.ok / bucket.total) * 100 : 100;
+  const avg = bucket.total > 0 ? Math.round(bucket.msSum / bucket.total) : 0;
+  const dotTone =
+    bucket.fail > 0 ? "bg-red-500"
+    : bucket.slow > 0 ? "bg-amber-500"
+    : "bg-emerald-500";
+  const headline =
+    bucket.fail > 0 ? `${bucket.fail} failed check${bucket.fail === 1 ? "" : "s"}`
+    : bucket.slow > 0 ? `${bucket.slow} slow check${bucket.slow === 1 ? "" : "s"}`
+    : "All checks passed";
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold">{formatDayLabel(day)}</p>
+        <span className="text-[10px] font-mono text-muted-foreground">{upPct.toFixed(2)}% up</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className={cn("h-2 w-2 rounded-full", dotTone)} />
+        <p className="text-xs">{headline}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-1 border-t border-border/60 text-[11px]">
+        <span className="text-muted-foreground">Checks</span>
+        <span className="text-right font-mono">{bucket.total}</span>
+        <span className="text-muted-foreground">OK</span>
+        <span className="text-right font-mono text-emerald-600 dark:text-emerald-400">{bucket.ok}</span>
+        {bucket.fail > 0 && <>
+          <span className="text-muted-foreground">Failed</span>
+          <span className="text-right font-mono text-red-600 dark:text-red-400">{bucket.fail}</span>
+        </>}
+        {bucket.slow > 0 && <>
+          <span className="text-muted-foreground">Slow</span>
+          <span className="text-right font-mono text-amber-600 dark:text-amber-400">{bucket.slow}</span>
+        </>}
+        <span className="text-muted-foreground">Avg latency</span>
+        <span className="text-right font-mono">{avg} ms</span>
+        <span className="text-muted-foreground">Range</span>
+        <span className="text-right font-mono">{bucket.msMin}–{bucket.msMax} ms</span>
+        {bucket.lastFailAt && <>
+          <span className="text-muted-foreground">Last failure</span>
+          <span className="text-right font-mono">{new Date(bucket.lastFailAt).toLocaleTimeString()}</span>
+        </>}
       </div>
     </div>
   );
