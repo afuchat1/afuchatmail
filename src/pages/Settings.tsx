@@ -11,8 +11,9 @@ import {
   Mail, ArrowLeft, Save, Plus, Trash2, Copy, LogOut, MessageCircle,
   Link2, Unlink, CreditCard, Crown, ExternalLink, AlertTriangle, Camera,
   Loader2, User as UserIcon, Bell, Keyboard, AtSign, ShieldAlert,
-  Settings as SettingsIcon, Check, ChevronRight, Sparkles,
+  Settings as SettingsIcon, Check, ChevronRight, Sparkles, Globe,
 } from "lucide-react";
+import { CustomDomainsPanel } from "@/components/CustomDomainsPanel";
 import { User } from "@supabase/supabase-js";
 import { avatarColor, initials } from "@/lib/avatar";
 import { EmailAddressSwitcher } from "@/components/EmailAddressSwitcher";
@@ -54,6 +55,7 @@ type SectionId =
   | "notifications"
   | "integrations"
   | "addresses"
+  | "domains"
   | "billing"
   | "shortcuts"
   | "danger";
@@ -63,6 +65,7 @@ const SECTIONS: { id: SectionId; label: string; icon: React.ComponentType<{ clas
   { id: "email",         label: "Email",          icon: Mail,        group: "Mail" },
   { id: "notifications", label: "Notifications",  icon: Bell,        group: "Mail" },
   { id: "addresses",     label: "Addresses",      icon: AtSign,      group: "Mail" },
+  { id: "domains",       label: "Custom domains", icon: Globe,       group: "Mail" },
   { id: "integrations",  label: "Integrations",   icon: Link2,       group: "Workspace" },
   { id: "billing",       label: "Billing & plan", icon: CreditCard,  group: "Workspace" },
   { id: "shortcuts",     label: "Shortcuts",      icon: Keyboard,    group: "Workspace" },
@@ -721,6 +724,17 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
             </div>
           )}
 
+          {/* ─── Custom domains ──────────────────────────────────── */}
+          {activeSection === "domains" && (
+            <CustomDomainsPanel
+              user={user}
+              tier={plan.tier}
+              isAdmin={isAdmin}
+              onUpgrade={() => navigate("/pricing")}
+              onAddressCreated={() => user && fetchEmails(user.id)}
+            />
+          )}
+
           {/* ─── Billing ─────────────────────────────────────────── */}
           {activeSection === "billing" && (
             <div className="space-y-6">
@@ -880,6 +894,7 @@ function sectionDescription(id: SectionId): string {
     case "email":         return "Composing defaults for the selected mailbox.";
     case "notifications": return "Decide what reaches your inbox and devices.";
     case "addresses":     return "Manage primary mailboxes and forwarding aliases.";
+    case "domains":       return "Send and receive mail from your own domain.";
     case "integrations":  return "Connect AfuChat Mail to other services.";
     case "billing":       return "Plan, usage, and payment history.";
     case "shortcuts":     return "Keyboard shortcuts to move faster.";

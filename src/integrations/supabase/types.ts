@@ -41,10 +41,50 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_domains: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          last_checked_at: string | null
+          last_error: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          verification_token: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          verification_token?: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verification_token?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       email_addresses: {
         Row: {
           alias_for_id: string | null
           created_at: string
+          domain: string
           full_email: string | null
           id: string
           is_alias: boolean
@@ -55,6 +95,7 @@ export type Database = {
         Insert: {
           alias_for_id?: string | null
           created_at?: string
+          domain?: string
           full_email?: string | null
           id?: string
           is_alias?: boolean
@@ -65,6 +106,7 @@ export type Database = {
         Update: {
           alias_for_id?: string | null
           created_at?: string
+          domain?: string
           full_email?: string | null
           id?: string
           is_alias?: boolean
@@ -744,6 +786,10 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_trash_emails: { Args: never; Returns: undefined }
+      create_custom_domain_address: {
+        Args: { _domain_id: string; _local_part: string }
+        Returns: string
+      }
       get_user_plan: { Args: { _user_id: string }; Returns: string }
       get_user_storage_quota_bytes: { Args: { _user_id: string }; Returns: number }
       get_user_storage_used_bytes: { Args: { _user_id: string }; Returns: number }

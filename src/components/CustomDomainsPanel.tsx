@@ -1,0 +1,387 @@
+import { useCallback, useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Crown, Globe, Loader2, Plus, RefreshCw, Trash2, Copy, CheckCircle2, AlertCircle, Clock, Plug } from "lucide-react";
+import { PLAN_LIMITS } from "@/hooks/usePlan";
+
+type Tier = keyof typeof PLAN_LIMITS;
+
+interface CustomDomain {
+  id: string;
+  domain: string;
+  verification_token: string;
+  status: "pending" | "verified" | "failed" | string;
+  verified_at: string | null;
+  last_checked_at: string | null;
+  last_error: string | null;
+  created_at: string;
+}
+
+interface Props {
+  user: User | null;
+  tier: Tier;
+  isAdmin: boolean;
+  onUpgrade: () => void;
+  onAddressCreated?: () => void;
+}
+
+const DOMAIN_REGEX = /^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
+
+const sectionWrap = "rounded-2xl border border-border/60 bg-card/40 p-5";
+
+export function CustomDomainsPanel({ user, tier, isAdmin, onUpgrade, onAddressCreated }: Props) {
+  const { toast } = useToast();
+  const allowed = isAdmin || tier === "professional" || tier === "business";
+  const [domains, setDomains] = useState<CustomDomain[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newDomain, setNewDomain] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CustomDomain | null>(null);
+
+  const fetchDomains = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("custom_domains")
+      .select("id, domain, verification_token, status, verified_at, last_checked_at, last_error, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (!error && data) setDomains(data as CustomDomain[]);
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    fetchDomains();
+  }, [fetchDomains]);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    const domain = newDomain.trim().toLowerCase();
+    if (!DOMAIN_REGEX.test(domain)) {
+      toast({ title: "Invalid domain", description: "Enter a domain like mycompany.com.", variant: "destructive" });
+      return;
+    }
+    if (domain === "afuchat.com") {
+      toast({ title: "Reserved", description: "afuchat.com is the platform domain and cannot be added.", variant: "destructive" });
+      return;
+    }
+    setAdding(true);
+    const { error } = await supabase
+      .from("custom_domains")
+      .insert({ user_id: user.id, domain });
+    setAdding(false);
+    if (error) {
+      toast({ title: "Could not add domain", description: error.message, variant: "destructive" });
+      return;
+    }
+    setNewDomain("");
+    toast({ title: "Domain added", description: "Add the DNS TXT record below, then click Verify." });
+    fetchDomains();
+  };
+
+  const handleVerify = async (d: CustomDomain) => {
+    setVerifyingId(d.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-custom-domain", {
+        body: { domain_id: d.id },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast({ title: "Domain verified", description: `${d.domain} is now ready to use.` });
+      } else {
+        toast({
+          title: "Not verified yet",
+          description: data?.error || "TXT record not found. DNS changes can take a few minutes to propagate.",
+          variant: "destructive",
+        });
+      }
+      fetchDomains();
+    } catch (err: any) {
+      toast({ title: "Verification failed", description: err?.message || String(err), variant: "destructive" });
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase.from("custom_domains").delete().eq("id", deleteTarget.id);
+    setDeleteTarget(null);
+    if (error) {
+      toast({ title: "Failed to remove", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Domain removed" });
+    fetchDomains();
+  };
+
+  const copyToken = (d: CustomDomain) => {
+    const value = `afuchat-verify=${d.verification_token}`;
+    navigator.clipboard.writeText(value);
+    toast({ title: "Copied", description: "TXT record value copied." });
+  };
+
+  if (!allowed) {
+    return (
+      <div className={sectionWrap}>
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Globe className="h-5 w-5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold">Custom domains</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Send and receive mail at your own domain (you@yourcompany.com). Available on the
+              Professional plan and above.
+            </p>
+            <Button size="sm" className="rounded-lg mt-3" onClick={onUpgrade}>
+              <Crown className="h-3.5 w-3.5 mr-1.5" />
+              Upgrade to unlock
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className={sectionWrap}>
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Globe className="h-5 w-5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold">Add a custom domain</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Enter the apex domain you want to use (e.g. <span className="font-mono">acme.co</span>),
+              then add the DNS TXT record we show you to prove ownership.
+            </p>
+            <form onSubmit={handleAdd} className="flex gap-2 mt-3">
+              <Input
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                placeholder="acme.co"
+                className="h-9 rounded-lg font-mono"
+                disabled={adding}
+              />
+              <Button type="submit" disabled={adding || !newDomain.trim()} className="h-9 rounded-lg">
+                {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-1" />Add</>}
+              </Button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading domains…
+        </div>
+      ) : domains.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground text-sm">
+          You haven't added any custom domains yet.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {domains.map((d) => (
+            <DomainRow
+              key={d.id}
+              domain={d}
+              user={user}
+              isVerifying={verifyingId === d.id}
+              onVerify={() => handleVerify(d)}
+              onDelete={() => setDeleteTarget(d)}
+              onCopyToken={() => copyToken(d)}
+              onAddressCreated={() => {
+                fetchDomains();
+                onAddressCreated?.();
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {deleteTarget?.domain}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Removing the domain will not delete addresses you've already created on it, but the
+              addresses will stop receiving mail until the domain is re-verified.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function DomainRow({
+  domain,
+  user,
+  isVerifying,
+  onVerify,
+  onDelete,
+  onCopyToken,
+  onAddressCreated,
+}: {
+  domain: CustomDomain;
+  user: User | null;
+  isVerifying: boolean;
+  onVerify: () => void;
+  onDelete: () => void;
+  onCopyToken: () => void;
+  onAddressCreated: () => void;
+}) {
+  const { toast } = useToast();
+  const [newLocalPart, setNewLocalPart] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const statusBadge = (() => {
+    if (domain.status === "verified") {
+      return (
+        <Badge className="text-[10px] gap-1 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/20">
+          <CheckCircle2 className="h-3 w-3" /> Verified
+        </Badge>
+      );
+    }
+    if (domain.status === "failed") {
+      return (
+        <Badge variant="destructive" className="text-[10px] gap-1">
+          <AlertCircle className="h-3 w-3" /> Failed
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="secondary" className="text-[10px] gap-1">
+        <Clock className="h-3 w-3" /> Pending
+      </Badge>
+    );
+  })();
+
+  const handleCreateAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    const local = newLocalPart.trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9._-]*[a-z0-9]$/.test(local) || local.length < 3 || local.length > 30) {
+      toast({
+        title: "Invalid name",
+        description: "Use 3–30 lowercase letters, numbers, dots or hyphens.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setCreating(true);
+    const { error } = await supabase.rpc("create_custom_domain_address", {
+      _domain_id: domain.id,
+      _local_part: local,
+    });
+    setCreating(false);
+    if (error) {
+      toast({ title: "Could not create address", description: error.message, variant: "destructive" });
+      return;
+    }
+    setNewLocalPart("");
+    toast({ title: "Address created", description: `${local}@${domain.domain} is now active.` });
+    onAddressCreated();
+  };
+
+  return (
+    <div className={sectionWrap + " space-y-4"}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold font-mono truncate">{domain.domain}</p>
+            {statusBadge}
+          </div>
+          {domain.status === "verified" && domain.verified_at && (
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Verified {new Date(domain.verified_at).toLocaleDateString()}
+            </p>
+          )}
+          {domain.status !== "verified" && domain.last_error && (
+            <p className="text-[11px] text-destructive mt-1 line-clamp-2">{domain.last_error}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button size="sm" variant="ghost" className="h-8 rounded-lg" onClick={onVerify} disabled={isVerifying}>
+            {isVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            <span className="ml-1.5 text-xs">{domain.status === "verified" ? "Re-check" : "Verify"}</span>
+          </Button>
+          <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-destructive hover:text-destructive" onClick={onDelete}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* DNS instructions */}
+      <div className="rounded-xl bg-muted/40 border border-border/40 p-3 space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          <Plug className="h-3 w-3" /> DNS verification record
+        </p>
+        <div className="grid grid-cols-[80px_1fr_auto] gap-2 items-center text-xs">
+          <span className="text-muted-foreground">Type</span>
+          <code className="font-mono bg-background px-2 py-1 rounded border border-border/40">TXT</code>
+          <span />
+          <span className="text-muted-foreground">Name</span>
+          <code className="font-mono bg-background px-2 py-1 rounded border border-border/40 truncate">@ (root)</code>
+          <span />
+          <span className="text-muted-foreground">Value</span>
+          <code className="font-mono bg-background px-2 py-1 rounded border border-border/40 truncate">afuchat-verify={domain.verification_token}</code>
+          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={onCopyToken}>
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Add this TXT record at your DNS provider, wait a couple of minutes, then click Verify.
+          Once verified, point your <span className="font-mono">MX</span> records to AfuChat's mail
+          provider so inbound mail reaches your inbox.
+        </p>
+      </div>
+
+      {/* Create-address form (only for verified domains) */}
+      {domain.status === "verified" && (
+        <form onSubmit={handleCreateAddress} className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Add an address on this domain
+          </p>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Input
+                placeholder="hello"
+                value={newLocalPart}
+                onChange={(e) => setNewLocalPart(e.target.value.toLowerCase())}
+                pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]"
+                minLength={3}
+                maxLength={30}
+                className="h-9 pr-32 rounded-lg font-mono"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium pointer-events-none truncate max-w-[110px]">
+                @{domain.domain}
+              </span>
+            </div>
+            <Button type="submit" disabled={creating} className="h-9 rounded-lg">
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-1" />Create</>}
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
