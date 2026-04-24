@@ -99,8 +99,9 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   const primaryCount = emails.filter(e => !e.is_alias).length;
   const aliasCount = emails.filter(e => e.is_alias).length;
   const isAdmin = plan.isAdmin;
-  const canCreateAliases = isAdmin || plan.tier === "professional" || plan.tier === "business";
+  const canCreateAliases = true; // Every plan now includes unlimited aliases.
   const aliasLimit = planLimits.aliases;
+  const aliasLimitLabel = Number.isFinite(aliasLimit) ? String(aliasLimit) : "∞";
   const atAliasLimit = aliasCount >= aliasLimit;
   const primaryAddress = emails.find(e => e.is_primary);
 
@@ -608,7 +609,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                     {isAdmin
                       ? `${primaryCount} primary · ${aliasCount} alias${aliasCount === 1 ? "" : "es"}`
                       : canCreateAliases
-                        ? `${primaryAddress?.full_email ?? "—"} · ${aliasCount}/${aliasLimit} aliases used`
+                        ? `${primaryAddress?.full_email ?? "—"} · ${aliasCount}/${aliasLimitLabel} aliases used`
                         : `Your address: ${primaryAddress?.full_email ?? "—"}`}
                   </p>
                 </div>
@@ -643,7 +644,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                 <Section
                   title="Add an alias"
                   desc={`Aliases forward to ${primaryAddress.full_email}.`}
-                  trailing={<span className="text-[11px] text-muted-foreground font-medium">{aliasCount}/{aliasLimit} used</span>}
+                  trailing={<span className="text-[11px] text-muted-foreground font-medium">{aliasCount}/{aliasLimitLabel} used</span>}
                 >
                   <form
                     onSubmit={(e) => { e.preventDefault(); if (!primaryAddress) return; setSelectedAliasTarget(primaryAddress.id); handleCreateAlias(e); }}
