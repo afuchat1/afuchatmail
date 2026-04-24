@@ -16,7 +16,7 @@ const plans = [
     icon: Sparkles,
     features: [
       "1 primary @afuchat.com address",
-      "Unlimited aliases",
+      "1 alias",
       "Smart folders & threading",
       "Push notifications",
       "PWA access on all devices",
@@ -36,7 +36,7 @@ const plans = [
     badge: "Popular",
     features: [
       "3 primary @afuchat.com addresses",
-      "Unlimited aliases per address",
+      "5 aliases per address",
       "Custom domain support",
       "Advanced routing rules",
       "Priority email delivery",
@@ -59,7 +59,7 @@ const plans = [
     features: [
       "Unlimited @afuchat.com addresses",
       "Admin controls & audit logs",
-      "Team shared aliases",
+      "25 team shared aliases",
       "Security reviews & compliance",
       "Dedicated onboarding",
       "25 GB attachment storage",
@@ -77,7 +77,7 @@ const plans = [
 
 const comparisons = [
   { feature: "Primary email addresses", starter: "1", pro: "3", business: "Unlimited" },
-  { feature: "Aliases per address", starter: "Unlimited", pro: "Unlimited", business: "Unlimited" },
+  { feature: "Aliases per address", starter: "1", pro: "5", business: "25" },
   { feature: "Attachment storage", starter: "500 MB", pro: "5 GB", business: "25 GB" },
   { feature: "Custom domain", starter: "—", pro: "Yes", business: "Yes" },
   { feature: "Push notifications", starter: "Yes", pro: "Yes", business: "Yes" },

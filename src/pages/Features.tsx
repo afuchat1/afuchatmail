@@ -34,7 +34,7 @@ const Features = () => {
 
   const comparison = [
     { feature: "Custom addresses", afuchat: true, gmail: false, outlook: false },
-    { feature: "Unlimited aliases", afuchat: true, gmail: false, outlook: false },
+    { feature: "Aliases included on every plan", afuchat: true, gmail: false, outlook: false },
     { feature: "No ads", afuchat: true, gmail: false, outlook: true },
     { feature: "No tracking", afuchat: true, gmail: false, outlook: false },
     { feature: "Scheduled send", afuchat: true, gmail: true, outlook: true },
