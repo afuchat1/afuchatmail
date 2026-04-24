@@ -2,12 +2,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, Send, Paperclip, FileText, Clock, Sparkles, Wand2, CheckCheck, ArrowDownToLine, ArrowUpToLine, Loader2, GripHorizontal } from "lucide-react";
+import { X, Send, Paperclip, FileText, Clock, Sparkles, Wand2, CheckCheck, ArrowDownToLine, ArrowUpToLine, Loader2, GripHorizontal, HardDrive } from "lucide-react";
 import { RichEmailEditor, RichEmailEditorHandle } from "@/components/RichEmailEditor";
 import { RecipientAutocomplete } from "@/components/RecipientAutocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAIEmailAssist } from "@/hooks/useAIEmailAssist";
+import { formatBytes } from "@/hooks/usePlan";
 import {
   Select,
   SelectContent,
@@ -102,6 +103,8 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [storageUsedBytes, setStorageUsedBytes] = useState<number>(0);
+  const [storageQuotaBytes, setStorageQuotaBytes] = useState<number>(Infinity);
   const [scheduledAt, setScheduledAt] = useState<string>("");
   const [showSchedule, setShowSchedule] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -182,7 +185,26 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
     fetchUserEmails();
     fetchUserSettings();
     checkAdminAndFetchTemplates();
+    fetchStorageStatus();
   }, []);
+
+  const fetchStorageStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const [usedRes, quotaRes] = await Promise.all([
+        supabase.rpc("get_user_storage_used_bytes", { _user_id: user.id }),
+        supabase.rpc("get_user_storage_quota_bytes", { _user_id: user.id }),
+      ]);
+      if (!usedRes.error && usedRes.data !== null) {
+        setStorageUsedBytes(Number(usedRes.data) || 0);
+      }
+      if (!quotaRes.error && quotaRes.data !== null) {
+        const q = Number(quotaRes.data);
+        setStorageQuotaBytes(q < 0 ? Infinity : q);
+      }
+    } catch { /* silent */ }
+  };
 
   const checkAdminAndFetchTemplates = async () => {
     try {
@@ -306,10 +328,24 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      // Plan-aware quota check (server enforces too; this is for fast UX feedback).
+      const stagedBytes = attachments.reduce((acc, a) => acc + (a.size || 0), 0);
+      const incomingBytes = Array.from(files).reduce((acc, f) => acc + f.size, 0);
+      if (Number.isFinite(storageQuotaBytes) && storageUsedBytes + stagedBytes + incomingBytes > storageQuotaBytes) {
+        const remaining = Math.max(0, storageQuotaBytes - storageUsedBytes - stagedBytes);
+        toast({
+          title: "Storage limit reached",
+          description: `These files need ${formatBytes(incomingBytes)} but only ${formatBytes(remaining)} of your ${formatBytes(storageQuotaBytes)} plan storage is free. Upgrade your plan or remove old attachments.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const uploadedAttachments: Attachment[] = [];
       for (const file of Array.from(files)) {
         if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
-          toast({ title: "File too large", description: `${file.name} exceeds 10MB limit`, variant: "destructive" });
+          toast({ title: "File too large", description: `${file.name} exceeds 10MB per-file limit`, variant: "destructive" });
           continue;
         }
         const fileName = buildSafeAttachmentPath(user.id, file);
@@ -570,7 +606,15 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
           {/* Attachments Display */}
           {attachments.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Attachments ({attachments.length})</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Attachments ({attachments.length})</p>
+                {Number.isFinite(storageQuotaBytes) && (
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+                    <HardDrive className="h-3 w-3" />
+                    {formatBytes(storageUsedBytes + attachments.reduce((acc, a) => acc + (a.size || 0), 0))} / {formatBytes(storageQuotaBytes)}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {attachments.map((attachment) => (
                   <div key={attachment.id} className="flex items-center gap-2 bg-muted px-3 py-2 rounded-xl text-sm">

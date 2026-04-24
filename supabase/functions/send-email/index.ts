@@ -62,6 +62,36 @@ const handler = async (req: Request): Promise<Response> => {
     const emailData: SendEmailRequest = await req.json();
     console.log("Sending email from:", emailData.from_address, "to:", emailData.to_addresses);
 
+    // ── Plan-aware attachment storage quota enforcement ─────────────────
+    const incomingBytes = (emailData.attachments || []).reduce(
+      (acc, a) => acc + (Number(a.size) || 0),
+      0,
+    );
+    if (incomingBytes > 0) {
+      const [{ data: usedData }, { data: quotaData }] = await Promise.all([
+        supabaseAdmin.rpc("get_user_storage_used_bytes", { _user_id: user.id }),
+        supabaseAdmin.rpc("get_user_storage_quota_bytes", { _user_id: user.id }),
+      ]);
+      const usedBytes = Number(usedData) || 0;
+      const quotaBytes = Number(quotaData);
+      // -1 sentinel = unlimited (admins).
+      if (Number.isFinite(quotaBytes) && quotaBytes >= 0 && usedBytes + incomingBytes > quotaBytes) {
+        console.warn("Storage quota exceeded for user", user.id, {
+          usedBytes, incomingBytes, quotaBytes,
+        });
+        return new Response(
+          JSON.stringify({
+            error: "Attachment storage quota exceeded for your current plan. Upgrade or delete old attachments and try again.",
+            code: "STORAGE_QUOTA_EXCEEDED",
+            used_bytes: usedBytes,
+            incoming_bytes: incomingBytes,
+            quota_bytes: quotaBytes,
+          }),
+          { status: 413, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+    }
+
     // Send email via Resend
     const emailResponse = await resend.emails.send({
       from: emailData.from_address,

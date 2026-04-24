@@ -84,9 +84,20 @@ export function usePlan(user: User | null) {
   return { plan, loading, refresh };
 }
 
+const MB = 1024 * 1024;
+const GB = 1024 * MB;
+
 export const PLAN_LIMITS = {
-  starter: { primaryAddresses: 1, aliases: 1, customDomain: false, oauthApi: false, attachmentStorageGB: 0.5, name: "Starter" },
-  professional: { primaryAddresses: 3, aliases: 5, customDomain: true, oauthApi: false, attachmentStorageGB: 5, name: "Professional" },
-  business: { primaryAddresses: Infinity, aliases: 25, customDomain: true, oauthApi: true, attachmentStorageGB: 25, name: "Business" },
-  admin: { primaryAddresses: Infinity, aliases: Infinity, customDomain: true, oauthApi: true, attachmentStorageGB: Infinity, name: "Admin" },
+  starter:      { primaryAddresses: 1,        aliases: 1,        customDomain: false, oauthApi: false, attachmentStorageBytes: 500 * MB,   attachmentStorageLabel: "500 MB", name: "Starter" },
+  professional: { primaryAddresses: 3,        aliases: 5,        customDomain: true,  oauthApi: false, attachmentStorageBytes: 5 * GB,     attachmentStorageLabel: "5 GB",   name: "Professional" },
+  business:     { primaryAddresses: Infinity, aliases: 25,       customDomain: true,  oauthApi: true,  attachmentStorageBytes: 25 * GB,    attachmentStorageLabel: "25 GB",  name: "Business" },
+  admin:        { primaryAddresses: Infinity, aliases: Infinity, customDomain: true,  oauthApi: true,  attachmentStorageBytes: Infinity,   attachmentStorageLabel: "Unlimited", name: "Admin" },
 } as const;
+
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes)) return "Unlimited";
+  if (bytes >= GB) return `${(bytes / GB).toFixed(bytes >= 10 * GB ? 0 : 1)} GB`;
+  if (bytes >= MB) return `${(bytes / MB).toFixed(bytes >= 100 * MB ? 0 : 1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${bytes} B`;
+}

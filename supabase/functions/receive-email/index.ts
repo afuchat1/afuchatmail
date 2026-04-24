@@ -192,13 +192,39 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Process attachments if any
-    const attachments = payload.attachments?.map(att => ({
+    let attachments = payload.attachments?.map(att => ({
       name: att.filename,
       size: att.size,
       contentType: att.contentType,
       // Note: In production, you'd want to upload the attachment content to storage
       // and store the path instead of the content directly
     })) || [];
+
+    // ── Plan-aware attachment storage quota enforcement ─────────────────
+    // If accepting these attachments would push the user over their plan
+    // quota, drop them and append a notice to the body so the message itself
+    // still gets delivered.
+    let quotaNotice = "";
+    if (attachments.length > 0) {
+      const incomingBytes = attachments.reduce((acc, a) => acc + (Number(a.size) || 0), 0);
+      const [{ data: usedData }, { data: quotaData }] = await Promise.all([
+        supabaseAdmin.rpc("get_user_storage_used_bytes", { _user_id: emailAddress.user_id }),
+        supabaseAdmin.rpc("get_user_storage_quota_bytes", { _user_id: emailAddress.user_id }),
+      ]);
+      const usedBytes = Number(usedData) || 0;
+      const quotaBytes = Number(quotaData);
+      if (Number.isFinite(quotaBytes) && quotaBytes >= 0 && usedBytes + incomingBytes > quotaBytes) {
+        const droppedNames = attachments.map(a => a.name).filter(Boolean).join(", ");
+        console.warn("Dropping inbound attachments — quota exceeded for", emailAddress.user_id, {
+          usedBytes, incomingBytes, quotaBytes,
+        });
+        attachments = [];
+        quotaNotice =
+          `[AfuChat] Attachments (${droppedNames}) were not delivered because your account is over ` +
+          `its plan attachment storage limit. Free up space in Settings → Billing or upgrade your plan ` +
+          `to receive future attachments.`;
+      }
+    }
 
     // Parse CC and BCC if present
     const ccAddresses = payload.cc 
@@ -233,6 +259,14 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // Build final bodies, prepending quota notice if attachments were dropped.
+    const finalBodyText = quotaNotice
+      ? `${quotaNotice}\n\n${payload.text || ""}`
+      : payload.text;
+    const finalBodyHtml = quotaNotice
+      ? `<div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:12px 14px;border-radius:6px;font-size:13px;color:#78350f;margin-bottom:16px;">${quotaNotice}</div>${payload.html || ""}`
+      : payload.html;
+
     // Store the received email in the database
     const { data: insertedEmail, error: insertError } = await supabaseAdmin
       .from("emails")
@@ -245,8 +279,8 @@ const handler = async (req: Request): Promise<Response> => {
         cc_addresses: ccAddresses,
         bcc_addresses: bccAddresses,
         subject: payload.subject,
-        body_html: payload.html,
-        body_text: payload.text,
+        body_html: finalBodyHtml,
+        body_text: finalBodyText,
         reply_to: payload.reply_to,
         attachments: attachments,
         received_at: new Date().toISOString(),

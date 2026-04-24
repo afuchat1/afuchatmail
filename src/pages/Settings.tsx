@@ -17,7 +17,10 @@ import { User } from "@supabase/supabase-js";
 import { avatarColor, initials } from "@/lib/avatar";
 import { EmailAddressSwitcher } from "@/components/EmailAddressSwitcher";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
-import { usePlan, PLAN_LIMITS } from "@/hooks/usePlan";
+import { usePlan, PLAN_LIMITS, formatBytes } from "@/hooks/usePlan";
+import { useStorageUsage } from "@/hooks/useStorageUsage";
+import { Progress } from "@/components/ui/progress";
+import { HardDrive } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -725,6 +728,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                 plan={plan}
                 planLimits={planLimits}
                 userId={user?.id}
+                user={user}
                 onRefresh={refreshPlan}
                 onUpgrade={() => navigate("/pricing")}
               />
@@ -897,11 +901,12 @@ interface PaymentRow {
 }
 
 function BillingPanel({
-  plan, planLimits, userId, onRefresh, onUpgrade,
+  plan, planLimits, userId, user, onRefresh, onUpgrade,
 }: {
   plan: ReturnType<typeof usePlan>["plan"];
   planLimits: typeof PLAN_LIMITS[keyof typeof PLAN_LIMITS];
   userId: string | undefined;
+  user: User | null;
   onRefresh: () => void;
   onUpgrade: () => void;
 }) {
@@ -909,6 +914,11 @@ function BillingPanel({
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [checkingPending, setCheckingPending] = useState<string | null>(null);
   const { toast } = useToast();
+  const { usedBytes: storageUsedBytes } = useStorageUsage(user);
+  const storageQuotaBytes = planLimits.attachmentStorageBytes;
+  const storagePct = Number.isFinite(storageQuotaBytes) && storageQuotaBytes > 0
+    ? Math.min(100, Math.round((storageUsedBytes / storageQuotaBytes) * 100))
+    : 0;
 
   const fetchPayments = async () => {
     if (!userId) return;
@@ -1000,6 +1010,29 @@ function BillingPanel({
           <PlanStat label="Addresses" value={planLimits.primaryAddresses === Infinity ? "∞" : String(planLimits.primaryAddresses)} />
           <PlanStat label="Custom domain" value={planLimits.customDomain ? "Included" : "—"} />
           <PlanStat label="OAuth API" value={planLimits.oauthApi ? "Included" : "—"} />
+        </div>
+
+        {/* Attachment storage usage */}
+        <div className="mt-4 rounded-xl border border-border/40 bg-background/60 p-3.5">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <HardDrive className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Attachment storage</p>
+            </div>
+            <p className="text-xs font-medium tabular-nums">
+              {formatBytes(storageUsedBytes)} <span className="text-muted-foreground">/ {Number.isFinite(storageQuotaBytes) ? formatBytes(storageQuotaBytes) : "Unlimited"}</span>
+            </p>
+          </div>
+          {Number.isFinite(storageQuotaBytes) ? (
+            <Progress value={storagePct} className="h-1.5" />
+          ) : (
+            <p className="text-[11px] text-muted-foreground">No limit on this plan.</p>
+          )}
+          {Number.isFinite(storageQuotaBytes) && storagePct >= 90 && (
+            <p className="text-[11px] text-destructive mt-2 font-medium">
+              You're nearly out of space. New attachments will be rejected at 100%.
+            </p>
+          )}
         </div>
       </div>
 

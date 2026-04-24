@@ -745,6 +745,8 @@ export type Database = {
       }
       cleanup_old_trash_emails: { Args: never; Returns: undefined }
       get_user_plan: { Args: { _user_id: string }; Returns: string }
+      get_user_storage_quota_bytes: { Args: { _user_id: string }; Returns: number }
+      get_user_storage_used_bytes: { Args: { _user_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
