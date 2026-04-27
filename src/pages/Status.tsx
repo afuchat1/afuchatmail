@@ -14,12 +14,11 @@ import { cn } from "@/lib/utils";
 
 type ServiceState = "operational" | "degraded" | "down" | "checking";
 
-interface ServiceCheck {
+interface ServiceMeta {
   id: string;
   name: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  check: () => Promise<{ ok: boolean; ms: number }>;
 }
 
 interface ServiceResult {
@@ -29,306 +28,155 @@ interface ServiceResult {
 }
 
 interface DayBucket {
-  day: string;       // YYYY-MM-DD (local)
-  total: number;     // total checks recorded that day
-  ok: number;        // successful checks
-  fail: number;      // failed checks
-  slow: number;      // ok but >1500ms
+  day: string;       // YYYY-MM-DD (UTC)
+  total: number;
+  ok: number;
+  fail: number;
+  slow: number;
   msMin: number;
   msMax: number;
   msSum: number;
   lastFailAt?: number;
 }
 
-const HISTORY_BUCKETS = 90;          // 90 days, like Supabase
-const REFRESH_MS      = 30_000;      // auto-refresh every 30s
-const TIMEOUT_MS      = 8_000;
-const STORAGE_KEY     = "afuchat:status:v2";
+const HISTORY_BUCKETS = 90;          // 90 days, like Supabase's status page
+const REFRESH_MS      = 30_000;      // re-pull shared data every 30s
 
+// UTC day key — must match the Postgres-side bucket boundary.
 function dayKey(ts: number): string {
   const d = new Date(ts);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
 function parseDayKey(key: string): Date {
   const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d);
+  return new Date(Date.UTC(y, m - 1, d));
 }
 
 function formatDayLabel(key: string): string {
-  return parseDayKey(key).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return parseDayKey(key).toLocaleDateString(undefined, {
+    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+  });
 }
 
 function lastNDays(n: number): string[] {
   const out: string[] = [];
   const today = new Date();
   for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    d.setUTCDate(d.getUTCDate() - i);
     out.push(dayKey(d.getTime()));
   }
   return out;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Service catalog (display metadata only) ────────────────────────────────
+//   IDs must match the server-side probe IDs in supabase/functions/status-probe.
 
-const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-
-function withTimeout<T>(p: Promise<T>, ms = TIMEOUT_MS): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error("timeout")), ms);
-    p.then(v => { clearTimeout(t); resolve(v); }).catch(e => { clearTimeout(t); reject(e); });
-  });
-}
-
-async function timed(fn: () => Promise<Response>): Promise<{ ok: boolean; ms: number; status?: number }> {
-  const start = performance.now();
-  try {
-    const res = await withTimeout(fn());
-    const ms = Math.round(performance.now() - start);
-    // For function endpoints, ANY HTTP response (incl. 401/403/4xx) means the
-    // service is reachable; only network failures or 5xx count as down.
-    const ok = res.status < 500;
-    return { ok, ms, status: res.status };
-  } catch {
-    return { ok: false, ms: Math.round(performance.now() - start) };
-  }
-}
-
-const fnUrl = (name: string) => `${SUPABASE_URL}/functions/v1/${name}`;
-
-// Probe a Supabase Edge Function. We use OPTIONS preflight which all functions
-// respond to without auth (handled by Deno runtime CORS).
-async function probeFunction(name: string) {
-  return timed(() => fetch(fnUrl(name), {
-    method: "OPTIONS",
-    headers: { "Access-Control-Request-Method": "POST", Origin: window.location.origin },
-    cache: "no-store",
-  }));
-}
-
-// ─── Service definitions ────────────────────────────────────────────────────
-
-const SERVICES: ServiceCheck[] = [
-  {
-    id: "web",
-    name: "Web Application",
-    description: "Frontend application & PWA shell",
-    icon: Globe,
-    check: async () => ({ ok: navigator.onLine, ms: 1 }),
-  },
-  {
-    id: "auth",
-    name: "Authentication",
-    description: "Sign-in, OAuth & session management",
-    icon: Shield,
-    check: async () => {
-      const r = await timed(() => fetch(`${SUPABASE_URL}/auth/v1/health`, { cache: "no-store" }));
-      return { ok: r.ok, ms: r.ms };
-    },
-  },
-  {
-    id: "database",
-    name: "Database",
-    description: "Postgres REST API & realtime queries",
-    icon: Database,
-    check: async () => {
-      const r = await timed(() => fetch(`${SUPABASE_URL}/rest/v1/?apikey=${SUPABASE_ANON}`, {
-        method: "HEAD", cache: "no-store",
-      }));
-      return { ok: r.ok, ms: r.ms };
-    },
-  },
-  {
-    id: "realtime",
-    name: "Realtime",
-    description: "Live updates for inbox & threads",
-    icon: Radio,
-    check: async () => {
-      const start = performance.now();
-      try {
-        const result = await withTimeout(new Promise<boolean>((resolve) => {
-          const ch = supabase.channel(`status-probe-${Date.now()}`);
-          const cleanup = (ok: boolean) => {
-            try { supabase.removeChannel(ch); } catch {}
-            resolve(ok);
-          };
-          ch.subscribe((status) => {
-            if (status === "SUBSCRIBED") cleanup(true);
-            else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") cleanup(false);
-          });
-        }), 6000);
-        return { ok: result, ms: Math.round(performance.now() - start) };
-      } catch {
-        return { ok: false, ms: Math.round(performance.now() - start) };
-      }
-    },
-  },
-  {
-    id: "storage",
-    name: "Storage",
-    description: "Avatars, attachments & uploads",
-    icon: HardDrive,
-    check: async () => {
-      const r = await timed(() => fetch(`${SUPABASE_URL}/storage/v1/object/public/avatars/_probe.png`, {
-        method: "HEAD", cache: "no-store",
-      }));
-      // 200 or 404 both mean storage is up; only 5xx / network errors fail.
-      return { ok: r.ok, ms: r.ms };
-    },
-  },
-  {
-    id: "send-email",
-    name: "Mail Delivery",
-    description: "Outbound email via send-email function",
-    icon: Mail,
-    check: () => probeFunction("send-email"),
-  },
-  {
-    id: "receive-email",
-    name: "Inbound Mail",
-    description: "Inbox webhook for incoming messages",
-    icon: Mail,
-    check: () => probeFunction("receive-email"),
-  },
-  {
-    id: "push",
-    name: "Push Notifications",
-    description: "Web Push & device alerts",
-    icon: Bell,
-    check: () => probeFunction("send-push-notification"),
-  },
-  {
-    id: "ai-assist",
-    name: "AI Assistant",
-    description: "Smart replies & writing assistance",
-    icon: Sparkles,
-    check: () => probeFunction("ai-email-assist"),
-  },
-  {
-    id: "telegram",
-    name: "Telegram Bot",
-    description: "Notifications & inbox via Telegram",
-    icon: MessageCircle,
-    check: () => probeFunction("telegram-bot"),
-  },
-  {
-    id: "payments",
-    name: "Payments",
-    description: "SkyPay checkout & subscription confirmations",
-    icon: CreditCard,
-    check: () => probeFunction("skypay-checkout-session"),
-  },
-  {
-    id: "afumail-api",
-    name: "OAuth API",
-    description: "Public mail API & developer OAuth",
-    icon: Activity,
-    check: () => probeFunction("afumail-api"),
-  },
+const SERVICES: ServiceMeta[] = [
+  { id: "web",           name: "Web Application",    description: "Frontend application & PWA shell",        icon: Globe },
+  { id: "auth",          name: "Authentication",     description: "Sign-in, OAuth & session management",     icon: Shield },
+  { id: "database",      name: "Database",           description: "Postgres REST API & realtime queries",    icon: Database },
+  { id: "realtime",      name: "Realtime",           description: "Live updates for inbox & threads",        icon: Radio },
+  { id: "storage",       name: "Storage",            description: "Avatars, attachments & uploads",          icon: HardDrive },
+  { id: "send-email",    name: "Mail Delivery",      description: "Outbound email via send-email function",  icon: Mail },
+  { id: "receive-email", name: "Inbound Mail",       description: "Inbox webhook for incoming messages",     icon: Mail },
+  { id: "push",          name: "Push Notifications", description: "Web Push & device alerts",                icon: Bell },
+  { id: "ai-assist",     name: "AI Assistant",       description: "Smart replies & writing assistance",      icon: Sparkles },
+  { id: "telegram",      name: "Telegram Bot",       description: "Notifications & inbox via Telegram",      icon: MessageCircle },
+  { id: "payments",      name: "Payments",           description: "SkyPay checkout & subscription confirmations", icon: CreditCard },
+  { id: "afumail-api",   name: "OAuth API",          description: "Public mail API & developer OAuth",       icon: Activity },
 ];
-
-// ─── Persistence ────────────────────────────────────────────────────────────
 
 type HistoryMap = Record<string, Record<string, DayBucket>>;
 //                          serviceId    dayKey    bucket
-
-function loadHistory(): HistoryMap {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as HistoryMap;
-  } catch {
-    return {};
-  }
-}
-
-function saveHistory(h: HistoryMap) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(h)); } catch {}
-}
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
 const Status = () => {
   const [results, setResults]   = useState<Record<string, ServiceResult>>({});
-  const [history, setHistory]   = useState<HistoryMap>(() => loadHistory());
+  const [history, setHistory]   = useState<HistoryMap>({});
+  const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastChecked, setLastChecked] = useState<number | null>(null);
   const tickRef = useRef<number | null>(null);
 
-  const runChecks = useCallback(async () => {
-    setRefreshing(true);
-    // Mark all as checking visually but keep prior state until we get results
-    const settled = await Promise.all(
-      SERVICES.map(async (svc) => {
-        try {
-          const { ok, ms } = await svc.check();
-          const state: ServiceState = ok ? (ms > 1500 ? "degraded" : "operational") : "down";
-          return [svc.id, { state, ms, checkedAt: Date.now() }] as const;
-        } catch {
-          return [svc.id, { state: "down" as ServiceState, ms: 0, checkedAt: Date.now() }] as const;
-        }
-      })
-    );
+  // Pull shared data from Supabase so every visitor sees the same numbers.
+  const fetchSharedData = useCallback(async () => {
+    const since = new Date();
+    since.setUTCDate(since.getUTCDate() - HISTORY_BUCKETS);
+    const sinceIso = since.toISOString().slice(0, 10);
 
-    const next: Record<string, ServiceResult> = {};
-    for (const [id, r] of settled) next[id] = r;
-    setResults(next);
-    setLastChecked(Date.now());
+    const [latestRes, dailyRes] = await Promise.all([
+      supabase
+        .from("status_latest")
+        .select("service_id, state, ms, checked_at"),
+      supabase
+        .from("status_daily")
+        .select("service_id, day, total, ok, fail, slow, ms_min, ms_max, ms_sum, last_fail_at")
+        .gte("day", sinceIso)
+        .order("day", { ascending: true }),
+    ]);
 
-    setHistory((prev) => {
-      const updated: HistoryMap = { ...prev };
-      const cutoff = lastNDays(HISTORY_BUCKETS); // keep only days we display
-      const cutoffSet = new Set(cutoff);
-      for (const [id, r] of settled) {
-        const byDay: Record<string, DayBucket> = { ...(updated[id] ?? {}) };
-        const key = dayKey(r.checkedAt);
-        const ok = r.state !== "down";
-        const slow = ok && r.ms > 1500;
-        const existing = byDay[key];
-        if (existing) {
-          existing.total += 1;
-          existing.ok   += ok ? 1 : 0;
-          existing.fail += ok ? 0 : 1;
-          existing.slow += slow ? 1 : 0;
-          existing.msMin = Math.min(existing.msMin, r.ms);
-          existing.msMax = Math.max(existing.msMax, r.ms);
-          existing.msSum += r.ms;
-          if (!ok) existing.lastFailAt = r.checkedAt;
-        } else {
-          byDay[key] = {
-            day: key,
-            total: 1,
-            ok:   ok ? 1 : 0,
-            fail: ok ? 0 : 1,
-            slow: slow ? 1 : 0,
-            msMin: r.ms,
-            msMax: r.ms,
-            msSum: r.ms,
-            lastFailAt: ok ? undefined : r.checkedAt,
-          };
-        }
-        // Garbage-collect days outside the visible window
-        for (const k of Object.keys(byDay)) if (!cutoffSet.has(k)) delete byDay[k];
-        updated[id] = byDay;
+    if (!latestRes.error && latestRes.data) {
+      const next: Record<string, ServiceResult> = {};
+      let newest = 0;
+      for (const row of latestRes.data) {
+        const checkedAt = new Date(row.checked_at).getTime();
+        next[row.service_id] = {
+          state: (row.state as ServiceState) ?? "checking",
+          ms: row.ms ?? 0,
+          checkedAt,
+        };
+        if (checkedAt > newest) newest = checkedAt;
       }
-      saveHistory(updated);
-      return updated;
-    });
+      setResults(next);
+      if (newest) setLastChecked(newest);
+    }
 
-    setRefreshing(false);
+    if (!dailyRes.error && dailyRes.data) {
+      const map: HistoryMap = {};
+      for (const row of dailyRes.data) {
+        const byDay = (map[row.service_id] ||= {});
+        byDay[row.day] = {
+          day: row.day,
+          total: row.total,
+          ok: row.ok,
+          fail: row.fail,
+          slow: row.slow,
+          msMin: row.ms_min,
+          msMax: row.ms_max,
+          msSum: Number(row.ms_sum),
+          lastFailAt: row.last_fail_at ? new Date(row.last_fail_at).getTime() : undefined,
+        };
+      }
+      setHistory(map);
+    }
+
+    setLoading(false);
   }, []);
 
+  // Trigger a fresh server-side probe, then re-pull shared data.
+  const triggerProbe = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await supabase.functions.invoke("status-probe", { body: {} });
+    } catch {
+      /* swallow — fetchSharedData will still show whatever is in the table */
+    }
+    await fetchSharedData();
+    setRefreshing(false);
+  }, [fetchSharedData]);
+
   useEffect(() => {
-    runChecks();
-    const id = window.setInterval(runChecks, REFRESH_MS);
+    fetchSharedData();
+    const id = window.setInterval(fetchSharedData, REFRESH_MS);
     tickRef.current = id;
     return () => { if (tickRef.current) window.clearInterval(tickRef.current); };
-  }, [runChecks]);
+  }, [fetchSharedData]);
 
   return (
     <PageLayout title="Status">
@@ -338,15 +186,15 @@ const Status = () => {
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-foreground">Services</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {HISTORY_BUCKETS}-check uptime history
+              {HISTORY_BUCKETS}-day uptime history
               {lastChecked && <> · checked {timeAgo(lastChecked)}</>}
             </p>
           </div>
           <Button
             variant="outline"
             size="sm"
-            onClick={runChecks}
-            disabled={refreshing}
+            onClick={triggerProbe}
+            disabled={refreshing || loading}
             className="rounded-lg shrink-0"
           >
             {refreshing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
@@ -377,7 +225,7 @@ export default Status;
 function ServiceRow({
   service, result, byDay, divider,
 }: {
-  service: ServiceCheck;
+  service: ServiceMeta;
   result?: ServiceResult;
   byDay: Record<string, DayBucket>;
   divider: boolean;

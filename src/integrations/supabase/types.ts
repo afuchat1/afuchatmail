@@ -654,6 +654,69 @@ export type Database = {
         }
         Relationships: []
       }
+      status_daily: {
+        Row: {
+          day: string
+          fail: number
+          last_fail_at: string | null
+          ms_max: number
+          ms_min: number
+          ms_sum: number
+          ok: number
+          service_id: string
+          slow: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          day: string
+          fail?: number
+          last_fail_at?: string | null
+          ms_max?: number
+          ms_min?: number
+          ms_sum?: number
+          ok?: number
+          service_id: string
+          slow?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          day?: string
+          fail?: number
+          last_fail_at?: string | null
+          ms_max?: number
+          ms_min?: number
+          ms_sum?: number
+          ok?: number
+          service_id?: string
+          slow?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      status_latest: {
+        Row: {
+          checked_at: string
+          ms: number
+          service_id: string
+          state: string
+        }
+        Insert: {
+          checked_at?: string
+          ms?: number
+          service_id: string
+          state: string
+        }
+        Update: {
+          checked_at?: string
+          ms?: number
+          service_id?: string
+          state?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
