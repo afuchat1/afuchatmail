@@ -433,32 +433,33 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b p-3 flex items-center justify-between bg-card sticky top-0 z-10">
-        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl">
+    <div className="flex flex-col h-full min-w-0">
+      <div className="border-b px-2 sm:px-3 py-2 flex items-center justify-between gap-2 bg-card sticky top-0 z-10">
+        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl h-9 w-9 shrink-0">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setShowSnoozeDialog(true)}>
+        <div className="flex gap-0.5 sm:gap-1">
+          <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9" onClick={() => setShowSnoozeDialog(true)} aria-label="Snooze">
             <Clock className="h-4 w-4" />
           </Button>
           {!isTrashFolder && (
             <>
-              <Button variant="ghost" size="icon" className="rounded-xl" onClick={toggleStar}>
+              <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9" onClick={toggleStar} aria-label="Star">
                 <Star className={`h-4 w-4 ${email.is_starred ? "fill-yellow-500 text-yellow-500" : ""}`} />
               </Button>
-              <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => onReply()}>
+              <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9" onClick={() => onReply()} aria-label="Reply">
                 <Reply className="h-4 w-4" />
               </Button>
             </>
           )}
           {isTrashFolder && (
-            <Button variant="ghost" size="icon" className="rounded-xl" onClick={restoreEmail} title="Restore">
+            <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9" onClick={restoreEmail} aria-label="Restore" title="Restore">
               <Undo2 className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" className={`rounded-xl ${isTrashFolder ? "text-destructive hover:text-destructive" : ""}`}
-            onClick={deleteEmail} title={isTrashFolder ? "Delete permanently" : "Move to trash"}>
+          <Button variant="ghost" size="icon" className={`rounded-xl h-9 w-9 ${isTrashFolder ? "text-destructive hover:text-destructive" : ""}`}
+            onClick={deleteEmail} aria-label={isTrashFolder ? "Delete permanently" : "Move to trash"}
+            title={isTrashFolder ? "Delete permanently" : "Move to trash"}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -471,8 +472,8 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
         onSnooze={onBack}
       />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 scroll-smooth-ios">
-        <h1 className="text-2xl font-semibold mb-6 leading-tight">{email.subject}</h1>
+      <div className="flex-1 overflow-y-auto px-3 sm:px-8 py-4 sm:py-6 scroll-smooth-ios">
+        <h1 className="text-lg sm:text-2xl font-semibold mb-3 sm:mb-6 leading-snug break-words">{email.subject}</h1>
 
         {/* Thread conversation view */}
         <div className="space-y-2">
@@ -499,24 +500,24 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                 {/* Email header */}
                 <div
                   className={cn(
-                    "flex items-start justify-between gap-4",
-                    isOnlyEmail ? "py-2" : "p-4"
+                    "flex items-start justify-between gap-2 sm:gap-4",
+                    isOnlyEmail ? "py-2" : "p-3 sm:p-4"
                   )}
                   onClick={() => !isExpanded && toggleEmailExpanded(threadEmail.id)}
                 >
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     {senderAvatars[senderEmail.toLowerCase()] ? (
                       <img
                         src={senderAvatars[senderEmail.toLowerCase()]}
                         alt={senderName || senderEmail}
-                        className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover flex-shrink-0"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.display = "none";
                         }}
                       />
                     ) : (
                       <div className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm",
+                        "h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm",
                         avatarColor
                       )}>
                         {initial}
@@ -525,33 +526,37 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                     <div className="flex-1 min-w-0">
                       {isExpanded ? (
                         <>
-                          <p className="text-sm leading-snug truncate">
-                            <span className="font-semibold text-foreground">{senderName || senderEmail}</span>
-                            {senderEmail && senderName !== senderEmail && (
-                              <span className="text-muted-foreground"> &lt;{senderEmail}&gt;</span>
-                            )}
+                          {/* Stacked on mobile so long emails don't squeeze the name */}
+                          <p className="text-sm font-semibold text-foreground truncate leading-snug">
+                            {senderName || senderEmail}
                           </p>
-                          <Popover>
-                            <PopoverTrigger
-                              asChild
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                type="button"
-                                className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          {senderEmail && senderName !== senderEmail && (
+                            <p className="text-[11px] sm:text-xs text-muted-foreground truncate leading-snug">
+                              {senderEmail}
+                            </p>
+                          )}
+                          <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+                            <Popover>
+                              <PopoverTrigger
+                                asChild
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                to me
-                                <ChevronDown className="h-3 w-3" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              align="start"
-                              side="bottom"
-                              sideOffset={6}
-                              className="w-[360px] p-3 text-xs"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <dl className="grid grid-cols-[80px_1fr] gap-y-1.5 gap-x-3">
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors -mx-1 px-1 py-0.5 rounded"
+                                >
+                                  to me
+                                  <ChevronDown className="h-3 w-3" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align="start"
+                                side="bottom"
+                                sideOffset={6}
+                                className="w-[calc(100vw-1.5rem)] max-w-[360px] p-3 text-xs"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <dl className="grid grid-cols-[64px_1fr] sm:grid-cols-[80px_1fr] gap-y-1.5 gap-x-3">
                                 <dt className="text-right text-muted-foreground">from:</dt>
                                 <dd className="text-foreground break-all">
                                   {senderName ? (
@@ -619,36 +624,42 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                               </dl>
                             </PopoverContent>
                           </Popover>
+                            {/* Mobile-only inline timestamp (the right rail hides it on small screens) */}
+                            <span className="sm:hidden text-[11px] text-muted-foreground whitespace-nowrap">
+                              · {formatDistanceToNow(new Date(threadEmail.sent_at || threadEmail.received_at), { addSuffix: true })}
+                            </span>
+                          </div>
                         </>
                       ) : (
                         <>
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <p className="font-semibold truncate text-sm">{senderName || senderEmail}</p>
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          <div className="flex items-baseline gap-2 mb-0.5 min-w-0">
+                            <p className="font-semibold truncate text-sm flex-1 min-w-0">{senderName || senderEmail}</p>
+                            <span className="text-[11px] sm:text-xs text-muted-foreground whitespace-nowrap shrink-0">
                               {formatDistanceToNow(new Date(threadEmail.sent_at || threadEmail.received_at), { addSuffix: true })}
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {threadEmail.body_text?.substring(0, 100)}...
+                          <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:truncate">
+                            {threadEmail.body_text?.substring(0, 140)}…
                           </p>
                         </>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                     {isExpanded && (
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      <span className="hidden sm:inline text-xs text-muted-foreground whitespace-nowrap">
                         {formatDistanceToNow(new Date(threadEmail.sent_at || threadEmail.received_at), { addSuffix: true })}
                       </span>
                     )}
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="icon"
-                      className="flex-shrink-0"
+                      className="h-8 w-8 sm:h-10 sm:w-10 shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleEmailExpanded(threadEmail.id);
                       }}
+                      aria-label={isExpanded ? "Collapse" : "Expand"}
                     >
                       {isExpanded ? (
                         <ChevronUp className="h-4 w-4" />
@@ -661,8 +672,8 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
 
                 {/* Expanded email body */}
                 {isExpanded && (
-                  <div className={cn(isOnlyEmail ? "" : "px-4 pb-4")}>
-                    {!isOnlyEmail && <div className="border-t mb-4" />}
+                  <div className={cn(isOnlyEmail ? "" : "px-3 sm:px-4 pb-3 sm:pb-4")}>
+                    {!isOnlyEmail && <div className="border-t mb-3 sm:mb-4" />}
                     <div className="email-body mb-4">
                       <EmailBodyFrame
                         html={threadEmail.body_html}
@@ -710,7 +721,7 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
 
                     {/* Smart replies + Reply button for last email in thread */}
                     {isLastEmail && (
-                      <div className="mt-6 pt-4 space-y-3">
+                      <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 space-y-3">
                         {/* Smart Reply Chips */}
                         {smartReplies.length > 0 && (
                           <div className="flex flex-wrap gap-2">
@@ -725,11 +736,10 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                             ))}
                           </div>
                         )}
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                           <Button
                             variant="outline"
-                            size="sm"
-                            className="rounded-full px-5"
+                            className="rounded-full h-10 sm:h-9 sm:px-5 sm:w-auto"
                             onClick={() => onReply()}
                           >
                             <Reply className="h-4 w-4 mr-2" />
@@ -737,30 +747,29 @@ export const EmailViewer = ({ email, onBack, onReply }: EmailViewerProps) => {
                           </Button>
                           <Button
                             variant="outline"
-                            size="sm"
-                            className="rounded-full px-5"
+                            className="rounded-full h-10 sm:h-9 sm:px-5 sm:w-auto"
                             onClick={() => onReply(`\n\n---------- Forwarded message ----------\nFrom: ${threadEmail.from_address}\nDate: ${format(sentDate, "PPpp")}\nSubject: ${threadEmail.subject}\nTo: ${threadEmail.to_addresses?.join(", ") || ""}\n\n${threadEmail.body_text || ""}`)}
                           >
                             <ArrowRight className="h-4 w-4 mr-2" />
                             Forward
                           </Button>
-                          {smartReplies.length === 0 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1.5 text-primary hover:text-primary"
-                              onClick={() => getSmartReplies(
-                                threadEmail.body_text || threadEmail.body_html || "",
-                                email.subject,
-                                threadEmail.from_address
-                              )}
-                              disabled={aiLoading}
-                            >
-                              {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                              Smart Reply
-                            </Button>
-                          )}
                         </div>
+                        {smartReplies.length === 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 text-primary hover:text-primary -ml-2"
+                            onClick={() => getSmartReplies(
+                              threadEmail.body_text || threadEmail.body_html || "",
+                              email.subject,
+                              threadEmail.from_address
+                            )}
+                            disabled={aiLoading}
+                          >
+                            {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                            Smart Reply
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
