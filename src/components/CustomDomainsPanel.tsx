@@ -568,33 +568,116 @@ function DomainRow({
         )}
       </div>
 
-      {/* Create-address form (only for verified domains) */}
+      {/* Address management (only for verified domains) */}
       {domain.status === "verified" && (
-        <form onSubmit={handleCreateAddress} className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Add an address on this domain
-          </p>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Input
-                placeholder="hello"
-                value={newLocalPart}
-                onChange={(e) => setNewLocalPart(e.target.value.toLowerCase())}
-                pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]"
-                minLength={3}
-                maxLength={30}
-                className="h-9 pr-32 rounded-lg font-mono"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium pointer-events-none truncate max-w-[110px]">
-                @{domain.domain}
-              </span>
+        <div className="space-y-3">
+          <form onSubmit={handleCreateAddress} className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Add an address on this domain
+            </p>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  placeholder="hello"
+                  value={newLocalPart}
+                  onChange={(e) => setNewLocalPart(e.target.value.toLowerCase())}
+                  pattern="[a-z0-9][a-z0-9._-]*[a-z0-9]"
+                  minLength={3}
+                  maxLength={30}
+                  className="h-9 pr-32 rounded-lg font-mono"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium pointer-events-none truncate max-w-[110px]">
+                  @{domain.domain}
+                </span>
+              </div>
+              <Button type="submit" disabled={creating} className="h-9 rounded-lg">
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-1" />Create</>}
+              </Button>
             </div>
-            <Button type="submit" disabled={creating} className="h-9 rounded-lg">
-              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-1" />Create</>}
-            </Button>
+          </form>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Addresses on {domain.domain}
+              </p>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 rounded-lg"
+                onClick={fetchAddresses}
+                disabled={addressesLoading}
+                title="Refresh"
+              >
+                {addressesLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+
+            {addressesLoading && addresses.length === 0 ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading addresses…
+              </div>
+            ) : addresses.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2">
+                No addresses yet. Create your first address above.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {addresses.map((a) => (
+                  <li
+                    key={a.id}
+                    className="flex items-center justify-between gap-2 rounded-lg bg-background/60 border border-border/40 px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <code className="font-mono text-xs truncate">{a.full_email}</code>
+                      {a.is_primary && (
+                        <Badge variant="secondary" className="text-[9px]">Primary</Badge>
+                      )}
+                      {a.is_alias && (
+                        <Badge variant="outline" className="text-[9px]">Alias</Badge>
+                      )}
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 rounded-lg text-destructive hover:text-destructive shrink-0"
+                      onClick={() => setDeleteAddr(a)}
+                      title="Remove address"
+                      disabled={a.is_primary}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        </form>
+        </div>
       )}
+
+      <AlertDialog open={!!deleteAddr} onOpenChange={(o) => !o && !deletingAddr && setDeleteAddr(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {deleteAddr?.full_email}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This address will stop receiving mail immediately. Any stored mail for this address
+              will remain in your account, but new messages will bounce. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingAddr}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeleteAddress(); }}
+              disabled={deletingAddr}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingAddr ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
