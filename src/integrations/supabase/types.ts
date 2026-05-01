@@ -577,6 +577,69 @@ export type Database = {
         }
         Relationships: []
       }
+      status_daily: {
+        Row: {
+          day: string
+          fail: number
+          last_fail_at: string | null
+          ms_max: number
+          ms_min: number
+          ms_sum: number
+          ok: number
+          service_id: string
+          slow: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          day: string
+          fail?: number
+          last_fail_at?: string | null
+          ms_max?: number
+          ms_min?: number
+          ms_sum?: number
+          ok?: number
+          service_id: string
+          slow?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          day?: string
+          fail?: number
+          last_fail_at?: string | null
+          ms_max?: number
+          ms_min?: number
+          ms_sum?: number
+          ok?: number
+          service_id?: string
+          slow?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      status_latest: {
+        Row: {
+          checked_at: string
+          ms: number
+          service_id: string
+          state: string
+        }
+        Insert: {
+          checked_at?: string
+          ms?: number
+          service_id: string
+          state: string
+        }
+        Update: {
+          checked_at?: string
+          ms?: number
+          service_id?: string
+          state?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -651,69 +714,6 @@ export type Database = {
           notifications_enabled?: boolean
           telegram_username?: string | null
           user_id?: string
-        }
-        Relationships: []
-      }
-      status_daily: {
-        Row: {
-          day: string
-          fail: number
-          last_fail_at: string | null
-          ms_max: number
-          ms_min: number
-          ms_sum: number
-          ok: number
-          service_id: string
-          slow: number
-          total: number
-          updated_at: string
-        }
-        Insert: {
-          day: string
-          fail?: number
-          last_fail_at?: string | null
-          ms_max?: number
-          ms_min?: number
-          ms_sum?: number
-          ok?: number
-          service_id: string
-          slow?: number
-          total?: number
-          updated_at?: string
-        }
-        Update: {
-          day?: string
-          fail?: number
-          last_fail_at?: string | null
-          ms_max?: number
-          ms_min?: number
-          ms_sum?: number
-          ok?: number
-          service_id?: string
-          slow?: number
-          total?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      status_latest: {
-        Row: {
-          checked_at: string
-          ms: number
-          service_id: string
-          state: string
-        }
-        Insert: {
-          checked_at?: string
-          ms?: number
-          service_id: string
-          state: string
-        }
-        Update: {
-          checked_at?: string
-          ms?: number
-          service_id?: string
-          state?: string
         }
         Relationships: []
       }
@@ -854,8 +854,14 @@ export type Database = {
         Returns: string
       }
       get_user_plan: { Args: { _user_id: string }; Returns: string }
-      get_user_storage_quota_bytes: { Args: { _user_id: string }; Returns: number }
-      get_user_storage_used_bytes: { Args: { _user_id: string }; Returns: number }
+      get_user_storage_quota_bytes: {
+        Args: { _user_id: string }
+        Returns: number
+      }
+      get_user_storage_used_bytes: {
+        Args: { _user_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -864,6 +870,16 @@ export type Database = {
         Returns: boolean
       }
       is_user_banned: { Args: { _user_id: string }; Returns: boolean }
+      prune_status_history: { Args: never; Returns: undefined }
+      record_status_check: {
+        Args: {
+          _checked_at?: string
+          _ms: number
+          _ok: boolean
+          _service_id: string
+        }
+        Returns: undefined
+      }
       unsnooze_emails: { Args: never; Returns: undefined }
       username_available: { Args: { _username: string }; Returns: boolean }
     }
