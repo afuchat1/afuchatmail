@@ -394,9 +394,22 @@ function DomainRow({
 
       {/* DNS instructions */}
       <div className="rounded-xl bg-muted/40 border border-border/40 p-3 space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          <Plug className="h-3 w-3" /> DNS verification record
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Plug className="h-3 w-3" /> DNS verification record
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 rounded-lg text-xs"
+            onClick={() => setDnsOpen((o) => !o)}
+          >
+            {dnsOpen ? <ChevronUp className="h-3.5 w-3.5 mr-1" /> : <ChevronDown className="h-3.5 w-3.5 mr-1" />}
+            {dnsOpen ? "Hide all DNS records" : "Show all DNS records"}
+          </Button>
+        </div>
+
         <div className="grid grid-cols-[80px_1fr_auto] gap-2 items-center text-xs">
           <span className="text-muted-foreground">Type</span>
           <code className="font-mono bg-background px-2 py-1 rounded border border-border/40">TXT</code>
@@ -412,9 +425,98 @@ function DomainRow({
         </div>
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           Add this TXT record at your DNS provider, wait a couple of minutes, then click Verify.
-          Once verified, point your <span className="font-mono">MX</span> records to AfuChat's mail
-          provider so inbound mail reaches your inbox.
+          Once verified, add the MX/SPF records below so inbound mail reaches your inbox.
         </p>
+
+        {dnsOpen && (
+          <div className="pt-3 mt-2 border-t border-border/40 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                All required records
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 rounded-lg text-xs"
+                onClick={runDnsCheck}
+                disabled={dnsChecking || dnsLoading}
+              >
+                {dnsChecking ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1" />}
+                Check DNS now
+              </Button>
+            </div>
+
+            {dnsLoading && !dnsRecords ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading DNS records…
+              </div>
+            ) : dnsRecords && dnsRecords.length > 0 ? (
+              <>
+                {dnsCheckedAt && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Last checked {new Date(dnsCheckedAt).toLocaleTimeString()}
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {dnsRecords.map((r) => (
+                    <div key={`${r.purpose}-${r.kind}`} className="rounded-lg bg-background/60 border border-border/40 p-2.5 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-[10px] font-mono">{r.kind}</Badge>
+                        <span className="text-xs font-medium uppercase tracking-wide">{r.purpose}</span>
+                        {!r.required && <Badge variant="secondary" className="text-[9px]">Optional</Badge>}
+                        {typeof r.found === "boolean" && (
+                          r.found ? (
+                            <Badge className="text-[10px] gap-1 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/20">
+                              <CheckCircle2 className="h-3 w-3" /> Found
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" className="text-[10px] gap-1">
+                              <AlertCircle className="h-3 w-3" /> Missing
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                      <div className="grid grid-cols-[70px_1fr_auto] gap-2 items-center text-[11px]">
+                        <span className="text-muted-foreground">Name</span>
+                        <code className="font-mono bg-muted/50 px-1.5 py-0.5 rounded truncate">{r.name}</code>
+                        <span />
+                        {typeof r.priority === "number" && (
+                          <>
+                            <span className="text-muted-foreground">Priority</span>
+                            <code className="font-mono bg-muted/50 px-1.5 py-0.5 rounded">{r.priority}</code>
+                            <span />
+                          </>
+                        )}
+                        <span className="text-muted-foreground">Value</span>
+                        <code className="font-mono bg-muted/50 px-1.5 py-0.5 rounded truncate" title={r.value}>{r.value}</code>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 rounded-md"
+                          onClick={() => {
+                            navigator.clipboard.writeText(r.value);
+                            toast({ title: "Copied", description: `${r.purpose.toUpperCase()} value copied.` });
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-snug">{r.description}</p>
+                      {r.found === false && r.seen && r.seen.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground italic">
+                          Seen at registrar: {r.seen.slice(0, 2).join(" | ")}{r.seen.length > 2 ? "…" : ""}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">No records loaded.</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Create-address form (only for verified domains) */}
