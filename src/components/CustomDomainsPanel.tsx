@@ -279,6 +279,27 @@ function DomainRow({
   const [dnsRecords, setDnsRecords] = useState<DnsRecordResult[] | null>(null);
   const [dnsCheckedAt, setDnsCheckedAt] = useState<string | null>(null);
   const [dnsChecking, setDnsChecking] = useState(false);
+  const [addresses, setAddresses] = useState<DomainAddress[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [deleteAddr, setDeleteAddr] = useState<DomainAddress | null>(null);
+  const [deletingAddr, setDeletingAddr] = useState(false);
+
+  const fetchAddresses = useCallback(async () => {
+    if (!user || domain.status !== "verified") return;
+    setAddressesLoading(true);
+    const { data, error } = await supabase
+      .from("email_addresses")
+      .select("id, local_part, full_email, is_primary, is_alias, created_at")
+      .eq("user_id", user.id)
+      .eq("domain", domain.domain)
+      .order("created_at", { ascending: false });
+    if (!error && data) setAddresses(data as DomainAddress[]);
+    setAddressesLoading(false);
+  }, [user, domain.domain, domain.status]);
+
+  useEffect(() => {
+    fetchAddresses();
+  }, [fetchAddresses]);
 
   const loadRecords = useCallback(async () => {
     setDnsLoading(true);
