@@ -9,7 +9,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Crown, Globe, Loader2, Plus, RefreshCw, Trash2, Copy, CheckCircle2, AlertCircle, Clock, Plug } from "lucide-react";
+import { Crown, Globe, Loader2, Plus, RefreshCw, Trash2, Copy, CheckCircle2, AlertCircle, Clock, Plug, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
 import { PLAN_LIMITS } from "@/hooks/usePlan";
 
 type Tier = keyof typeof PLAN_LIMITS;
@@ -252,6 +252,55 @@ function DomainRow({
   const { toast } = useToast();
   const [newLocalPart, setNewLocalPart] = useState("");
   const [creating, setCreating] = useState(false);
+  const [dnsOpen, setDnsOpen] = useState(false);
+  const [dnsLoading, setDnsLoading] = useState(false);
+  const [dnsRecords, setDnsRecords] = useState<DnsRecordResult[] | null>(null);
+  const [dnsCheckedAt, setDnsCheckedAt] = useState<string | null>(null);
+  const [dnsChecking, setDnsChecking] = useState(false);
+
+  const loadRecords = useCallback(async () => {
+    setDnsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("custom-domain-dns", {
+        body: { action: "records", domain_id: domain.id },
+      });
+      if (error) throw error;
+      setDnsRecords((data?.records || []).map((r: any) => ({ ...r })));
+    } catch (err: any) {
+      toast({ title: "Could not load DNS records", description: err?.message || String(err), variant: "destructive" });
+    } finally {
+      setDnsLoading(false);
+    }
+  }, [domain.id, toast]);
+
+  const runDnsCheck = useCallback(async () => {
+    setDnsChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("custom-domain-dns", {
+        body: { action: "check", domain_id: domain.id },
+      });
+      if (error) throw error;
+      setDnsRecords(data?.records || []);
+      setDnsCheckedAt(data?.checked_at || new Date().toISOString());
+      toast({
+        title: data?.required_ok ? "All required records found" : "Some records missing",
+        description: data?.required_ok
+          ? "Your domain is correctly configured for AfuChat mail."
+          : "DNS changes can take a few minutes to propagate.",
+        variant: data?.required_ok ? "default" : "destructive",
+      });
+    } catch (err: any) {
+      toast({ title: "DNS check failed", description: err?.message || String(err), variant: "destructive" });
+    } finally {
+      setDnsChecking(false);
+    }
+  }, [domain.id, toast]);
+
+  useEffect(() => {
+    if (dnsOpen && !dnsRecords && !dnsLoading) {
+      loadRecords();
+    }
+  }, [dnsOpen, dnsRecords, dnsLoading, loadRecords]);
 
   const statusBadge = (() => {
     if (domain.status === "verified") {
