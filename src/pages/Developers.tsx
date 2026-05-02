@@ -53,8 +53,8 @@ const Developers = () => {
   const [editingApp, setEditingApp] = useState<OAuthApp | null>(null);
   const [editScopes, setEditScopes] = useState<string[]>([]);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
-  const { plan } = usePlan(user);
-  const canCreateApps = plan.tier === "business" || plan.isAdmin;
+  // OAuth app creation is open to every signed-in AfuChat user — no plan gate.
+  const canCreateApps = !!user;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
