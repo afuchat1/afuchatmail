@@ -88,10 +88,10 @@ const MB = 1024 * 1024;
 const GB = 1024 * MB;
 
 export const PLAN_LIMITS = {
-  starter:      { primaryAddresses: 1,        aliases: 1,        customDomain: false, oauthApi: false, attachmentStorageBytes: 500 * MB,   attachmentStorageLabel: "500 MB", name: "Starter" },
-  professional: { primaryAddresses: 3,        aliases: 5,        customDomain: true,  oauthApi: false, attachmentStorageBytes: 5 * GB,     attachmentStorageLabel: "5 GB",   name: "Professional" },
-  business:     { primaryAddresses: Infinity, aliases: 25,       customDomain: true,  oauthApi: true,  attachmentStorageBytes: 25 * GB,    attachmentStorageLabel: "25 GB",  name: "Business" },
-  admin:        { primaryAddresses: Infinity, aliases: Infinity, customDomain: true,  oauthApi: true,  attachmentStorageBytes: Infinity,   attachmentStorageLabel: "Unlimited", name: "Admin" },
+  starter:      { primaryAddresses: 1,        aliases: 1,        customDomain: false, oauthApi: true, attachmentStorageBytes: 500 * MB,   attachmentStorageLabel: "500 MB", name: "Starter" },
+  professional: { primaryAddresses: 3,        aliases: 5,        customDomain: true,  oauthApi: true, attachmentStorageBytes: 5 * GB,     attachmentStorageLabel: "5 GB",   name: "Professional" },
+  business:     { primaryAddresses: Infinity, aliases: 25,       customDomain: true,  oauthApi: true, attachmentStorageBytes: 25 * GB,    attachmentStorageLabel: "25 GB",  name: "Business" },
+  admin:        { primaryAddresses: Infinity, aliases: Infinity, customDomain: true,  oauthApi: true, attachmentStorageBytes: Infinity,   attachmentStorageLabel: "Unlimited", name: "Admin" },
 } as const;
 
 export function formatBytes(bytes: number): string {

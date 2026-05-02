@@ -12,7 +12,7 @@ import { ArrowLeft, Plus, Copy, Trash2, Key, Book, Shield, Pencil, Mail } from "
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { usePlan } from "@/hooks/usePlan";
+
 import { User } from "@supabase/supabase-js";
 
 interface OAuthApp {
@@ -35,6 +35,9 @@ const AVAILABLE_SCOPES = [
   { id: "search", label: "Search", description: "Search through emails" },
   { id: "write:messages", label: "Write Messages", description: "Send emails on behalf of user" },
   { id: "write:drafts", label: "Write Drafts", description: "Create, edit, and delete drafts" },
+  { id: "modify:messages", label: "Modify Messages", description: "Mark read/unread, star, move, or delete messages" },
+  { id: "manage:addresses", label: "Manage Addresses", description: "Create, update, or remove email addresses and aliases" },
+  { id: "manage:folders", label: "Manage Folders", description: "Create, rename, or delete folders" },
 ];
 
 const Developers = () => {
@@ -50,8 +53,8 @@ const Developers = () => {
   const [editingApp, setEditingApp] = useState<OAuthApp | null>(null);
   const [editScopes, setEditScopes] = useState<string[]>([]);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
-  const { plan } = usePlan(user);
-  const canCreateApps = plan.tier === "business" || plan.isAdmin;
+  // OAuth app creation is open to every signed-in AfuChat user — no plan gate.
+  const canCreateApps = !!user;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -85,15 +88,15 @@ const Developers = () => {
   };
 
   const createApp = async () => {
-    if (!canCreateApps) {
-      toast.error("OAuth API access requires the Business plan. Upgrade to continue.");
-      return;
-    }
     if (!newAppName.trim()) {
       toast.error("Please enter an app name");
       return;
     }
-
+    if (!canCreateApps) {
+      toast.error("Please sign in to create an OAuth application.");
+      navigate("/auth");
+      return;
+    }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
@@ -213,15 +216,12 @@ const Developers = () => {
           </TabsList>
 
           <TabsContent value="apps" className="space-y-6">
-            {!canCreateApps && (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold">OAuth API access is a Business plan feature</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Upgrade to create OAuth applications and integrate with AfuMail.</p>
-                </div>
-                <Button size="sm" onClick={() => navigate("/pricing")}>Upgrade</Button>
-              </div>
-            )}
+            <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
+              <p className="text-sm font-semibold">Build with Sign in with AfuChat</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                OAuth 2.0 is open to every AfuChat user — register an app, request scopes, and let your users sign in with their AfuChat email.
+              </p>
+            </div>
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-medium">OAuth Applications</h2>
@@ -229,14 +229,7 @@ const Developers = () => {
                   Register applications to access AfuMail API
                 </p>
               </div>
-              <Dialog open={dialogOpen} onOpenChange={(open) => {
-                if (open && !canCreateApps) {
-                  toast.error("OAuth API access requires the Business plan.");
-                  navigate("/pricing");
-                  return;
-                }
-                setDialogOpen(open);
-              }}>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
