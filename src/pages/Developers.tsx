@@ -88,8 +88,13 @@ const Developers = () => {
   };
 
   const createApp = async () => {
+    if (!newAppName.trim()) {
+      toast.error("Please enter an app name");
+      return;
+    }
     if (!canCreateApps) {
-      toast.error("OAuth API access requires the Business plan. Upgrade to continue.");
+      toast.error("Please sign in to create an OAuth application.");
+      navigate("/auth");
       return;
     }
     if (!newAppName.trim()) {
