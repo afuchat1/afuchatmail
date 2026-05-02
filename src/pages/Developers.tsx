@@ -216,15 +216,12 @@ const Developers = () => {
           </TabsList>
 
           <TabsContent value="apps" className="space-y-6">
-            {!canCreateApps && (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold">OAuth API access is a Business plan feature</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Upgrade to create OAuth applications and integrate with AfuMail.</p>
-                </div>
-                <Button size="sm" onClick={() => navigate("/pricing")}>Upgrade</Button>
-              </div>
-            )}
+            <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
+              <p className="text-sm font-semibold">Build with Sign in with AfuChat</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                OAuth 2.0 is open to every AfuChat user — register an app, request scopes, and let your users sign in with their AfuChat email.
+              </p>
+            </div>
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-medium">OAuth Applications</h2>
@@ -232,14 +229,7 @@ const Developers = () => {
                   Register applications to access AfuMail API
                 </p>
               </div>
-              <Dialog open={dialogOpen} onOpenChange={(open) => {
-                if (open && !canCreateApps) {
-                  toast.error("OAuth API access requires the Business plan.");
-                  navigate("/pricing");
-                  return;
-                }
-                setDialogOpen(open);
-              }}>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
