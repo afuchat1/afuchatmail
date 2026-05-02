@@ -44,10 +44,12 @@ export type Database = {
       custom_domains: {
         Row: {
           created_at: string
+          dns_records: Json | null
           domain: string
           id: string
           last_checked_at: string | null
           last_error: string | null
+          resend_domain_id: string | null
           status: string
           updated_at: string
           user_id: string
@@ -56,10 +58,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          dns_records?: Json | null
           domain: string
           id?: string
           last_checked_at?: string | null
           last_error?: string | null
+          resend_domain_id?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -68,10 +72,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          dns_records?: Json | null
           domain?: string
           id?: string
           last_checked_at?: string | null
           last_error?: string | null
+          resend_domain_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string

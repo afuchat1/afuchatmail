@@ -36,15 +36,17 @@ interface DomainAddress {
 
 interface DnsRecordResult {
   kind: "TXT" | "MX" | "CNAME";
-  purpose: "verification" | "mx" | "spf" | "dkim" | "dmarc";
-  name: string;
+  purpose: "verification" | "mx" | "spf" | "dkim" | "dmarc" | "other";
+  host: string;            // host portion ("@" or "send", etc.)
+  fqdn: string;            // full record name
+  /** legacy field name kept for backward compatibility */
+  name?: string;
   value: string;
   priority?: number;
+  ttl?: string | number;
   required: boolean;
   description: string;
-  found?: boolean;
-  seen?: string[];
-  error?: string | null;
+  status?: string;         // "verified" | "pending" | "not_started" — from provider
 }
 
 interface Props {
@@ -508,27 +510,30 @@ function DomainRow({
                   </p>
                 )}
                 <div className="space-y-2">
-                  {dnsRecords.map((r) => (
-                    <div key={`${r.purpose}-${r.kind}`} className="rounded-lg bg-background/60 border border-border/40 p-2.5 space-y-1.5">
+                  {dnsRecords.map((r, idx) => {
+                    const verified = r.status === "verified";
+                    const pending = r.status && r.status !== "verified";
+                    const displayName = r.host || r.name || r.fqdn || "@";
+                    return (
+                    <div key={`${r.purpose}-${r.kind}-${idx}`} className="rounded-lg bg-background/60 border border-border/40 p-2.5 space-y-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="outline" className="text-[10px] font-mono">{r.kind}</Badge>
                         <span className="text-xs font-medium uppercase tracking-wide">{r.purpose}</span>
                         {!r.required && <Badge variant="secondary" className="text-[9px]">Optional</Badge>}
-                        {typeof r.found === "boolean" && (
-                          r.found ? (
-                            <Badge className="text-[10px] gap-1 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/20">
-                              <CheckCircle2 className="h-3 w-3" /> Found
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive" className="text-[10px] gap-1">
-                              <AlertCircle className="h-3 w-3" /> Missing
-                            </Badge>
-                          )
+                        {verified && (
+                          <Badge className="text-[10px] gap-1 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/20">
+                            <CheckCircle2 className="h-3 w-3" /> Verified
+                          </Badge>
+                        )}
+                        {pending && (
+                          <Badge variant="destructive" className="text-[10px] gap-1">
+                            <AlertCircle className="h-3 w-3" /> {r.status}
+                          </Badge>
                         )}
                       </div>
                       <div className="grid grid-cols-[70px_1fr_auto] gap-2 items-center text-[11px]">
                         <span className="text-muted-foreground">Name</span>
-                        <code className="font-mono bg-muted/50 px-1.5 py-0.5 rounded truncate">{r.name}</code>
+                        <code className="font-mono bg-muted/50 px-1.5 py-0.5 rounded truncate" title={r.fqdn || displayName}>{displayName}</code>
                         <span />
                         {typeof r.priority === "number" && (
                           <>
@@ -552,13 +557,8 @@ function DomainRow({
                         </Button>
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-snug">{r.description}</p>
-                      {r.found === false && r.seen && r.seen.length > 0 && (
-                        <p className="text-[10px] text-muted-foreground italic">
-                          Seen at registrar: {r.seen.slice(0, 2).join(" | ")}{r.seen.length > 2 ? "…" : ""}
-                        </p>
-                      )}
                     </div>
-                  ))}
+                  );})}
                 </div>
               </>
             ) : (
