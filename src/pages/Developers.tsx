@@ -12,7 +12,7 @@ import { ArrowLeft, Plus, Copy, Trash2, Key, Book, Shield, Pencil, Mail } from "
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { usePlan } from "@/hooks/usePlan";
+
 import { User } from "@supabase/supabase-js";
 
 interface OAuthApp {
