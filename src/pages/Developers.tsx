@@ -97,11 +97,6 @@ const Developers = () => {
       navigate("/auth");
       return;
     }
-    if (!newAppName.trim()) {
-      toast.error("Please enter an app name");
-      return;
-    }
-
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
