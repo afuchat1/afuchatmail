@@ -36,15 +36,17 @@ interface DomainAddress {
 
 interface DnsRecordResult {
   kind: "TXT" | "MX" | "CNAME";
-  purpose: "verification" | "mx" | "spf" | "dkim" | "dmarc";
-  name: string;
+  purpose: "verification" | "mx" | "spf" | "dkim" | "dmarc" | "other";
+  host: string;            // host portion ("@" or "send", etc.)
+  fqdn: string;            // full record name
+  /** legacy field name kept for backward compatibility */
+  name?: string;
   value: string;
   priority?: number;
+  ttl?: string | number;
   required: boolean;
   description: string;
-  found?: boolean;
-  seen?: string[];
-  error?: string | null;
+  status?: string;         // "verified" | "pending" | "not_started" — from provider
 }
 
 interface Props {
