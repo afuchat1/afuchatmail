@@ -246,9 +246,9 @@ const handler = async (req: Request): Promise<Response> => {
       name: error.name
     });
     return new Response(
-      JSON.stringify({ 
-        error: "Failed to send email",
-        code: "EMAIL_SEND_ERROR"
+      JSON.stringify({
+        error: error?.message || "Failed to send email",
+        code: "EMAIL_SEND_ERROR",
       }),
       {
         status: 500,
