@@ -29,7 +29,7 @@ const SECTIONS = [
   { id: "quickstart", label: "Quickstart", icon: Zap },
   { id: "oauth", label: "OAuth 2.0 Flow", icon: Key },
   { id: "scopes", label: "Scopes", icon: Shield },
-  { id: "endpoints", label: "API Endpoints", icon: Code },
+  { id: "endpoints", label: "API Endpoints", icon: CodeIcon },
   { id: "examples", label: "Examples", icon: Send },
   { id: "errors", label: "Errors", icon: FileText },
 ] as const;
