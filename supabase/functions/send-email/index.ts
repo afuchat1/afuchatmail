@@ -92,6 +92,43 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // Validate sender: must own the from_address, and its domain must be
+    // either the platform domain (afuchat.com) or a verified custom domain.
+    const fromLower = String(emailData.from_address || "").toLowerCase().trim();
+    const fromDomain = fromLower.split("@")[1] || "";
+    const { data: ownedAddr } = await supabaseAdmin
+      .from("email_addresses")
+      .select("id, domain")
+      .eq("full_email", fromLower)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!ownedAddr) {
+      return new Response(
+        JSON.stringify({
+          error: `You do not own the address ${fromLower}. Add it under Settings → Email Addresses first.`,
+          code: "FROM_NOT_OWNED",
+        }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+    if (fromDomain !== "afuchat.com") {
+      const { data: cd } = await supabaseAdmin
+        .from("custom_domains")
+        .select("status")
+        .eq("user_id", user.id)
+        .eq("domain", fromDomain)
+        .maybeSingle();
+      if (!cd || cd.status !== "verified") {
+        return new Response(
+          JSON.stringify({
+            error: `Custom domain ${fromDomain} is not verified yet. Open Settings → Custom Domains, verify DNS, then try again.`,
+            code: "DOMAIN_NOT_VERIFIED",
+          }),
+          { status: 412, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+    }
+
     // Send email via Resend
     const emailResponse = await resend.emails.send({
       from: emailData.from_address,
@@ -103,6 +140,19 @@ const handler = async (req: Request): Promise<Response> => {
       text: emailData.body_text,
       replyTo: emailData.reply_to,
     });
+
+    if ((emailResponse as any)?.error) {
+      const provErr = (emailResponse as any).error;
+      console.error("Resend rejected send:", provErr);
+      return new Response(
+        JSON.stringify({
+          error: provErr?.message || "Email provider rejected the message",
+          code: provErr?.name || "PROVIDER_ERROR",
+          provider_status: provErr?.statusCode,
+        }),
+        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
 
     console.log("Email sent successfully:", emailResponse);
 
