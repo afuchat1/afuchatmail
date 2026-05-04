@@ -317,16 +317,31 @@ const Docs = () => {
             />
 
             <h3 className="text-[15px] font-semibold text-foreground mb-3">1. Redirect the user to authorize</h3>
-            <Code label="Authorization URL">{`${AUTHORIZE_URL}?oauth=true
-  &client_id=YOUR_CLIENT_ID
+            <Code label="Authorization URL">{`${AUTHORIZE_URL}
+  ?client_id=YOUR_CLIENT_ID
   &redirect_uri=https%3A%2F%2Fyourapp.com%2Fauth%2Fafumail%2Fcallback
   &response_type=code
   &scope=openid%20profile%20email%20read%3Amailbox%20read%3Amessages
   &state=RANDOM_CSRF_TOKEN`}</Code>
 
+            <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
+              <p className="text-[13px] font-semibold text-foreground mb-2">Working example URL</p>
+              <p className="text-[13px] text-muted-foreground mb-2">
+                Copy this URL into your browser (replace <code className="px-1 py-0.5 bg-muted rounded text-[12px]">client_id</code> with your real value):
+              </p>
+              <a
+                href={`${AUTHORIZE_URL}?client_id=demo_client_id&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&scope=openid%20email&state=demo_state_123`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[13px] text-primary underline break-all"
+              >
+                {`${AUTHORIZE_URL}?client_id=demo_client_id&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&scope=openid%20email&state=demo_state_123`}
+              </a>
+            </div>
+
             <p className="text-[13px] text-muted-foreground mt-3">
               After consent, AfuMail redirects to your <code className="px-1 py-0.5 bg-muted rounded text-[12px]">redirect_uri</code> with{" "}
-              <code className="px-1 py-0.5 bg-muted rounded text-[12px]">?code=...&state=...</code>.
+              <code className="px-1 py-0.5 bg-muted rounded text-[12px]">?code=...&amp;state=...</code>.
               Verify <code className="px-1 py-0.5 bg-muted rounded text-[12px]">state</code> matches the value you sent.
             </p>
 
