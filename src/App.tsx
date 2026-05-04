@@ -75,6 +75,11 @@ const App = () => (
               <Route path="/telegram" element={<TelegramMiniApp />} />
               <Route path="/oauth/authorize" element={<OAuthAuthorize />} />
               <Route path="/oauth/auth" element={<OAuthAuthorize />} />
+              <Route path="/oauth" element={<OAuthAuthorize />} />
+              <Route path="/oauth/*" element={<OAuthAuthorize />} />
+              <Route path="/authorize" element={<OAuthAuthorize />} />
+              <Route path="/o/oauth2/auth" element={<OAuthAuthorize />} />
+              <Route path="/o/oauth2/authorize" element={<OAuthAuthorize />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
