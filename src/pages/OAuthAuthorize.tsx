@@ -8,7 +8,18 @@ const OAuthAuthorize = () => {
   useEffect(() => {
     const next = new URLSearchParams(params);
     next.set("oauth", "true");
-    navigate(`/auth?${next.toString()}`, { replace: true });
+    const qs = next.toString();
+
+    // Persist the OAuth request so we can restore the consent screen even if
+    // the URL gets rewritten during the auth flow (e.g. by Supabase magic
+    // links, password reset hashes, or third-party redirects).
+    try {
+      sessionStorage.setItem("pendingOAuthRequest", qs);
+    } catch {
+      // sessionStorage may be unavailable (private mode, SSR) — non-fatal.
+    }
+
+    navigate(`/auth?${qs}`, { replace: true });
   }, [params, navigate]);
 
   return (
