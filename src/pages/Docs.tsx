@@ -21,7 +21,7 @@ import {
 // Real API constants — these reflect the deployed afumail-api edge function
 // ─────────────────────────────────────────────────────────────────────────────
 const API_BASE = "https://vfcukxlzqfeehhkiogpf.supabase.co/functions/v1/afumail-api";
-const AUTHORIZE_URL = "https://email.afuchat.com/auth";
+const AUTHORIZE_URL = "https://email.afuchat.com/oauth/authorize";
 const DEVELOPER_CONSOLE = "/developers";
 
 const SECTIONS = [
