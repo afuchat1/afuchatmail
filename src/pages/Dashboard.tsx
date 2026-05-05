@@ -604,14 +604,14 @@ const Dashboard = () => {
           style={{ width: selectedEmail ? listWidth : undefined, flex: selectedEmail ? undefined : "1 1 0%" }}
         >
           {/* Desktop search + compose bar */}
-          <div className="px-3 py-2.5 border-b bg-card flex items-center gap-2 flex-shrink-0">
-            <div className="relative flex-1">
+          <div className="px-4 py-3 border-b bg-card flex items-center gap-3 flex-shrink-0">
+            <div className="relative flex-1 max-w-2xl">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search mail…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 rounded bg-muted shadow-none border-0 text-sm"
+                className="pl-9 h-10 rounded-md bg-muted shadow-none border-0 text-sm"
               />
               {searchQuery && (
                 <button className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setSearchQuery("")}>
@@ -621,7 +621,8 @@ const Dashboard = () => {
             </div>
             <StatusDot />
             <Button
-              className="h-9 rounded font-medium text-sm shadow-none flex-shrink-0"
+              variant="outline"
+              className="h-10 rounded-md font-semibold text-sm shadow-none flex-shrink-0 border-border"
               onClick={() => setShowComposer(true)}
             >
               <PenSquare className="h-4 w-4 mr-1.5" />
