@@ -330,13 +330,16 @@ const Docs = () => {
                 Copy this URL into your browser (replace <code className="px-1 py-0.5 bg-muted rounded text-[12px]">client_id</code> with your real value):
               </p>
               <a
-                href={`${AUTHORIZE_URL}?client_id=demo_client_id&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&scope=openid%20email&state=demo_state_123`}
+                href={`${AUTHORIZE_URL}?client_id=afuchat_prod_001&redirect_uri=https%3A%2F%2Fafuchat.com%2Fauth%2Fafumail%2Fcallback&response_type=code&scope=openid%20email&state=demo_state_123`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[13px] text-primary underline break-all"
               >
-                {`${AUTHORIZE_URL}?client_id=demo_client_id&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&scope=openid%20email&state=demo_state_123`}
+                {`${AUTHORIZE_URL}?client_id=afuchat_prod_001&redirect_uri=https%3A%2F%2Fafuchat.com%2Fauth%2Fafumail%2Fcallback&response_type=code&scope=openid%20email&state=demo_state_123`}
               </a>
+              <p className="text-[12px] text-muted-foreground mt-2">
+                Note: <code className="px-1 py-0.5 bg-muted rounded">redirect_uri</code> must match a URI registered for your client. Unregistered URIs (e.g. <code className="px-1 py-0.5 bg-muted rounded">example.com</code>) will return “Invalid Request”.
+              </p>
             </div>
 
             <p className="text-[13px] text-muted-foreground mt-3">
