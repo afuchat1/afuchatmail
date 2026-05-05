@@ -199,18 +199,67 @@ export const EmailSidebar = ({
     ? `${activePlan.charAt(0).toUpperCase()}${activePlan.slice(1)}`
     : null;
 
+  // Group folders into sections for a Customer.io-style sectioned nav
+  const primaryTypes = ["inbox", "starred", "snoozed"];
+  const sendTypes = ["sent", "drafts"];
+  const manageTypes = ["archive", "spam", "trash"];
+  const primary = folders.filter(f => primaryTypes.includes(f.type));
+  const send = folders.filter(f => sendTypes.includes(f.type));
+  const manage = folders.filter(f => manageTypes.includes(f.type));
+  const other = folders.filter(
+    f => !primaryTypes.includes(f.type) && !sendTypes.includes(f.type) && !manageTypes.includes(f.type)
+  );
+
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <div className="px-3 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+      {children}
+    </div>
+  );
+
+  const renderFolder = (folder: Folder) => {
+    const Icon = getIcon(folder);
+    const isSelected = selectedFolderId === folder.id;
+    const unread = unreadCounts[folder.id] || 0;
+    return (
+      <button
+        key={folder.id}
+        onClick={() => onFolderSelect(folder.id)}
+        className={cn(
+          "w-full flex items-center gap-3 px-3 py-2 rounded-md text-[14px] transition-colors",
+          isSelected
+            ? "bg-accent text-accent-foreground font-semibold"
+            : "text-foreground/75 font-medium hover:bg-muted hover:text-foreground"
+        )}
+        data-testid={`button-folder-${folder.type || folder.id}`}
+      >
+        <Icon className={cn("h-[18px] w-[18px] flex-shrink-0", isSelected ? "text-primary" : "opacity-80")} />
+        <span className="flex-1 truncate text-left">{folderLabel(folder)}</span>
+        {unread > 0 && (
+          <span
+            className={cn(
+              "text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center tabular-nums",
+              isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+            )}
+          >
+            {unread > 99 ? "99+" : unread}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
-    <div className="flex flex-col h-full w-[var(--sidebar-width)] bg-card border-r">
-      {/* Logo + Account */}
-      <div className="px-3 pt-3 pb-2 border-b">
-        <div className="flex items-center justify-between mb-3">
+    <div className="flex flex-col h-full w-[var(--sidebar-width)] bg-card">
+      {/* Brand + Account */}
+      <div className="px-3 pt-4 pb-3">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <svg width="22" height="22" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="24" height="24" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect width="40" height="40" rx="8" fill="#0052ff"/>
               <rect x="9" y="14" width="22" height="14" rx="1.5" stroke="white" strokeWidth="1.5" fill="none"/>
               <path d="M9 14l11 9 11-9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span className="text-sm font-semibold tracking-tight">AfuChat Mail</span>
+            <span className="text-[15px] font-bold tracking-tight">AfuChat Mail</span>
             {planLabel && (
               <Badge className="h-5 rounded-full bg-primary/10 px-2 text-[10px] font-bold text-primary hover:bg-primary/10">
                 {planLabel}
@@ -260,19 +309,14 @@ export const EmailSidebar = ({
           )}
         </div>
 
-        <div className="mb-2">
-          <EmailAddressSwitcher
-            selectedEmailAddressId={selectedEmailAddressId}
-            onEmailAddressChange={onEmailAddressChange}
-          />
-        </div>
-      </div>
+        <EmailAddressSwitcher
+          selectedEmailAddressId={selectedEmailAddressId}
+          onEmailAddressChange={onEmailAddressChange}
+        />
 
-      {/* Compose Button */}
-      <div className="px-3 py-2.5">
         <Button
           onClick={onCompose}
-          className="w-full h-9 rounded font-semibold text-[13px] gap-2 shadow-none"
+          className="w-full h-10 mt-3 rounded-md font-semibold text-[14px] gap-2 shadow-none"
           data-testid="button-sidebar-compose"
         >
           <PenSquare className="h-4 w-4" />
@@ -280,69 +324,54 @@ export const EmailSidebar = ({
         </Button>
       </div>
 
-      {/* Folder Navigation */}
-      <nav className="flex-1 overflow-y-auto thin-scrollbar px-2 pb-2 space-y-0.5">
-        {folders.map((folder) => {
-          const Icon = getIcon(folder);
-          const isSelected = selectedFolderId === folder.id;
-          const unread = unreadCounts[folder.id] || 0;
-
-          return (
-            <button
-              key={folder.id}
-              onClick={() => onFolderSelect(folder.id)}
-              className={cn(
-                "w-full flex items-center gap-2.5 px-3 py-2 rounded text-[13px] font-medium transition-all duration-100",
-                isSelected
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-              data-testid={`button-folder-${folder.type || folder.id}`}
-            >
-              <Icon
-                className={cn(
-                  "h-[17px] w-[17px] flex-shrink-0",
-                  isSelected ? "text-primary" : "opacity-70"
-                )}
-              />
-              <span className="flex-1 truncate text-left">{folderLabel(folder)}</span>
-              {unread > 0 && (
-                <span
-                  className={cn(
-                    "text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
-                    isSelected
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground"
-                  )}
-                >
-                  {unread > 99 ? "99+" : unread}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* Bottom Nav */}
-      <div className="px-2 py-2 border-t space-y-0.5">
-        <button
-          onClick={() => navigate("/settings")}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-[13px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <Settings className="h-[17px] w-[17px] flex-shrink-0 opacity-70" />
-          <span>Settings</span>
-        </button>
-        {isAdmin && (
-          <button
-            onClick={() => navigate("/admin")}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-[13px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            data-testid="button-admin-panel"
-          >
-            <Shield className="h-[17px] w-[17px] flex-shrink-0 text-amber-500" />
-            <span>Admin Panel</span>
-          </button>
+      {/* Sectioned navigation */}
+      <nav className="flex-1 overflow-y-auto thin-scrollbar px-2 pb-3">
+        {primary.length > 0 && (
+          <>
+            <SectionLabel>Mail</SectionLabel>
+            <div className="space-y-0.5">{primary.map(renderFolder)}</div>
+          </>
         )}
-      </div>
+        {send.length > 0 && (
+          <>
+            <SectionLabel>Send</SectionLabel>
+            <div className="space-y-0.5">{send.map(renderFolder)}</div>
+          </>
+        )}
+        {manage.length > 0 && (
+          <>
+            <SectionLabel>Manage</SectionLabel>
+            <div className="space-y-0.5">{manage.map(renderFolder)}</div>
+          </>
+        )}
+        {other.length > 0 && (
+          <>
+            <SectionLabel>Folders</SectionLabel>
+            <div className="space-y-0.5">{other.map(renderFolder)}</div>
+          </>
+        )}
+
+        <SectionLabel>Workspace</SectionLabel>
+        <div className="space-y-0.5">
+          <button
+            onClick={() => navigate("/settings")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[14px] font-medium text-foreground/75 hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Settings className="h-[18px] w-[18px] flex-shrink-0 opacity-80" />
+            <span>Settings</span>
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => navigate("/admin")}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[14px] font-medium text-foreground/75 hover:bg-muted hover:text-foreground transition-colors"
+              data-testid="button-admin-panel"
+            >
+              <Shield className="h-[18px] w-[18px] flex-shrink-0 text-amber-500" />
+              <span>Admin Panel</span>
+            </button>
+          )}
+        </div>
+      </nav>
     </div>
   );
 };
