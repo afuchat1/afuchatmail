@@ -425,7 +425,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
               <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{activeMeta.label}</h2>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">{sectionDescription(activeSection)}</p>
             </div>
-            {(activeSection === "email" || activeSection === "notifications") && selectedEmailAddressId && (
+            {activeSection === "email" && selectedEmailAddressId && (
               <Button onClick={handleSave} disabled={loading} size="sm" className="rounded-lg shrink-0 h-9">
                 {loading ? <Loader2 className="h-3.5 w-3.5 sm:mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 sm:mr-1.5" />}
                 <span className="hidden sm:inline">Save</span>
@@ -434,7 +434,7 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
           </div>
 
           {/* Mailbox switcher (relevant sections) */}
-          {(activeSection === "email" || activeSection === "notifications") && (
+          {activeSection === "email" && (
             <div className="mb-6">
               <EmailAddressSwitcher selectedEmailAddressId={selectedEmailAddressId} onEmailAddressChange={setSelectedEmailAddressId} />
             </div>
@@ -860,7 +860,7 @@ function sectionDescription(id: SectionId): string {
   switch (id) {
     case "profile":       return "Your identity and account information.";
     case "email":         return "Composing defaults for the selected mailbox.";
-    case "notifications": return "Decide what reaches your inbox and devices.";
+    
     case "addresses":     return "Manage primary mailboxes and forwarding aliases.";
     case "domains":       return "Send and receive mail from your own domain.";
     case "integrations":  return "Connect AfuChat Mail to other services.";
