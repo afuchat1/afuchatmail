@@ -84,7 +84,6 @@ const SERVICES: ServiceMeta[] = [
   { id: "storage",       name: "Storage",            description: "Avatars, attachments & uploads",          icon: HardDrive },
   { id: "send-email",    name: "Mail Delivery",      description: "Outbound email via send-email function",  icon: Mail },
   { id: "receive-email", name: "Inbound Mail",       description: "Inbox webhook for incoming messages",     icon: Mail },
-  { id: "push",          name: "Push Notifications", description: "Web Push & device alerts",                icon: Bell },
   { id: "ai-assist",     name: "AI Assistant",       description: "Smart replies & writing assistance",      icon: Sparkles },
   { id: "telegram",      name: "Telegram Bot",       description: "Notifications & inbox via Telegram",      icon: MessageCircle },
   { id: "payments",      name: "Payments",           description: "SkyPay checkout & subscription confirmations", icon: CreditCard },
