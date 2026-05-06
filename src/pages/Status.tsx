@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Activity, Mail, Shield,
-  Database, Radio, HardDrive, Sparkles, MessageCircle, CreditCard, Bell,
-  RefreshCw, Loader2, Globe,
+  Database, Radio, HardDrive, Sparkles, MessageCircle, CreditCard,
+  RefreshCw, Loader2, Globe, CheckCircle2, AlertTriangle,
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { supabase } from "@/integrations/supabase/client";
