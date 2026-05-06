@@ -625,6 +625,51 @@ export type Database = {
         }
         Relationships: []
       }
+      status_incidents: {
+        Row: {
+          body_open: string
+          body_resolved: string | null
+          created_at: string
+          id: string
+          opened_at: string
+          resolved_at: string | null
+          service_id: string
+          severity: string
+          status: string
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_open: string
+          body_resolved?: string | null
+          created_at?: string
+          id?: string
+          opened_at?: string
+          resolved_at?: string | null
+          service_id: string
+          severity: string
+          status?: string
+          summary: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body_open?: string
+          body_resolved?: string | null
+          created_at?: string
+          id?: string
+          opened_at?: string
+          resolved_at?: string | null
+          service_id?: string
+          severity?: string
+          status?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       status_latest: {
         Row: {
           checked_at: string
