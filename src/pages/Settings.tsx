@@ -52,7 +52,6 @@ interface EmailAddress {
 type SectionId =
   | "profile"
   | "email"
-  | "notifications"
   | "integrations"
   | "addresses"
   | "domains"
