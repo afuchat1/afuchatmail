@@ -16,7 +16,7 @@ import { BottomTabBar, TabId } from "@/components/BottomTabBar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { StatusDot } from "@/components/StatusDot";
-
+import { IncidentBanner } from "@/components/IncidentBanner";
 
 interface EmailAddress {
   id: string;
