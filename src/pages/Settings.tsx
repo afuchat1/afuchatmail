@@ -10,14 +10,14 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Mail, ArrowLeft, Save, Plus, Trash2, Copy, LogOut, MessageCircle,
   Link2, Unlink, CreditCard, Crown, ExternalLink, AlertTriangle, Camera,
-  Loader2, User as UserIcon, Bell, Keyboard, AtSign, ShieldAlert,
+  Loader2, User as UserIcon, Keyboard, AtSign, ShieldAlert,
   Settings as SettingsIcon, Check, ChevronRight, Sparkles, Globe,
 } from "lucide-react";
 import { CustomDomainsPanel } from "@/components/CustomDomainsPanel";
 import { User } from "@supabase/supabase-js";
 import { avatarColor, initials } from "@/lib/avatar";
 import { EmailAddressSwitcher } from "@/components/EmailAddressSwitcher";
-import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+
 import { usePlan, PLAN_LIMITS, formatBytes } from "@/hooks/usePlan";
 import { useStorageUsage } from "@/hooks/useStorageUsage";
 import { Progress } from "@/components/ui/progress";
