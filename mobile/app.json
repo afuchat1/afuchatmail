@@ -1,15 +1,10 @@
 {
   "expo": {
-    "name": "AfuMail",
-    "slug": "afumail",
+    "name": "AfuChat Mail",
+    "slug": "afuchat-mail",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
-    "splash": {
-      "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
-    },
+    "userInterfaceStyle": "light",
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
@@ -17,7 +12,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0f172a"
+        "backgroundColor": "#6366F1"
       },
       "package": "com.afuchat.mail",
       "versionCode": 1,
@@ -26,7 +21,7 @@
     "web": {
       "bundler": "metro"
     },
-    "scheme": "afumail",
+    "scheme": "afuchat-mail",
     "extra": {
       "supabaseUrl": "https://vfcukxlzqfeehhkiogpf.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmY3VreGx6cWZlZWhoa2lvZ3BmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0OTI4NTYsImV4cCI6MjA3OTA2ODg1Nn0.hVE2dRQCTerROZJLlUbZqCuIPggQc4bUoXDK-BOm77A"
