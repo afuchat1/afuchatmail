@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useEmails, useFolders } from '../hooks/useEmails';
@@ -13,13 +14,16 @@ import { colors } from '../lib/colors';
 import { RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+type Filter = 'all' | 'unread' | 'starred';
 
 export default function InboxScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<Nav>();
   const { folders } = useFolders(user?.id);
   const [activeFolderId, setActiveFolderId] = useState<string | undefined>();
+  const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
     const inbox = folders.find(f => f.type === 'inbox');
@@ -28,80 +32,110 @@ export default function InboxScreen() {
 
   const { emails, loading, refreshing, refresh, toggleStar } = useEmails(user?.id, activeFolderId);
 
-  const filtered = search
-    ? emails.filter(e =>
-        e.subject?.toLowerCase().includes(search.toLowerCase()) ||
-        e.from_address?.toLowerCase().includes(search.toLowerCase())
-      )
-    : emails;
-
   const unreadCount = emails.filter(e => !e.is_read).length;
+
+  const filtered = emails.filter(e => {
+    const matchesSearch = search
+      ? e.subject?.toLowerCase().includes(search.toLowerCase()) ||
+        e.from_address?.toLowerCase().includes(search.toLowerCase())
+      : true;
+    const matchesFilter =
+      filter === 'all' ? true :
+      filter === 'unread' ? !e.is_read :
+      e.is_starred;
+    return matchesSearch && matchesFilter;
+  });
+
+  const initials = (user?.email?.[0] ?? 'A').toUpperCase();
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
 
+      {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Inbox</Text>
-          {unreadCount > 0 && (
-            <Text style={styles.subtitle}>{unreadCount} unread</Text>
-          )}
+          <Text style={styles.eyebrow}>AfuChat Mail</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Inbox</Text>
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </View>
         </View>
-        <TouchableOpacity
-          style={styles.composeBtn}
-          onPress={() => navigation.navigate('Compose', {})}
-        >
-          <Text style={styles.composeBtnText}>✏️</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.searchBar}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search emails…"
-          placeholderTextColor={colors.textDim}
-          value={search}
-          onChangeText={setSearch}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Text style={styles.clearBtn}>✕</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => setShowSearch(!showSearch)}
+          >
+            <Ionicons name="search" size={20} color={colors.textMuted} />
           </TouchableOpacity>
-        )}
+          <TouchableOpacity style={styles.iconBtn}>
+            <Ionicons name="notifications-outline" size={20} color={colors.textMuted} />
+            <View style={styles.notifDot} />
+          </TouchableOpacity>
+          <View style={styles.avatarBtn}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+        </View>
       </View>
 
-      {folders.length > 1 && (
-        <FlatList
-          horizontal
-          data={folders.slice(0, 8)}
-          keyExtractor={f => f.id}
-          style={styles.folderTabs}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 12 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.folderTab, activeFolderId === item.id && styles.folderTabActive]}
-              onPress={() => setActiveFolderId(item.id)}
-            >
-              <Text style={[styles.folderTabText, activeFolderId === item.id && styles.folderTabTextActive]}>
-                {item.name}
-              </Text>
+      {/* Search bar */}
+      {showSearch && (
+        <View style={styles.searchWrap}>
+          <Ionicons name="search" size={17} color={colors.textFaint} style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search emails…"
+            placeholderTextColor={colors.textFaint}
+            value={search}
+            onChangeText={setSearch}
+            autoFocus
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color={colors.textFaint} />
             </TouchableOpacity>
           )}
-        />
+        </View>
       )}
 
+      {/* Filter pills */}
+      <View style={styles.filterRow}>
+        {(['all', 'unread', 'starred'] as Filter[]).map(f => (
+          <TouchableOpacity
+            key={f}
+            style={[styles.pill, filter === f && styles.pillActive]}
+            onPress={() => setFilter(f)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.pillText, filter === f && styles.pillTextActive]}>
+              {f === 'all' ? 'All Mail' : f === 'unread' ? `Unread (${unreadCount})` : 'Starred'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.divider} />
+
+      {/* List */}
       {loading && !refreshing ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyIcon}>📭</Text>
-          <Text style={styles.emptyText}>{search ? 'No results found' : 'Your inbox is empty'}</Text>
-          <Text style={styles.emptySubtext}>{search ? 'Try a different search term' : 'Emails sent to your @afuchat.com address will appear here'}</Text>
+          <View style={styles.emptyIconWrap}>
+            <Ionicons name="mail-outline" size={36} color={colors.textFaint} />
+          </View>
+          <Text style={styles.emptyText}>
+            {search ? 'No results found' : filter === 'starred' ? 'No starred emails' : "You're all caught up!"}
+          </Text>
+          <Text style={styles.emptySubtext}>
+            {search ? 'Try a different search' : filter === 'unread' ? 'No unread emails' : 'New emails will appear here'}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -122,6 +156,7 @@ export default function InboxScreen() {
               colors={[colors.primary]}
             />
           }
+          showsVerticalScrollIndicator={false}
         />
       )}
     </View>
@@ -131,35 +166,111 @@ export default function InboxScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 10,
   },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text },
-  subtitle: { fontSize: 13, color: colors.primary, marginTop: 2 },
-  composeBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 2,
   },
-  composeBtnText: { fontSize: 18 },
-  searchBar: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.bgCard, marginHorizontal: 16, marginBottom: 8,
-    borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: colors.border,
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  title: { fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
+  badge: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  searchIcon: { fontSize: 16, marginRight: 8 },
-  searchInput: { flex: 1, paddingVertical: 11, color: colors.text, fontSize: 15 },
-  clearBtn: { color: colors.textDim, fontSize: 16, paddingLeft: 8 },
-  folderTabs: { maxHeight: 44, marginBottom: 4 },
-  folderTab: {
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, marginRight: 8,
-    backgroundColor: colors.bgCard, borderWidth: 1, borderColor: colors.border,
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 4 },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.bgInput,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
-  folderTabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  folderTabText: { color: colors.textMuted, fontSize: 13, fontWeight: '500' },
-  folderTabTextActive: { color: '#fff', fontWeight: '600' },
+  notifDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: colors.danger,
+    borderWidth: 1.5,
+    borderColor: colors.bg,
+  },
+  avatarBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bgInput,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 15,
+    padding: 0,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    paddingTop: 2,
+  },
+  pill: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: colors.bgInput,
+  },
+  pillActive: { backgroundColor: colors.primary },
+  pillText: { fontSize: 13, fontWeight: '600', color: colors.textDim },
+  pillTextActive: { color: '#fff' },
+  divider: { height: 1, backgroundColor: colors.border },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { color: colors.text, fontSize: 18, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
-  emptySubtext: { color: colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  emptyIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.bgInput,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  emptyText: {
+    color: colors.textMuted,
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptySubtext: { color: colors.textFaint, fontSize: 14, textAlign: 'center' },
 });
