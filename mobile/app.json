@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "AfuMail",
+    "slug": "afumail",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.afuchat.mail"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f172a"
+      },
+      "package": "com.afuchat.mail",
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "afumail",
+    "extra": {
+      "supabaseUrl": "https://vfcukxlzqfeehhkiogpf.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmY3VreGx6cWZlZWhoa2lvZ3BmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0OTI4NTYsImV4cCI6MjA3OTA2ODg1Nn0.hVE2dRQCTerROZJLlUbZqCuIPggQc4bUoXDK-BOm77A",
+      "eas": {
+        "projectId": "afumail-android"
+      }
+    }
+  }
+}
