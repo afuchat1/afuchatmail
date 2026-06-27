@@ -14,6 +14,8 @@ import {
   useEmailAddresses, folderLabel,
 } from '../hooks/useEmails';
 import EmailListItem from '../components/EmailListItem';
+import { SwipeableRow } from '../components/SwipeableRow';
+import { StatusDot } from '../components/StatusDot';
 import { colors } from '../lib/colors';
 import { RootStackParamList, Email, EmailThread, Folder } from '../types';
 
@@ -51,15 +53,17 @@ interface FolderDrawerProps {
   onAddressChange: (id: string) => void;
   onCompose: () => void;
   onSettings: () => void;
+  onAdmin: () => void;
   userEmail: string;
   activePlan?: string | null;
+  isAdmin: boolean;
   onSignOut: () => void;
 }
 
 function FolderDrawer({
   visible, onClose, folders, selectedFolderId, onFolderSelect,
   unreadCounts, selectedAddressId, addresses, onAddressChange,
-  onCompose, onSettings, userEmail, activePlan, onSignOut,
+  onCompose, onSettings, onAdmin, userEmail, activePlan, isAdmin, onSignOut,
 }: FolderDrawerProps) {
   const slideAnim = useRef(new Animated.Value(-320)).current;
 
@@ -217,6 +221,12 @@ function FolderDrawer({
               <Ionicons name="settings-outline" size={18} color={colors.textDim} style={{ marginRight: 12 }} />
               <Text style={styles.drawerFolderLabel}>Settings</Text>
             </TouchableOpacity>
+            {isAdmin && (
+              <TouchableOpacity style={styles.drawerFolderRow} onPress={() => { onAdmin(); onClose(); }}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={colors.yellow} style={{ marginRight: 12 }} />
+                <Text style={[styles.drawerFolderLabel, { color: colors.yellow }]}>Admin Panel</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.drawerFolderRow} onPress={onSignOut}>
               <Ionicons name="log-out-outline" size={18} color={colors.danger} style={{ marginRight: 12 }} />
               <Text style={[styles.drawerFolderLabel, { color: colors.danger }]}>Sign out</Text>
@@ -234,13 +244,14 @@ interface ThreadRowProps {
   thread: EmailThread;
   onPress: () => void;
   onStar: () => void;
+  onDelete: () => void;
   selected: boolean;
   selectMode: boolean;
   onLongPress: () => void;
   onToggleSelect: () => void;
 }
 
-function ThreadRow({ thread, onPress, onStar, selected, selectMode, onLongPress, onToggleSelect }: ThreadRowProps) {
+function ThreadRow({ thread, onPress, onStar, onDelete, selected, selectMode, onLongPress, onToggleSelect }: ThreadRowProps) {
   const email = thread.latest_email;
   return (
     <View style={styles.threadRowWrap}>
@@ -252,12 +263,20 @@ function ThreadRow({ thread, onPress, onStar, selected, selectMode, onLongPress,
         </TouchableOpacity>
       )}
       <View style={{ flex: 1 }}>
-        <EmailListItem
-          email={{ ...email, subject: thread.emails.length > 1 ? `${email.subject} (${thread.emails.length})` : email.subject }}
-          onPress={selectMode ? onToggleSelect : onPress}
-          onStar={onStar}
-          onLongPress={onLongPress}
-        />
+        {/* SwipeableRow: swipe-right=star, swipe-left=delete — same as EmailList on website */}
+        <SwipeableRow
+          onSwipeLeft={selectMode ? undefined : onDelete}
+          onSwipeRight={selectMode ? undefined : onStar}
+          leftIcon="delete"
+          rightIcon="star"
+        >
+          <EmailListItem
+            email={{ ...email, subject: thread.emails.length > 1 ? `${email.subject} (${thread.emails.length})` : email.subject }}
+            onPress={selectMode ? onToggleSelect : onPress}
+            onStar={onStar}
+            onLongPress={onLongPress}
+          />
+        </SwipeableRow>
       </View>
     </View>
   );
@@ -276,6 +295,7 @@ export default function InboxScreen() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [activePlan, setActivePlan] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
   const searchRef = useRef<TextInput>(null);
 
   // Bulk select state (same as EmailList)
@@ -313,6 +333,13 @@ export default function InboxScreen() {
       if (primary) setSelectedAddressId(primary.id);
     }
   }, [addresses]);
+
+  // Check if current user is admin (same as Dashboard's checkAdminStatus)
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data));
+  }, [user]);
 
   // Fetch active subscription (same as Dashboard)
   useEffect(() => {
@@ -431,6 +458,9 @@ export default function InboxScreen() {
               <Text style={styles.searchPillText}>Search mail…</Text>
             </TouchableOpacity>
 
+            {/* StatusDot — service health indicator (same as Dashboard header) */}
+            <StatusDot />
+
             <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.navigate('Compose', {})}>
               <Ionicons name="create-outline" size={22} color={colors.textDim} />
             </TouchableOpacity>
@@ -507,6 +537,7 @@ export default function InboxScreen() {
                 thread={item}
                 onPress={() => handleEmailOpen(item)}
                 onStar={() => toggleStar(item.latest_email.id, item.latest_email.is_starred)}
+                onDelete={() => deleteEmail(item.latest_email.id)}
                 selected={selectedIds.has(item.latest_email.id)}
                 selectMode={selectMode}
                 onLongPress={() => {
@@ -631,6 +662,8 @@ export default function InboxScreen() {
         onAddressChange={setSelectedAddressId}
         onCompose={() => navigation.navigate('Compose', {})}
         onSettings={() => navigation.navigate('Settings')}
+        onAdmin={() => navigation.navigate('Admin')}
+        isAdmin={isAdmin}
         userEmail={user?.email ?? ''}
         activePlan={activePlan}
         onSignOut={handleSignOut}

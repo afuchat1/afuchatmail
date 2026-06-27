@@ -12,6 +12,8 @@ import MainTabs from './src/navigation/MainTabs';
 import EmailDetailScreen from './src/screens/EmailDetailScreen';
 import ComposeScreen from './src/screens/ComposeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import AdminScreen from './src/screens/AdminScreen';
+import EmailTemplatesScreen from './src/screens/EmailTemplatesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -79,6 +81,16 @@ export default function App() {
               <Stack.Screen
                 name="Settings"
                 component={SettingsScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="Admin"
+                component={AdminScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="EmailTemplates"
+                component={EmailTemplatesScreen}
                 options={{ animation: 'slide_from_right' }}
               />
             </>

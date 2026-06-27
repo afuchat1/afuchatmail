@@ -72,6 +72,8 @@ export type RootStackParamList = {
   EmailDetail: { emailId: string; threadId?: string };
   Compose: { replyTo?: Email; draftId?: string };
   Settings: undefined;
+  Admin: undefined;
+  EmailTemplates: undefined;
 };
 
 export type MainTabParamList = {
