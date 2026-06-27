@@ -16,15 +16,17 @@ import { RootStackParamList, Email } from '../types';
 
 type Route = RouteProp<RootStackParamList, 'Compose'>;
 
+type BodyMode = 'text' | 'html';
+
 interface EmailTemplate {
   id: string;
   name: string;
   subject: string;
   body_text: string;
+  body_html: string;
   category: string | null;
 }
 
-// Same as EmailComposer.tsx: build a quoted reply body
 function buildReplyBody(original: Email): string {
   const date = original.received_at || original.created_at || '';
   const dateStr = date ? new Date(date).toLocaleString() : '';
@@ -55,6 +57,7 @@ export default function ComposeScreen() {
   const [bcc, setBcc] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [bodyMode, setBodyMode] = useState<BodyMode>('text');
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [sending, setSending] = useState(false);
   const [signature, setSignature] = useState('');
@@ -62,11 +65,9 @@ export default function ComposeScreen() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
   const bodyRef = useRef<TextInput>(null);
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Pre-fill for reply (same as EmailComposer)
   useEffect(() => {
     if (!replyTo) return;
     setTo(replyTo.reply_to || replyTo.from_address || '');
@@ -75,7 +76,6 @@ export default function ComposeScreen() {
     setBody(buildReplyBody(replyTo));
   }, [replyTo?.id]);
 
-  // Set primary email as from address
   useEffect(() => {
     if (addresses.length > 0 && !fromAddressId) {
       const primary = addresses.find(a => a.is_primary) ?? addresses[0];
@@ -83,7 +83,6 @@ export default function ComposeScreen() {
     }
   }, [addresses]);
 
-  // Load user signature & templates
   useEffect(() => {
     if (!user) return;
     loadSignatureAndTemplates();
@@ -92,45 +91,62 @@ export default function ComposeScreen() {
   const loadSignatureAndTemplates = async () => {
     if (!user) return;
     try {
-      // Signature (from user_settings for selected address)
       if (fromAddressId) {
         const { data: settings } = await (supabase as any)
           .from('user_settings').select('email_signature').eq('email_address_id', fromAddressId).maybeSingle();
         if (settings?.email_signature) setSignature(settings.email_signature);
       }
-
-      // Check admin + load templates (same as EmailComposer.checkAdminAndFetchTemplates)
-      const { data: roleRow } = await supabase
-        .from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
-      const admin = !!roleRow;
-      setIsAdmin(admin);
-      if (admin) {
-        const { data } = await supabase.from('email_templates').select('id, name, subject, body_text, category').order('name');
-        setTemplates(data ?? []);
-      }
+      // Load templates for ALL users (not admin-only)
+      const { data } = await supabase
+        .from('email_templates')
+        .select('id, name, subject, body_text, body_html, category')
+        .order('name');
+      setTemplates(data ?? []);
     } catch {}
   };
 
   const fromAddress = addresses.find(a => a.id === fromAddressId);
 
-  // Debounced AI autocomplete (same as EmailComposer)
   const handleBodyChange = useCallback((text: string) => {
     setBody(text);
-    clearAutocomplete();
-    if (autocompleteTimer.current) clearTimeout(autocompleteTimer.current);
-    autocompleteTimer.current = setTimeout(() => {
-      if (text.length > 15) getAutocomplete(text, subject);
-    }, 900);
-  }, [subject, getAutocomplete, clearAutocomplete]);
+    if (bodyMode === 'text') {
+      clearAutocomplete();
+      if (autocompleteTimer.current) clearTimeout(autocompleteTimer.current);
+      autocompleteTimer.current = setTimeout(() => {
+        if (text.length > 15) getAutocomplete(text, subject);
+      }, 900);
+    }
+  }, [subject, getAutocomplete, clearAutocomplete, bodyMode]);
 
   const applyTemplate = (t: EmailTemplate) => {
     setSubject(t.subject);
-    setBody(t.body_text);
+    if (t.body_html && t.body_html.trim().startsWith('<')) {
+      setBody(t.body_html);
+      setBodyMode('html');
+    } else {
+      setBody(t.body_text ?? '');
+      setBodyMode('text');
+    }
     setShowTemplates(false);
   };
 
-  // AI action handlers (same as EmailComposer.handleAIAction)
+  const toggleBodyMode = () => {
+    if (bodyMode === 'text') {
+      const html = `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.6;">\n${body.trim().replace(/\n/g, '<br />')}\n</div>`;
+      setBody(html);
+      setBodyMode('html');
+    } else {
+      const stripped = body.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+      setBody(stripped.trim());
+      setBodyMode('text');
+    }
+  };
+
   const handleAIAction = async (action: 'improve_tone' | 'fix_grammar' | 'make_shorter' | 'make_longer') => {
+    if (bodyMode === 'html') {
+      Alert.alert('Switch to Text mode', 'AI tools work in Text mode. Switch to Text first.');
+      return;
+    }
     if (!body.trim()) {
       Alert.alert('Nothing to improve', 'Write something first.');
       return;
@@ -160,11 +176,24 @@ export default function ComposeScreen() {
   const doSend = async () => {
     setSending(true);
     try {
+      let body_html: string;
+      let body_text: string;
+
+      if (bodyMode === 'html') {
+        body_html = body.trim();
+        body_text = body.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+      } else {
+        body_text = body.trim();
+        const sigPart = signature ? `\n\n—\n${signature}` : '';
+        const fullText = body_text + sigPart;
+        body_html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#333;line-height:1.6;">${fullText.replace(/\n/g, '<br />')}</div>`;
+      }
+
       const payload: Record<string, unknown> = {
         to: to.split(',').map((s: string) => s.trim()).filter(Boolean),
         subject: subject.trim(),
-        body_text: body.trim(),
-        body_html: `<p>${body.trim().replace(/\n/g, '<br>')}</p>`,
+        body_text,
+        body_html,
         from_address_id: fromAddressId,
       };
       if (cc) payload.cc = cc.split(',').map((s: string) => s.trim()).filter(Boolean);
@@ -172,6 +201,7 @@ export default function ComposeScreen() {
       if (replyTo?.thread_id) payload.reply_to_thread_id = replyTo.thread_id;
       if (replyTo?.id) payload.in_reply_to_id = replyTo.id;
       if (scheduledAt) payload.scheduled_at = new Date(scheduledAt).toISOString();
+
       const { error } = await supabase.functions.invoke('send-email', { body: payload });
       if (error) throw error;
       navigation.goBack();
@@ -204,16 +234,12 @@ export default function ComposeScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{replyTo ? 'Reply' : 'New message'}</Text>
         <View style={styles.headerRight}>
-          {/* Schedule button */}
           <TouchableOpacity style={styles.scheduleBtn} onPress={() => setShowSchedule(true)}>
             <Ionicons name="time-outline" size={20} color={scheduledAt ? colors.primary : colors.textDim} />
           </TouchableOpacity>
-          {/* Templates button (admin only, same as EmailComposer) */}
-          {isAdmin && (
-            <TouchableOpacity style={styles.scheduleBtn} onPress={() => setShowTemplates(true)}>
-              <Ionicons name="document-text-outline" size={20} color={colors.textDim} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.scheduleBtn} onPress={() => setShowTemplates(true)}>
+            <Ionicons name="document-text-outline" size={20} color={colors.textDim} />
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.sendBtn, (!to.trim() || sending) && styles.sendBtnDisabled]}
             onPress={handleSend}
@@ -268,7 +294,7 @@ export default function ComposeScreen() {
           </>
         )}
 
-        {/* To — RecipientInput with autocomplete */}
+        {/* To */}
         <View style={[styles.field, { zIndex: 300 }]}>
           <Text style={styles.fieldLabel}>To</Text>
           <RecipientInput
@@ -282,7 +308,6 @@ export default function ComposeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Cc / Bcc */}
         {showCcBcc && (
           <>
             <View style={styles.divider} />
@@ -315,8 +340,34 @@ export default function ComposeScreen() {
 
         <View style={styles.divider} />
 
-        {/* AI autocomplete suggestion */}
-        {!!autocompleteText && (
+        {/* Body mode toggle */}
+        <View style={styles.modeSwitcher}>
+          <TouchableOpacity
+            style={[styles.modeTab, bodyMode === 'text' && styles.modeTabActive]}
+            onPress={() => bodyMode !== 'text' && toggleBodyMode()}
+          >
+            <Ionicons name="text-outline" size={14} color={bodyMode === 'text' ? colors.primary : colors.textFaint} />
+            <Text style={[styles.modeTabText, bodyMode === 'text' && styles.modeTabTextActive]}>Text</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeTab, bodyMode === 'html' && styles.modeTabActive]}
+            onPress={() => bodyMode !== 'html' && toggleBodyMode()}
+          >
+            <Ionicons name="code-slash-outline" size={14} color={bodyMode === 'html' ? '#e07b00' : colors.textFaint} />
+            <Text style={[styles.modeTabText, bodyMode === 'html' && styles.modeTabTextHtml]}>HTML</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* HTML mode info banner */}
+        {bodyMode === 'html' && (
+          <View style={styles.htmlBanner}>
+            <Ionicons name="code-slash" size={14} color="#e07b00" />
+            <Text style={styles.htmlBannerText}>HTML mode — paste your custom branded template</Text>
+          </View>
+        )}
+
+        {/* AI autocomplete (text mode only) */}
+        {bodyMode === 'text' && !!autocompleteText && (
           <TouchableOpacity
             style={styles.autocompleteSuggestion}
             onPress={() => { setBody(body + autocompleteText + ' '); clearAutocomplete(); }}
@@ -329,28 +380,30 @@ export default function ComposeScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Body */}
+        {/* Body input */}
         <TextInput
           ref={bodyRef}
-          style={styles.bodyInput}
-          placeholder="Compose email"
+          style={[styles.bodyInput, bodyMode === 'html' && styles.bodyInputHtml]}
+          placeholder={bodyMode === 'html' ? '<!DOCTYPE html>\n<html>\n  <body>\n    <!-- Your branded HTML here -->\n  </body>\n</html>' : 'Compose email'}
           placeholderTextColor={colors.textHint}
           value={body}
           onChangeText={handleBodyChange}
           multiline
           textAlignVertical="top"
-          autoCorrect
-          autoCapitalize="sentences"
+          autoCorrect={bodyMode === 'text'}
+          autoCapitalize={bodyMode === 'text' ? 'sentences' : 'none'}
+          spellCheck={bodyMode === 'text'}
+          keyboardType="default"
         />
 
-        {/* Signature (same as EmailComposer — loaded from user_settings) */}
-        {!!signature && (
+        {/* Signature (text mode only) */}
+        {bodyMode === 'text' && !!signature && (
           <View style={styles.signatureBlock}>
             <View style={styles.signatureDivider} />
             <Text style={styles.signatureText}>{signature}</Text>
           </View>
         )}
-        {!signature && (
+        {bodyMode === 'text' && !signature && (
           <View style={styles.signature}>
             <Text style={styles.signatureDefault}>{'— '}<Text style={{ color: colors.primary }}>AfuChat Mail</Text></Text>
           </View>
@@ -359,7 +412,7 @@ export default function ComposeScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* AI loading overlay on body */}
+      {/* AI loading overlay */}
       {aiLoading && (
         <View style={styles.aiLoadingOverlay}>
           <View style={styles.aiLoadingPill}>
@@ -369,15 +422,13 @@ export default function ComposeScreen() {
         </View>
       )}
 
-      {/* Toolbar (same as EmailComposer bottom toolbar — matches website) */}
+      {/* Toolbar */}
       <View style={styles.toolbar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.toolbarContent}>
-          {/* Attach */}
           <TouchableOpacity style={styles.toolbarBtn}>
             <Ionicons name="attach-outline" size={22} color={colors.textDim} />
           </TouchableOpacity>
-          {/* AI actions (same as EmailComposer AI toolbar) */}
-          {AI_ACTIONS.map(action => (
+          {bodyMode === 'text' && AI_ACTIONS.map(action => (
             <TouchableOpacity
               key={action.key}
               style={styles.toolbarAIBtn}
@@ -388,6 +439,15 @@ export default function ComposeScreen() {
               <Text style={styles.toolbarAIText}>{action.label}</Text>
             </TouchableOpacity>
           ))}
+          {bodyMode === 'html' && (
+            <TouchableOpacity
+              style={styles.toolbarAIBtn}
+              onPress={() => setShowTemplates(true)}
+            >
+              <Ionicons name="color-palette-outline" size={15} color="#e07b00" />
+              <Text style={[styles.toolbarAIText, { color: '#e07b00' }]}>Branded templates</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </View>
 
@@ -397,28 +457,42 @@ export default function ComposeScreen() {
           <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowTemplates(false)} />
           <View style={styles.bottomSheet}>
             <View style={styles.bottomSheetHandle} />
-            <Text style={styles.bottomSheetTitle}>Choose template</Text>
+            <Text style={styles.bottomSheetTitle}>Email templates</Text>
+            <Text style={styles.bottomSheetSub}>Templates with HTML branding will open in HTML mode</Text>
             {templates.length === 0 ? (
               <View style={styles.noTemplates}>
                 <Ionicons name="document-text-outline" size={40} color={colors.textHint} />
-                <Text style={styles.noTemplatesText}>No templates available</Text>
+                <Text style={styles.noTemplatesText}>No templates yet</Text>
+                <Text style={styles.noTemplatesSubText}>Create branded templates in Settings → Templates</Text>
               </View>
             ) : (
               <FlatList
                 data={templates}
                 keyExtractor={t => t.id}
-                renderItem={({ item: t }) => (
-                  <TouchableOpacity style={styles.templateRow} onPress={() => applyTemplate(t)}>
-                    <View style={styles.templateIconWrap}>
-                      <Ionicons name="document-text-outline" size={20} color={colors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.templateName}>{t.name}</Text>
-                      <Text style={styles.templateSubject} numberOfLines={1}>{t.subject}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={colors.textHint} />
-                  </TouchableOpacity>
-                )}
+                renderItem={({ item: t }) => {
+                  const hasHtml = t.body_html && t.body_html.trim().startsWith('<');
+                  return (
+                    <TouchableOpacity style={styles.templateRow} onPress={() => applyTemplate(t)}>
+                      <View style={[styles.templateIconWrap, hasHtml && styles.templateIconWrapHtml]}>
+                        <Ionicons
+                          name={hasHtml ? 'code-slash-outline' : 'document-text-outline'}
+                          size={20}
+                          color={hasHtml ? '#e07b00' : colors.primary}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.templateName}>{t.name}</Text>
+                        <Text style={styles.templateSubject} numberOfLines={1}>{t.subject}</Text>
+                        {hasHtml && (
+                          <View style={styles.htmlBadge}>
+                            <Text style={styles.htmlBadgeText}>HTML</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={colors.textHint} />
+                    </TouchableOpacity>
+                  );
+                }}
                 ItemSeparatorComponent={() => <View style={styles.templateDivider} />}
               />
             )}
@@ -427,7 +501,7 @@ export default function ComposeScreen() {
         </View>
       </Modal>
 
-      {/* Scheduled send modal */}
+      {/* Schedule modal */}
       <Modal visible={showSchedule} animationType="slide" transparent onRequestClose={() => setShowSchedule(false)}>
         <View style={styles.bottomSheetOverlay}>
           <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowSchedule(false)} />
@@ -447,10 +521,7 @@ export default function ComposeScreen() {
               <TouchableOpacity style={styles.scheduleCancelBtn} onPress={() => { setScheduledAt(''); setShowSchedule(false); }}>
                 <Text style={styles.scheduleCancelText}>Clear</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.scheduleSetBtn}
-                onPress={() => setShowSchedule(false)}
-              >
+              <TouchableOpacity style={styles.scheduleSetBtn} onPress={() => setShowSchedule(false)}>
                 <Text style={styles.scheduleSetText}>Set time</Text>
               </TouchableOpacity>
             </View>
@@ -513,6 +584,35 @@ const styles = StyleSheet.create({
   fromChipText: { fontSize: 12, color: colors.textDim },
   fromChipTextActive: { color: colors.primary, fontWeight: '600' },
 
+  modeSwitcher: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+    borderRadius: 10,
+    backgroundColor: colors.bgSection,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  modeTab: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 8, gap: 5,
+  },
+  modeTabActive: { backgroundColor: colors.bgCard },
+  modeTabText: { fontSize: 13, fontWeight: '600', color: colors.textFaint },
+  modeTabTextActive: { color: colors.primary },
+  modeTabTextHtml: { color: '#e07b00' },
+
+  htmlBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginHorizontal: 16, marginBottom: 6,
+    backgroundColor: '#FFF3E0', borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderWidth: 1, borderColor: '#FFB74D40',
+  },
+  htmlBannerText: { fontSize: 12, color: '#e07b00', fontWeight: '500', flex: 1 },
+
   autocompleteSuggestion: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     marginHorizontal: 16, marginTop: 8, padding: 10,
@@ -531,6 +631,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12,
     minHeight: 220,
   },
+  bodyInputHtml: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 12,
+    lineHeight: 20,
+    color: '#1a1a2e',
+    backgroundColor: '#F8F9FF',
+    marginHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#C5CAE9',
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    minHeight: 300,
+  },
 
   signatureBlock: { paddingHorizontal: 16, paddingBottom: 12 },
   signatureDivider: { height: 1, backgroundColor: colors.border, marginBottom: 10 },
@@ -540,7 +654,7 @@ const styles = StyleSheet.create({
 
   aiLoadingOverlay: {
     position: 'absolute', bottom: 80, left: 0, right: 0,
-    alignItems: 'center', pointerEvents: 'none',
+    alignItems: 'center',
   },
   aiLoadingPill: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -557,60 +671,66 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 24 : 8, paddingTop: 4,
   },
   toolbarContent: { paddingHorizontal: 8, gap: 4, alignItems: 'center' },
-  toolbarBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 },
+  toolbarBtn: {
+    width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22,
+  },
   toolbarAIBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: colors.primaryLight, borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 2,
+    paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: colors.primaryLight,
   },
   toolbarAIText: { fontSize: 12, fontWeight: '600', color: colors.primary },
 
-  bottomSheetOverlay: { flex: 1, justifyContent: 'flex-end' },
+  bottomSheetOverlay: { flex: 1, backgroundColor: '#00000040', justifyContent: 'flex-end' },
   bottomSheet: {
     backgroundColor: colors.bgCard, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingHorizontal: 0, maxHeight: '70%',
-    shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1, shadowRadius: 12, elevation: 20,
+    paddingTop: 8, maxHeight: '80%',
   },
   bottomSheetHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: colors.bgSurface,
-    alignSelf: 'center', marginTop: 10, marginBottom: 4,
+    width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border,
+    alignSelf: 'center', marginBottom: 12,
   },
-  bottomSheetTitle: {
-    fontSize: 17, fontWeight: '700', color: colors.text,
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  noTemplates: { alignItems: 'center', paddingVertical: 40, gap: 10 },
-  noTemplatesText: { color: colors.textFaint, fontSize: 14 },
+  bottomSheetTitle: { fontSize: 18, fontWeight: '700', color: colors.text, paddingHorizontal: 20, marginBottom: 4 },
+  bottomSheetSub: { fontSize: 12, color: colors.textFaint, paddingHorizontal: 20, marginBottom: 12 },
+
   templateRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 20, paddingVertical: 14,
   },
   templateIconWrap: {
-    width: 38, height: 38, borderRadius: 10,
-    backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    width: 40, height: 40, borderRadius: 10,
+    backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center',
   },
-  templateName: { fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 2 },
-  templateSubject: { fontSize: 12, color: colors.textFaint },
+  templateIconWrapHtml: { backgroundColor: '#FFF3E0' },
+  templateName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  templateSubject: { fontSize: 12, color: colors.textDim, marginTop: 1 },
   templateDivider: { height: 1, backgroundColor: colors.border, marginHorizontal: 20 },
+  htmlBadge: {
+    marginTop: 4, alignSelf: 'flex-start',
+    backgroundColor: '#FFF3E0', borderRadius: 5,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  htmlBadgeText: { fontSize: 10, fontWeight: '700', color: '#e07b00' },
 
-  scheduleSubtitle: { fontSize: 13, color: colors.textFaint, paddingHorizontal: 0, marginTop: -4, marginBottom: 16 },
+  noTemplates: { alignItems: 'center', paddingVertical: 36, gap: 8 },
+  noTemplatesText: { fontSize: 15, fontWeight: '600', color: colors.textMuted },
+  noTemplatesSubText: { fontSize: 12, color: colors.textFaint, textAlign: 'center', paddingHorizontal: 24 },
+
+  scheduleSubtitle: { fontSize: 13, color: colors.textDim, marginBottom: 16 },
   scheduleInput: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: colors.text, backgroundColor: colors.bgSection,
-    marginBottom: 16,
+    backgroundColor: colors.bgSection, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
+    fontSize: 15, color: colors.text, marginBottom: 16,
   },
-  scheduleActions: { flexDirection: 'row', gap: 10 },
+  scheduleActions: { flexDirection: 'row', gap: 12 },
   scheduleCancelBtn: {
-    flex: 1, paddingVertical: 13, borderRadius: 12,
-    borderWidth: 1, borderColor: colors.border, alignItems: 'center',
+    flex: 1, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 12, paddingVertical: 13, alignItems: 'center',
   },
-  scheduleCancelText: { fontWeight: '600', color: colors.textDim },
+  scheduleCancelText: { fontSize: 15, fontWeight: '600', color: colors.textDim },
   scheduleSetBtn: {
-    flex: 1, paddingVertical: 13, borderRadius: 12,
-    backgroundColor: colors.primary, alignItems: 'center',
+    flex: 2, backgroundColor: colors.primary,
+    borderRadius: 12, paddingVertical: 13, alignItems: 'center',
   },
-  scheduleSetText: { color: '#fff', fontWeight: '700' },
+  scheduleSetText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });
