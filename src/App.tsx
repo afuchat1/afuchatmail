@@ -27,7 +27,6 @@ const Admin = lazy(() => import("@/pages/Admin"));
 const TelegramMiniApp = lazy(() => import("@/pages/TelegramMiniApp"));
 const OAuthAuthorize = lazy(() => import("@/pages/OAuthAuthorize"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
-const MobilePreview = lazy(() => import("@/pages/MobilePreview"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,7 +80,6 @@ const App = () => (
               <Route path="/authorize" element={<OAuthAuthorize />} />
               <Route path="/o/oauth2/auth" element={<OAuthAuthorize />} />
               <Route path="/o/oauth2/authorize" element={<OAuthAuthorize />} />
-              <Route path="/mobile-preview" element={<MobilePreview />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

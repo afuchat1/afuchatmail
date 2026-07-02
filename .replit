@@ -23,26 +23,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "AfuMail Mobile"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "AfuChat Website"
+args = "Start application"
 
 [[workflows.workflow]]
-name = "AfuMail Mobile"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd mobile && npx expo start --port 8000"
-waitForPort = 8000
-
-[[workflows.workflow]]
-name = "AfuChat Website"
+name = "Start application"
 author = "agent"
 
 [[workflows.workflow.tasks]]
@@ -54,20 +38,8 @@ waitForPort = 5000
 outputType = "webview"
 
 [[ports]]
-localPort = 3000
-externalPort = 3000
-
-[[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 8000
-externalPort = 8000
-
-[[ports]]
-localPort = 23636
-externalPort = 3002
 
 [userenv]
 

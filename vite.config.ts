@@ -6,7 +6,7 @@ import { VitePWA } from "vite-plugin-pwa";
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   server: {
-    host: "0.0.0.0",
+    host: "::",
     port: 5000,
     allowedHosts: true as const,
     watch: {
