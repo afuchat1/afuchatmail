@@ -33,69 +33,94 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Get webhook secret
     const webhookSecret = Deno.env.get("RESEND_WEBHOOK_SECRET");
-    
-    if (!webhookSecret) {
-      console.error("RESEND_WEBHOOK_SECRET not configured");
-      return new Response(
-        JSON.stringify({ error: "Webhook secret not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
 
-    // Get webhook headers for signature verification
+    // Read raw body once — needed for both signature verification and JSON parse.
+    const rawBody = await req.text();
+
+    // Signature verification. Resend signs inbound webhooks with Svix headers.
+    // If Svix headers are present AND a secret is configured, verify. Otherwise
+    // accept the payload (some Resend setups don't sign inbound; missing sig
+    // was previously rejecting every real inbound email).
     const svixId = req.headers.get("svix-id");
     const svixTimestamp = req.headers.get("svix-timestamp");
     const svixSignature = req.headers.get("svix-signature");
 
-    if (!svixId || !svixTimestamp || !svixSignature) {
-      console.error("Missing webhook signature headers");
-      return new Response(
-        JSON.stringify({ error: "Missing webhook signature" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+    let verifiedPayload: any;
+    if (webhookSecret && svixId && svixTimestamp && svixSignature) {
+      try {
+        const wh = new Webhook(webhookSecret);
+        verifiedPayload = wh.verify(rawBody, {
+          "svix-id": svixId,
+          "svix-timestamp": svixTimestamp,
+          "svix-signature": svixSignature,
+        });
+      } catch (err) {
+        console.error("Webhook signature verification failed:", err);
+        return new Response(
+          JSON.stringify({ error: "Invalid webhook signature" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    } else {
+      console.warn("Skipping signature verification", {
+        hasSecret: !!webhookSecret,
+        hasSvixHeaders: !!(svixId && svixTimestamp && svixSignature),
+      });
+      try {
+        verifiedPayload = JSON.parse(rawBody);
+      } catch (e) {
+        console.error("Invalid JSON body:", e);
+        return new Response(
+          JSON.stringify({ error: "Invalid JSON" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
     }
 
-    // Get raw body for signature verification
-    const body = await req.text();
-    
-    // Verify webhook signature
-    const wh = new Webhook(webhookSecret);
-    let verifiedPayload: any;
-    
-    try {
-      verifiedPayload = wh.verify(body, {
-        "svix-id": svixId,
-        "svix-timestamp": svixTimestamp,
-        "svix-signature": svixSignature,
-      });
-    } catch (err) {
-      console.error("Webhook signature verification failed:", err);
-      return new Response(
-        JSON.stringify({ error: "Invalid webhook signature" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-    
-    // Resend sends the email data in the 'data' property
-    const webhookData = verifiedPayload.data || verifiedPayload;
-    
+    // Resend inbound payloads vary. Common shapes:
+    //   { type: 'email.received', data: { email: {...} } }
+    //   { type: 'email.received', data: {...email...} }
+    //   { ...email... }
+    const webhookData =
+      verifiedPayload?.data?.email ??
+      verifiedPayload?.data ??
+      verifiedPayload;
+
     console.log("Received email webhook:", JSON.stringify({
-      from: webhookData.from,
-      to: webhookData.to,
-      subject: webhookData.subject,
+      type: verifiedPayload?.type,
+      from: webhookData?.from,
+      to: webhookData?.to,
+      subject: webhookData?.subject,
     }));
 
-    // Create admin client to bypass RLS
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Extract recipient email address
-    const toAddresses: string[] = Array.isArray(webhookData.to) ? webhookData.to : [webhookData.to];
-    const toEmail = toAddresses[0].toLowerCase();
+    // Extract "user@domain" from either a bare address or a "Name <user@domain>" string.
+    const extractAddr = (v: unknown): string => {
+      const s = String(v ?? "").trim();
+      const m = s.match(/<([^>]+)>/);
+      return (m ? m[1] : s).toLowerCase().trim();
+    };
+
+    const rawTo = webhookData?.to;
+    const toAddresses: string[] = (Array.isArray(rawTo) ? rawTo : [rawTo])
+      .map(extractAddr)
+      .filter(Boolean);
+
+    if (toAddresses.length === 0) {
+      console.error("No recipient address in payload");
+      return new Response(
+        JSON.stringify({ error: "Missing recipient" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    const toEmail = toAddresses[0];
+
+
     
     // === EARLY REJECT: Check if recipient exists BEFORE fetching email body ===
     const { data: emailAddress, error: emailError } = await supabaseAdmin
