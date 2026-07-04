@@ -45,6 +45,8 @@ const Auth = () => {
   const [usernameTouched, setUsernameTouched] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
   const [password, setPassword] = useState("");
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [savingRecovery, setSavingRecovery] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
