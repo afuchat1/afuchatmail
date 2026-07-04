@@ -29,7 +29,7 @@ const VALID_SCOPES = ["openid", "profile", "email", "read:mailbox", "read:messag
 const MAIL_DOMAIN = "afuchat.com";
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9._-]{1,28}[a-z0-9])?$/;
 
-type SignUpStep = "name" | "username" | "password";
+type SignUpStep = "name" | "username" | "password" | "recovery";
 
 const Auth = () => {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -45,6 +45,8 @@ const Auth = () => {
   const [usernameTouched, setUsernameTouched] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
   const [password, setPassword] = useState("");
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [savingRecovery, setSavingRecovery] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -239,12 +241,41 @@ const Auth = () => {
 
       toast({
         title: "Welcome to AfuChat Mail!",
-        description: `Your inbox ${newEmail} is ready — you can receive mail right away.`,
+        description: `Your inbox ${newEmail} is ready — one more step to secure it.`,
       });
+      // Force the recovery-email step (do not navigate to /dashboard yet).
+      setStep("recovery");
+      return;
     } catch (err: any) {
       toast({ variant: "destructive", title: "Sign-up failed", description: err.message });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = recoveryEmail.trim().toLowerCase();
+    if (!value.includes("@")) {
+      toast({ variant: "destructive", title: "Enter a full AfuChat address", description: "e.g. friend@afuchat.com" });
+      return;
+    }
+    setSavingRecovery(true);
+    try {
+      const { error } = await supabase.rpc("set_recovery_email", { _email: value });
+      if (error) throw error;
+      toast({ title: "Recovery email saved", description: "You can now reset your password if you ever forget it." });
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Could not save recovery email",
+        description: err.message.includes("does not exist")
+          ? "That address is not registered on AfuChat. Ask the owner to sign up first, or use another address."
+          : err.message,
+      });
+    } finally {
+      setSavingRecovery(false);
     }
   };
 
@@ -321,6 +352,9 @@ const Auth = () => {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                </div>
+                <div className="flex justify-end">
+                  <a href="/forgot-password" className="text-xs font-medium text-primary hover:underline">Forgot password?</a>
                 </div>
                 <Button type="submit" className="w-full h-10 rounded font-semibold mt-2" disabled={loading}>
                   {loading ? "Signing in…" : "Sign in"}
@@ -469,12 +503,51 @@ const Auth = () => {
                 </>
               )}
 
+              {step === "recovery" && (
+                <>
+                  <div className="mb-6">
+                    <h1 className="text-2xl font-bold tracking-tight mb-1">Add a recovery email</h1>
+                    <p className="text-sm text-muted-foreground">
+                      Pick another AfuChat address (yours or a trusted friend's). If you ever forget your
+                      password, we'll send a reset link to that inbox.
+                    </p>
+                  </div>
+                  <form onSubmit={handleSaveRecovery} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="recoveryEmail" className="text-sm font-medium">Recovery email</Label>
+                      <div className="relative">
+                        <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="recoveryEmail"
+                          type="email"
+                          placeholder={`friend@${MAIL_DOMAIN}`}
+                          value={recoveryEmail}
+                          onChange={e => setRecoveryEmail(e.target.value)}
+                          required
+                          className="pl-9 h-10 rounded text-sm"
+                          autoFocus
+                          spellCheck={false}
+                        />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Must be an existing AfuChat address that is <strong>not</strong> your own.
+                      </p>
+                    </div>
+                    <Button type="submit" className="w-full h-10 rounded font-semibold" disabled={savingRecovery}>
+                      {savingRecovery ? "Saving…" : "Save & continue"}
+                    </Button>
+                  </form>
+                </>
+              )}
+
+              {step !== "recovery" && (
               <p className="mt-5 text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <button type="button" onClick={() => { setMode("signin"); setPassword(""); }} className="font-semibold text-primary hover:underline">
                   Sign in
                 </button>
               </p>
+              )}
             </>
           )}
 

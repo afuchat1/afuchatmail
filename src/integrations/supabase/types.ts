@@ -466,6 +466,42 @@ export type Database = {
           },
         ]
       }
+      password_reset_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip: unknown
+          recovery_email: string
+          token_hash: string
+          used_at: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip?: unknown
+          recovery_email: string
+          token_hash: string
+          used_at?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip?: unknown
+          recovery_email?: string
+          token_hash?: string
+          used_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_transactions: {
         Row: {
           amount: number
@@ -526,6 +562,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          recovery_email_address_id: string | null
           updated_at: string
         }
         Insert: {
@@ -536,6 +573,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          recovery_email_address_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -546,9 +584,18 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          recovery_email_address_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_recovery_email_address_id_fkey"
+            columns: ["recovery_email_address_id"]
+            isOneToOne: false
+            referencedRelation: "email_addresses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -921,6 +968,7 @@ export type Database = {
         Returns: boolean
       }
       is_user_banned: { Args: { _user_id: string }; Returns: boolean }
+      lookup_recovery_address_id: { Args: { _email: string }; Returns: string }
       prune_status_history: { Args: never; Returns: undefined }
       record_status_check: {
         Args: {
@@ -931,6 +979,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_recovery_email: { Args: { _email: string }; Returns: undefined }
       unsnooze_emails: { Args: never; Returns: undefined }
       username_available: { Args: { _username: string }; Returns: boolean }
     }
