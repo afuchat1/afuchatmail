@@ -353,6 +353,9 @@ const Auth = () => {
                     </button>
                   </div>
                 </div>
+                <div className="flex justify-end">
+                  <a href="/forgot-password" className="text-xs font-medium text-primary hover:underline">Forgot password?</a>
+                </div>
                 <Button type="submit" className="w-full h-10 rounded font-semibold mt-2" disabled={loading}>
                   {loading ? "Signing in…" : "Sign in"}
                 </Button>
