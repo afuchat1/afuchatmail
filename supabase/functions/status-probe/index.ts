@@ -171,61 +171,8 @@ const handler = async (req: Request): Promise<Response> => {
     )
   );
 
-  // Incident management — open/resolve articles via AI
-  for (const r of settled) {
-    const slow = r.ok && r.ms > 1500;
-    const severity: "degraded" | "down" | null =
-      !r.ok ? "down" : slow ? "degraded" : null;
+  // Incident auto-writing disabled — no AI-generated articles.
 
-    const { data: openIncident } = await admin
-      .from("status_incidents")
-      .select("id, severity, opened_at")
-      .eq("service_id", r.id)
-      .eq("status", "open")
-      .maybeSingle();
-
-    if (severity && !openIncident) {
-      const article = (await aiArticle({
-        serviceName: r.name,
-        severity,
-        kind: "open",
-        ms: r.ms,
-      })) ?? {
-        title: `${r.name} is ${severity}`,
-        summary: `${r.name} is currently ${severity}.`,
-        body: `We detected that ${r.name} is responding ${severity === "down" ? "with errors" : "slowly"}. Our team is investigating.`,
-      };
-      await admin.from("status_incidents").insert({
-        service_id: r.id,
-        severity,
-        status: "open",
-        title: article.title,
-        summary: article.summary,
-        body_open: article.body,
-        opened_at: checkedAt,
-      });
-    } else if (!severity && openIncident) {
-      const durationMs = Date.now() - new Date(openIncident.opened_at).getTime();
-      const article = (await aiArticle({
-        serviceName: r.name,
-        severity: openIncident.severity as "degraded" | "down",
-        kind: "resolved",
-        durationMs,
-      })) ?? {
-        title: `${r.name} is operational`,
-        summary: `${r.name} has fully recovered.`,
-        body: `${r.name} is now responding normally. The earlier disruption has been resolved.`,
-      };
-      await admin
-        .from("status_incidents")
-        .update({
-          status: "resolved",
-          resolved_at: checkedAt,
-          body_resolved: article.body,
-        })
-        .eq("id", openIncident.id);
-    }
-  }
 
   return json(200, { success: true, checked_at: checkedAt, results: settled });
 };
