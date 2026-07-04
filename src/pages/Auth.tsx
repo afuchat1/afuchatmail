@@ -278,6 +278,8 @@ const Auth = () => {
       setSavingRecovery(false);
     }
   };
+
+  if (checkingAuth || preparingOAuth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
