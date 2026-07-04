@@ -8,6 +8,8 @@ import { lazy, Suspense } from "react";
 import Index from "@/pages/Index";
 
 const Auth = lazy(() => import("@/pages/Auth"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Features = lazy(() => import("@/pages/Features"));
