@@ -29,7 +29,7 @@ const VALID_SCOPES = ["openid", "profile", "email", "read:mailbox", "read:messag
 const MAIL_DOMAIN = "afuchat.com";
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9._-]{1,28}[a-z0-9])?$/;
 
-type SignUpStep = "name" | "username" | "password";
+type SignUpStep = "name" | "username" | "password" | "recovery";
 
 const Auth = () => {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
