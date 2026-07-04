@@ -241,8 +241,11 @@ const Auth = () => {
 
       toast({
         title: "Welcome to AfuChat Mail!",
-        description: `Your inbox ${newEmail} is ready — you can receive mail right away.`,
+        description: `Your inbox ${newEmail} is ready — one more step to secure it.`,
       });
+      // Force the recovery-email step (do not navigate to /dashboard yet).
+      setStep("recovery");
+      return;
     } catch (err: any) {
       toast({ variant: "destructive", title: "Sign-up failed", description: err.message });
     } finally {
@@ -250,7 +253,31 @@ const Auth = () => {
     }
   };
 
-  if (checkingAuth || preparingOAuth) {
+  const handleSaveRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = recoveryEmail.trim().toLowerCase();
+    if (!value.includes("@")) {
+      toast({ variant: "destructive", title: "Enter a full AfuChat address", description: "e.g. friend@afuchat.com" });
+      return;
+    }
+    setSavingRecovery(true);
+    try {
+      const { error } = await supabase.rpc("set_recovery_email", { _email: value });
+      if (error) throw error;
+      toast({ title: "Recovery email saved", description: "You can now reset your password if you ever forget it." });
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Could not save recovery email",
+        description: err.message.includes("does not exist")
+          ? "That address is not registered on AfuChat. Ask the owner to sign up first, or use another address."
+          : err.message,
+      });
+    } finally {
+      setSavingRecovery(false);
+    }
+  };
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
