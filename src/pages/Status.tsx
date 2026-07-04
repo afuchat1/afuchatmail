@@ -179,8 +179,6 @@ const Status = () => {
 
   return (
     <PageLayout title="Status">
-      {/* ── Incidents (AI-written) ──────────────────────────────────── */}
-      <IncidentsFeed />
 
       {/* ── Services ───────────────────────────────────────────────────── */}
       <section className="space-y-3 pt-2">
