@@ -503,12 +503,51 @@ const Auth = () => {
                 </>
               )}
 
+              {step === "recovery" && (
+                <>
+                  <div className="mb-6">
+                    <h1 className="text-2xl font-bold tracking-tight mb-1">Add a recovery email</h1>
+                    <p className="text-sm text-muted-foreground">
+                      Pick another AfuChat address (yours or a trusted friend's). If you ever forget your
+                      password, we'll send a reset link to that inbox.
+                    </p>
+                  </div>
+                  <form onSubmit={handleSaveRecovery} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="recoveryEmail" className="text-sm font-medium">Recovery email</Label>
+                      <div className="relative">
+                        <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="recoveryEmail"
+                          type="email"
+                          placeholder={`friend@${MAIL_DOMAIN}`}
+                          value={recoveryEmail}
+                          onChange={e => setRecoveryEmail(e.target.value)}
+                          required
+                          className="pl-9 h-10 rounded text-sm"
+                          autoFocus
+                          spellCheck={false}
+                        />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Must be an existing AfuChat address that is <strong>not</strong> your own.
+                      </p>
+                    </div>
+                    <Button type="submit" className="w-full h-10 rounded font-semibold" disabled={savingRecovery}>
+                      {savingRecovery ? "Saving…" : "Save & continue"}
+                    </Button>
+                  </form>
+                </>
+              )}
+
+              {step !== "recovery" && (
               <p className="mt-5 text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <button type="button" onClick={() => { setMode("signin"); setPassword(""); }} className="font-semibold text-primary hover:underline">
                   Sign in
                 </button>
               </p>
+              )}
             </>
           )}
 
