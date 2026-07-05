@@ -96,6 +96,10 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [recoveryEmail, setRecoveryEmail] = useState<string>("");
+  const [recoveryDraft, setRecoveryDraft] = useState<string>("");
+  const [editingRecovery, setEditingRecovery] = useState(false);
+  const [savingRecovery, setSavingRecovery] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { plan, refresh: refreshPlan } = usePlan(user);
