@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Activity, Mail, Shield,
   Database, Radio, HardDrive, Sparkles, MessageCircle, CreditCard,
-  RefreshCw, Loader2, Globe, CheckCircle2, AlertTriangle,
+  RefreshCw, Loader2, Globe, CheckCircle2,
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -220,126 +220,6 @@ const Status = () => {
 
 export default Status;
 
-// ─── Incidents feed (AI-written articles) ──────────────────────────────────
-
-type Incident = {
-  id: string;
-  service_id: string;
-  severity: "degraded" | "down";
-  status: "open" | "resolved";
-  title: string;
-  summary: string;
-  body_open: string;
-  body_resolved: string | null;
-  opened_at: string;
-  resolved_at: string | null;
-};
-
-function IncidentsFeed() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      const since = new Date();
-      since.setUTCDate(since.getUTCDate() - 30);
-      const { data } = await supabase
-        .from("status_incidents")
-        .select("id, service_id, severity, status, title, summary, body_open, body_resolved, opened_at, resolved_at")
-        .gte("opened_at", since.toISOString())
-        .order("opened_at", { ascending: false })
-        .limit(20);
-      if (!cancelled) {
-        setIncidents((data as Incident[]) ?? []);
-        setLoading(false);
-      }
-    };
-    load();
-    const id = window.setInterval(load, 30_000);
-    return () => { cancelled = true; window.clearInterval(id); };
-  }, []);
-
-  const serviceName = (id: string) =>
-    SERVICES.find(s => s.id === id)?.name ?? id;
-
-  return (
-    <section className="space-y-3 pt-2">
-      <div>
-        <h2 className="text-sm font-semibold text-foreground">Incident updates</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          AI-written reports of service issues over the last 30 days.
-        </p>
-      </div>
-      {loading ? (
-        <div className="rounded-2xl border bg-card p-6 text-xs text-muted-foreground flex items-center gap-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading incidents…
-        </div>
-      ) : incidents.length === 0 ? (
-        <div className="rounded-2xl border bg-card p-6 flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-          <div>
-            <p className="text-sm font-semibold">All systems normal</p>
-            <p className="text-xs text-muted-foreground">No incidents reported in the last 30 days.</p>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {incidents.map(inc => (
-            <IncidentCard key={inc.id} inc={inc} serviceName={serviceName(inc.service_id)} />
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function IncidentCard({ inc, serviceName }: { inc: Incident; serviceName: string }) {
-  const resolved = inc.status === "resolved";
-  const Icon = resolved ? CheckCircle2 : AlertTriangle;
-  const tone = resolved
-    ? "text-emerald-600 dark:text-emerald-400"
-    : inc.severity === "down"
-      ? "text-red-600 dark:text-red-400"
-      : "text-amber-600 dark:text-amber-400";
-
-  return (
-    <article className="rounded-2xl border bg-card p-4 sm:p-5">
-      <header className="flex items-start gap-3">
-        <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", tone)} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-semibold">{inc.title}</h3>
-            <span className={cn(
-              "text-[10px] font-semibold uppercase tracking-wide rounded-full border px-2 py-0.5",
-              resolved
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
-                : inc.severity === "down"
-                  ? "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
-                  : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
-            )}>
-              {resolved ? "Resolved" : inc.severity}
-            </span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {serviceName} · {new Date(inc.opened_at).toLocaleString()}
-            {resolved && inc.resolved_at && <> → {new Date(inc.resolved_at).toLocaleString()}</>}
-          </p>
-        </div>
-      </header>
-      <p className="text-sm mt-3 text-foreground/90">{inc.summary}</p>
-      {resolved && inc.body_resolved ? (
-        <div className="mt-3 space-y-2 text-xs text-muted-foreground whitespace-pre-line">
-          {inc.body_resolved}
-        </div>
-      ) : (
-        <div className="mt-3 space-y-2 text-xs text-muted-foreground whitespace-pre-line">
-          {inc.body_open}
-        </div>
-      )}
-    </article>
-  );
-}
 
 // ─── Service row ────────────────────────────────────────────────────────────
 
