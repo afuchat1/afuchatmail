@@ -6,25 +6,31 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const ENGAGERA_ENDPOINT = "https://rhnsjqqtdzlkvqazfcbg.supabase.co/functions/v1/chat";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const ENGAGERA_API_KEY = Deno.env.get("ENGAGERA_API_KEY");
+    if (!ENGAGERA_API_KEY) throw new Error("ENGAGERA_API_KEY is not configured");
 
     const { action, body, subject, context, reply_to_body } = await req.json();
 
     let systemPrompt = "";
     let userPrompt = "";
+    // Pick the best Engagera model per action. "engagera-pro" is a solid default;
+    // "engagera-reason" for tasks that benefit from deeper thinking.
+    let model = "engagera-pro";
 
     switch (action) {
       case "autocomplete":
         systemPrompt =
           "You are an email autocomplete assistant. Given the email draft so far, suggest a natural continuation of 1-2 sentences. Only output the suggested continuation text, nothing else. Be concise and professional.";
         userPrompt = `Subject: ${subject || "(no subject)"}\n\nDraft so far:\n${body}`;
+        model = "engagera-lite";
         break;
 
       case "smart_reply":
@@ -61,24 +67,21 @@ serve(async (req) => {
         throw new Error(`Unknown action: ${action}`);
     }
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          stream: false,
-        }),
-      }
-    );
+    const response = await fetch(ENGAGERA_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${ENGAGERA_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        stream: false,
+      }),
+    });
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -87,24 +90,32 @@ serve(async (req) => {
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      if (response.status === 401 || response.status === 403) {
+        return new Response(
+          JSON.stringify({ error: "Engagera authentication failed. Please check the API key." }),
+          { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits in Settings → Workspace → Usage." }),
+          JSON.stringify({ error: "Engagera quota exhausted. Please add credits to your Engagera account." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       const errText = await response.text();
-      console.error("AI gateway error:", response.status, errText);
-      throw new Error("AI gateway error");
+      console.error("Engagera error:", response.status, errText);
+      throw new Error("Engagera API error");
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
+    // Engagera returns { message: { role, content }, model, usage, ... }
+    const content: string =
+      data?.message?.content ??
+      data?.choices?.[0]?.message?.content ??
+      "";
 
-    // For smart_reply, parse JSON array
     if (action === "smart_reply") {
       try {
-        // Try to extract JSON array from the response
         const jsonMatch = content.match(/\[[\s\S]*\]/);
         const suggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : [content];
         return new Response(
