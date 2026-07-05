@@ -258,10 +258,55 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
   };
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase.from("profiles").select("full_name, avatar_url").eq("id", userId).maybeSingle();
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, avatar_url, recovery_email_address_id")
+      .eq("id", userId)
+      .maybeSingle();
     if (data) {
       setProfileName((data as any).full_name ?? "");
       setAvatarUrl((data as any).avatar_url ?? null);
+      const recId = (data as any).recovery_email_address_id as string | null;
+      if (recId) {
+        const { data: addr } = await supabase
+          .from("email_addresses")
+          .select("full_email")
+          .eq("id", recId)
+          .maybeSingle();
+        setRecoveryEmail((addr as any)?.full_email ?? "");
+      } else {
+        setRecoveryEmail("");
+      }
+    }
+  };
+
+  const handleSaveRecovery = async () => {
+    const value = recoveryDraft.trim().toLowerCase();
+    if (!value.includes("@")) {
+      toast({ variant: "destructive", title: "Enter a full AfuChat address", description: "e.g. friend@afuchat.com" });
+      return;
+    }
+    if (value === (user?.email ?? "").toLowerCase() || emails.some(e => e.full_email?.toLowerCase() === value)) {
+      toast({ variant: "destructive", title: "Choose a different address", description: "Recovery must be someone else's AfuChat address, not your own." });
+      return;
+    }
+    setSavingRecovery(true);
+    try {
+      const { error } = await supabase.rpc("set_recovery_email", { _email: value });
+      if (error) throw error;
+      setRecoveryEmail(value);
+      setEditingRecovery(false);
+      toast({ title: "Recovery email updated" });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Could not update recovery email",
+        description: err.message?.includes("does not exist")
+          ? "That address is not registered on AfuChat. Ask the owner to sign up first, or use another address."
+          : err.message,
+      });
+    } finally {
+      setSavingRecovery(false);
     }
   };
 
