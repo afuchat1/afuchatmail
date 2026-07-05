@@ -548,6 +548,51 @@ const Settings = ({ embedded = false }: { embedded?: boolean }) => {
                   }
                 />
               </Section>
+
+              <Section title="Recovery email" desc="If you forget your password, a reset link will be sent to this AfuChat inbox. It must be someone else's AfuChat address that already exists.">
+                {editingRecovery ? (
+                  <div className="space-y-3">
+                    <Input
+                      type="email"
+                      placeholder="friend@afuchat.com"
+                      value={recoveryDraft}
+                      onChange={(e) => setRecoveryDraft(e.target.value)}
+                      className="h-9 rounded-lg"
+                      autoFocus
+                      disabled={savingRecovery}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" className="h-8 rounded-lg" onClick={handleSaveRecovery} disabled={savingRecovery || !recoveryDraft.trim()}>
+                        {savingRecovery ? "Saving…" : "Save"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-lg"
+                        onClick={() => { setEditingRecovery(false); setRecoveryDraft(recoveryEmail); }}
+                        disabled={savingRecovery}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Row
+                    label="Current recovery"
+                    value={
+                      recoveryEmail
+                        ? <span className="font-mono text-xs">{recoveryEmail}</span>
+                        : <span className="text-xs text-muted-foreground">Not set</span>
+                    }
+                    action={
+                      <Button variant="outline" size="sm" className="h-8 rounded-lg"
+                        onClick={() => { setRecoveryDraft(recoveryEmail); setEditingRecovery(true); }}>
+                        {recoveryEmail ? "Change" : "Add"}
+                      </Button>
+                    }
+                  />
+                )}
+              </Section>
             </div>
           )}
 
