@@ -16,6 +16,10 @@ function jsonResponse(payload: Record<string, unknown>, status = 200) {
   });
 }
 
+function compactPrompt(systemPrompt: string, userPrompt: string) {
+  return `${systemPrompt}\n\nFollow the instruction exactly. Do not browse the web, cite sources, explain your process, or add extra commentary.\n\n${userPrompt}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -87,8 +91,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: "user", content: compactPrompt(systemPrompt, userPrompt) },
         ],
         stream: false,
       }),
