@@ -21,7 +21,9 @@ serve(async (req) => {
   }
 
   try {
-    const ENGAGERA_API_KEY = Deno.env.get("ENGAGERA_API_KEY");
+    const ENGAGERA_API_KEY = Deno.env.get("ENGAGERA_API_KEY")
+      ?.trim()
+      .replace(/^['\"]|['\"]$/g, "");
     if (!ENGAGERA_API_KEY) throw new Error("ENGAGERA_API_KEY is not configured");
 
     const { action, body, subject, context, reply_to_body } = await req.json();
