@@ -93,6 +93,8 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      const errText = await response.text();
+      console.error("Engagera error:", response.status, errText.slice(0, 500));
       if (response.status === 429) {
         return jsonResponse({ error: "Rate limit exceeded. Please try again in a moment." });
       }
@@ -105,8 +107,6 @@ serve(async (req) => {
           billingRequired: true,
         });
       }
-      const errText = await response.text();
-      console.error("Engagera error:", response.status, errText);
       return jsonResponse({
         error: "AI assistant is temporarily unavailable. Please try again shortly.",
         fallback: response.status >= 500,
