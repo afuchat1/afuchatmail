@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const ENGAGERA_ENDPOINT = "https://rhnsjqqtdzlkvqazfcbg.supabase.co/functions/v1/chat";
+const ENGAGERA_GUEST_SESSION_ID = `afuchat_mail_${crypto.randomUUID()}`;
 
 function jsonResponse(payload: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -80,6 +81,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${ENGAGERA_API_KEY}`,
+        "x-guest-session-id": ENGAGERA_GUEST_SESSION_ID,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
