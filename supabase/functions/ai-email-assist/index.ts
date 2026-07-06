@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const ENGAGERA_ENDPOINT = "https://rhnsjqqtdzlkvqazfcbg.supabase.co/functions/v1/chat";
+const ENGAGERA_GUEST_SESSION_ID = `afuchat_mail_${crypto.randomUUID()}`;
 
 function jsonResponse(payload: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -15,13 +16,19 @@ function jsonResponse(payload: Record<string, unknown>, status = 200) {
   });
 }
 
+function compactPrompt(systemPrompt: string, userPrompt: string) {
+  return `${systemPrompt}\n\nFollow the instruction exactly. Do not browse the web, cite sources, explain your process, or add extra commentary.\n\n${userPrompt}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const ENGAGERA_API_KEY = Deno.env.get("ENGAGERA_API_KEY");
+    const ENGAGERA_API_KEY = Deno.env.get("ENGAGERA_API_KEY")
+      ?.trim()
+      .replace(/^['\"]|['\"]$/g, "");
     if (!ENGAGERA_API_KEY) throw new Error("ENGAGERA_API_KEY is not configured");
 
     const { action, body, subject, context, reply_to_body } = await req.json();
@@ -78,19 +85,21 @@ serve(async (req) => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${ENGAGERA_API_KEY}`,
+        "x-guest-session-id": ENGAGERA_GUEST_SESSION_ID,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: "user", content: compactPrompt(systemPrompt, userPrompt) },
         ],
         stream: false,
       }),
     });
 
     if (!response.ok) {
+      const errText = await response.text();
+      console.error("Engagera error:", response.status, errText.slice(0, 500));
       if (response.status === 429) {
         return jsonResponse({ error: "Rate limit exceeded. Please try again in a moment." });
       }
@@ -103,8 +112,6 @@ serve(async (req) => {
           billingRequired: true,
         });
       }
-      const errText = await response.text();
-      console.error("Engagera error:", response.status, errText);
       return jsonResponse({
         error: "AI assistant is temporarily unavailable. Please try again shortly.",
         fallback: response.status >= 500,
