@@ -8,6 +8,13 @@ const corsHeaders = {
 
 const ENGAGERA_ENDPOINT = "https://rhnsjqqtdzlkvqazfcbg.supabase.co/functions/v1/chat";
 
+function jsonResponse(payload: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -85,26 +92,23 @@ serve(async (req) => {
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "Rate limit exceeded. Please try again in a moment." });
       }
       if (response.status === 401 || response.status === 403) {
-        return new Response(
-          JSON.stringify({ error: "Engagera authentication failed. Please check the API key." }),
-          { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "Engagera authentication failed. Please check the API key." });
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Engagera quota exhausted. Please add credits to your Engagera account." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({
+          error: "AI credits are exhausted. Please add credits to your Engagera account, then try again.",
+          billingRequired: true,
+        });
       }
       const errText = await response.text();
       console.error("Engagera error:", response.status, errText);
-      throw new Error("Engagera API error");
+      return jsonResponse({
+        error: "AI assistant is temporarily unavailable. Please try again shortly.",
+        fallback: response.status >= 500,
+      });
     }
 
     const data = await response.json();
@@ -118,27 +122,15 @@ serve(async (req) => {
       try {
         const jsonMatch = content.match(/\[[\s\S]*\]/);
         const suggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : [content];
-        return new Response(
-          JSON.stringify({ suggestions }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ suggestions });
       } catch {
-        return new Response(
-          JSON.stringify({ suggestions: [content] }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ suggestions: [content] });
       }
     }
 
-    return new Response(
-      JSON.stringify({ result: content }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ result: content });
   } catch (e) {
     console.error("ai-email-assist error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ error: e instanceof Error ? e.message : "Unknown error" });
   }
 });
