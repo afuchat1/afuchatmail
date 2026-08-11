@@ -80,22 +80,23 @@ const Contact = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Name</Label>
-              <Input placeholder="Your full name" value={name} onChange={(e) => setName(e.target.value)} required className="border bg-card rounded-xl" />
+              <Label htmlFor="contact-name" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Name</Label>
+              <Input id="contact-name" name="name" autoComplete="name" placeholder="Your full name" value={name} onChange={(e) => setName(e.target.value)} required className="border bg-card rounded-xl" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</Label>
-              <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="border bg-card rounded-xl" />
+              <Label htmlFor="contact-email" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</Label>
+              <Input id="contact-email" name="email" autoComplete="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="border bg-card rounded-xl" />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Subject</Label>
-            <Input placeholder="What can we help with?" value={subject} onChange={(e) => setSubject(e.target.value)} required className="border bg-card rounded-xl" />
+            <Label htmlFor="contact-subject" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Subject</Label>
+            <Input id="contact-subject" name="subject" placeholder="What can we help with?" value={subject} onChange={(e) => setSubject(e.target.value)} required className="border bg-card rounded-xl" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Message</Label>
-            <Textarea placeholder="Describe your question or issue in detail..." value={message} onChange={(e) => setMessage(e.target.value)} rows={6} required className="border bg-card rounded-xl resize-none" />
+            <Label htmlFor="contact-message" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Message</Label>
+            <Textarea id="contact-message" name="message" placeholder="Describe your question or issue in detail..." value={message} onChange={(e) => setMessage(e.target.value)} rows={6} required className="border bg-card rounded-xl resize-none" />
           </div>
+
           <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={loading}>
             <Send className="mr-2 h-4 w-4" />
             {loading ? "Sending..." : "Send Message"}

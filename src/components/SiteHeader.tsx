@@ -121,7 +121,7 @@ export function SiteHeader() {
         <div className="flex items-center md:hidden">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded text-white hover:bg-white/10" data-testid="button-mobile-menu">
+              <Button variant="ghost" size="icon" aria-label="Open menu" className="h-11 w-11 rounded text-white hover:bg-white/10" data-testid="button-mobile-menu">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
