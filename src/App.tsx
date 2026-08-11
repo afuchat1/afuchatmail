@@ -4,8 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { lazy, Suspense } from "react";
 import Index from "@/pages/Index";
+import { RouteSeo } from "@/components/RouteSeo";
+
 
 const Auth = lazy(() => import("@/pages/Auth"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
@@ -48,14 +51,17 @@ const PageLoader = () => (
 );
 
 const App = () => (
+  <HelmetProvider>
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="afuchat-ui-theme">
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <RouteSeo />
           <Suspense fallback={<PageLoader />}>
             <Routes>
+
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
