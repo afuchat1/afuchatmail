@@ -9,7 +9,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Crown, Globe, Loader2, Plus, RefreshCw, Trash2, Copy, CheckCircle2, AlertCircle, Clock, Plug, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
+import { Crown, Globe, Loader2, Plus, RefreshCw, Trash2, Copy, CheckCircle2, AlertCircle, Clock, Plug, ChevronDown, ChevronUp, ShieldCheck, Send, Inbox } from "lucide-react";
 import { PLAN_LIMITS } from "@/hooks/usePlan";
 
 type Tier = keyof typeof PLAN_LIMITS;
