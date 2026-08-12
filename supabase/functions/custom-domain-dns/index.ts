@@ -39,7 +39,7 @@ interface ResendDnsRecord {
 }
 
 interface NormalizedRecord {
-  purpose: "spf" | "dkim" | "dmarc" | "mx" | "verification" | "other";
+  purpose: "spf" | "dkim" | "dmarc" | "mx" | "inbound_mx" | "verification" | "other";
   kind: "TXT" | "MX" | "CNAME";
   host: string;          // host portion relative to the domain ("@" for apex)
   fqdn: string;          // full record name
@@ -49,7 +49,53 @@ interface NormalizedRecord {
   status?: string;
   required: boolean;
   description: string;
+  direction: "sending" | "receiving";
 }
+
+// Inbound mail for a custom domain is routed to our provider's inbound MX.
+// Resend does not issue this record as part of domain verification, so we add
+// it ourselves and verify it with a live DNS lookup.
+const INBOUND_MX_HOST = "inbound.resend.com";
+const INBOUND_MX_PRIORITY = 10;
+
+// DNS-over-HTTPS lookup (Google public resolver). Returns the answer strings.
+async function dohLookup(name: string, type: "MX" | "TXT"): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`,
+      { headers: { accept: "application/dns-json" } },
+    );
+    if (!res.ok) return [];
+    const body = await res.json();
+    const answers: any[] = body?.Answer ?? [];
+    return answers
+      .filter((a) => (type === "MX" ? a.type === 15 : a.type === 16))
+      .map((a) => String(a.data ?? "").replace(/^"|"$/g, "").trim().toLowerCase());
+  } catch (err) {
+    console.warn("DoH lookup failed", name, type, (err as Error)?.message);
+    return [];
+  }
+}
+
+async function inboundMxRecord(domain: string): Promise<NormalizedRecord> {
+  const answers = await dohLookup(domain, "MX");
+  const present = answers.some((a) => a.includes(INBOUND_MX_HOST));
+  return {
+    purpose: "inbound_mx",
+    kind: "MX",
+    host: "@",
+    fqdn: domain,
+    value: INBOUND_MX_HOST,
+    priority: INBOUND_MX_PRIORITY,
+    ttl: 3600,
+    status: present ? "verified" : "pending",
+    required: true,
+    description:
+      "Inbound MX — delivers mail addressed to your domain into your AfuChat inbox. Remove other MX records on the apex, or mail will go to your old provider.",
+    direction: "receiving",
+  };
+}
+
 
 function hostFor(domain: string, fqdn: string): string {
   const d = domain.toLowerCase().replace(/\.$/, "");
