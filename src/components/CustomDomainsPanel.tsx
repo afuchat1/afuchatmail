@@ -472,7 +472,24 @@ function DomainRow({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold font-mono truncate">{domain.domain}</p>
             {statusBadge}
+            {readiness && (
+              <>
+                <Badge
+                  variant="outline"
+                  className={`text-[9px] gap-1 ${readiness.sending ? "text-emerald-600 border-emerald-500/30" : "text-amber-600 border-amber-500/30"}`}
+                >
+                  <Send className="h-2.5 w-2.5" /> {readiness.sending ? "Sending ready" : "Sending pending"}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={`text-[9px] gap-1 ${readiness.receiving ? "text-emerald-600 border-emerald-500/30" : "text-amber-600 border-amber-500/30"}`}
+                >
+                  <Inbox className="h-2.5 w-2.5" /> {readiness.receiving ? "Receiving ready" : "Receiving pending"}
+                </Badge>
+              </>
+            )}
           </div>
+
           {domain.status === "verified" && domain.verified_at && (
             <p className="text-[11px] text-muted-foreground mt-1">
               Verified {new Date(domain.verified_at).toLocaleDateString()}
