@@ -120,16 +120,24 @@ export function CustomDomainsPanel({ user, tier, isAdmin, onUpgrade, onAddressCr
   const handleVerify = async (d: CustomDomain) => {
     setVerifyingId(d.id);
     try {
-      const { data, error } = await supabase.functions.invoke("verify-custom-domain", {
-        body: { domain_id: d.id },
+      const { data, error } = await supabase.functions.invoke("custom-domain-dns", {
+        body: { action: "check", domain_id: d.id },
       });
       if (error) throw error;
-      if (data?.success) {
-        toast({ title: "Domain verified", description: `${d.domain} is now ready to use.` });
+      const sending = !!data?.sending_ready;
+      const receiving = !!data?.receiving_ready;
+      if (sending && receiving) {
+        toast({ title: "Domain fully configured", description: `${d.domain} can send and receive mail.` });
+      } else if (sending) {
+        toast({
+          title: "Sending ready, receiving not",
+          description: "Add the inbound MX record so mail addressed to your domain reaches your inbox.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Not verified yet",
-          description: data?.error || "TXT record not found. DNS changes can take a few minutes to propagate.",
+          description: data?.error || "Some DNS records are still missing. Changes can take a few minutes to propagate.",
           variant: "destructive",
         });
       }
@@ -140,6 +148,7 @@ export function CustomDomainsPanel({ user, tier, isAdmin, onUpgrade, onAddressCr
       setVerifyingId(null);
     }
   };
+
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
