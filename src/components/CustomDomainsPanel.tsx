@@ -663,6 +663,41 @@ function DomainRow({
             </div>
           </form>
 
+          {/* Catch-all routing */}
+          <div className="rounded-xl bg-muted/40 border border-border/40 p-3 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold flex items-center gap-1.5">
+                  <Inbox className="h-3.5 w-3.5" /> Catch-all delivery
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                  Deliver mail sent to any address on {domain.domain} into one mailbox.
+                </p>
+              </div>
+              <Switch
+                checked={catchAll}
+                disabled={catchAllSaving || addresses.length === 0}
+                onCheckedChange={(v) =>
+                  saveCatchAll(v, v ? (catchAllTarget ?? addresses[0]?.id ?? null) : null)
+                }
+              />
+            </div>
+            {catchAll && (
+              <select
+                className="w-full h-9 rounded-lg bg-background border border-border/40 px-2 text-xs font-mono"
+                value={catchAllTarget ?? ""}
+                disabled={catchAllSaving}
+                onChange={(e) => saveCatchAll(true, e.target.value)}
+              >
+                {addresses.map((a) => (
+                  <option key={a.id} value={a.id}>{a.full_email}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
