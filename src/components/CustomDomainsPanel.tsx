@@ -328,6 +328,9 @@ function DomainRow({
       });
       if (error) throw error;
       setDnsRecords((data?.records || []).map((r: any) => ({ ...r })));
+      if (typeof data?.sending_ready === "boolean") {
+        setReadiness({ sending: !!data.sending_ready, receiving: !!data.receiving_ready });
+      }
     } catch (err: any) {
       toast({ title: "Could not load DNS records", description: err?.message || String(err), variant: "destructive" });
     } finally {
@@ -344,12 +347,16 @@ function DomainRow({
       if (error) throw error;
       setDnsRecords(data?.records || []);
       setDnsCheckedAt(data?.checked_at || new Date().toISOString());
+      setReadiness({ sending: !!data?.sending_ready, receiving: !!data?.receiving_ready });
+      const bothOk = !!data?.sending_ready && !!data?.receiving_ready;
       toast({
-        title: data?.required_ok ? "All required records found" : "Some records missing",
-        description: data?.required_ok
+        title: bothOk ? "Sending and receiving ready" : "Some records missing",
+        description: bothOk
           ? "Your domain is correctly configured for AfuChat mail."
-          : "DNS changes can take a few minutes to propagate.",
-        variant: data?.required_ok ? "default" : "destructive",
+          : !data?.receiving_ready && data?.sending_ready
+            ? "Sending works. Add the inbound MX record to receive mail."
+            : "DNS changes can take a few minutes to propagate.",
+        variant: bothOk ? "default" : "destructive",
       });
     } catch (err: any) {
       toast({ title: "DNS check failed", description: err?.message || String(err), variant: "destructive" });
@@ -357,6 +364,32 @@ function DomainRow({
       setDnsChecking(false);
     }
   }, [domain.id, toast]);
+
+  const saveCatchAll = useCallback(
+    async (enabled: boolean, addressId: string | null) => {
+      setCatchAllSaving(true);
+      const { error } = await supabase.rpc("set_domain_catch_all", {
+        _domain_id: domain.id,
+        _enabled: enabled,
+        _address_id: addressId,
+      });
+      setCatchAllSaving(false);
+      if (error) {
+        toast({ title: "Could not update catch-all", description: error.message, variant: "destructive" });
+        return;
+      }
+      setCatchAll(enabled);
+      setCatchAllTarget(addressId);
+      toast({
+        title: enabled ? "Catch-all enabled" : "Catch-all disabled",
+        description: enabled
+          ? "Mail sent to any address on this domain will land in the selected mailbox."
+          : "Only mail to addresses you created will be accepted.",
+      });
+    },
+    [domain.id, toast],
+  );
+
 
   useEffect(() => {
     if (dnsOpen && !dnsRecords && !dnsLoading) {
