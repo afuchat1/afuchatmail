@@ -294,6 +294,10 @@ function DomainRow({
   const [dnsRecords, setDnsRecords] = useState<DnsRecordResult[] | null>(null);
   const [dnsCheckedAt, setDnsCheckedAt] = useState<string | null>(null);
   const [dnsChecking, setDnsChecking] = useState(false);
+  const [readiness, setReadiness] = useState<{ sending: boolean; receiving: boolean } | null>(null);
+  const [catchAllSaving, setCatchAllSaving] = useState(false);
+  const [catchAll, setCatchAll] = useState(!!domain.catch_all);
+  const [catchAllTarget, setCatchAllTarget] = useState<string | null>(domain.catch_all_address_id);
   const [addresses, setAddresses] = useState<DomainAddress[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [deleteAddr, setDeleteAddr] = useState<DomainAddress | null>(null);
