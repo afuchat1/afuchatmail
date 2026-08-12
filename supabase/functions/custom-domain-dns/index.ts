@@ -117,7 +117,7 @@ function describe(record: string, type: string): { purpose: NormalizedRecord["pu
     return { purpose: "dmarc", required: false, description: "DMARC — tells receivers what to do if SPF/DKIM fail. Recommended." };
   }
   if (r === "MX" || type === "MX") {
-    return { purpose: "mx", required: true, description: "MX — routes inbound mail for your domain to AfuChat." };
+    return { purpose: "mx", required: true, description: "MX — bounce and feedback routing for your sending subdomain." };
   }
   return { purpose: "other", required: true, description: `${r || type} record required by the email provider.` };
 }
@@ -137,9 +137,26 @@ function normalizeResendRecords(domain: string, records: ResendDnsRecord[]): Nor
       status: r.status,
       required: meta.required,
       description: meta.description,
+      direction: "sending" as const,
     };
   });
 }
+
+// Sending records come from the provider; the inbound MX is ours.
+async function buildAllRecords(domain: string, providerRecords: ResendDnsRecord[]): Promise<NormalizedRecord[]> {
+  const sending = normalizeResendRecords(domain, providerRecords);
+  const inbound = await inboundMxRecord(domain);
+  return [...sending, inbound];
+}
+
+const readiness = (records: NormalizedRecord[], providerStatus: string) => {
+  const receiving = records.find((r) => r.purpose === "inbound_mx");
+  return {
+    sending_ready: providerStatus === "verified",
+    receiving_ready: receiving?.status === "verified",
+  };
+};
+
 
 async function resendFetch(path: string, init: RequestInit = {}) {
   if (!RESEND_API_KEY) {
