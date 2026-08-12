@@ -23,6 +23,8 @@ interface CustomDomain {
   last_checked_at: string | null;
   last_error: string | null;
   created_at: string;
+  catch_all: boolean;
+  catch_all_address_id: string | null;
 }
 
 interface DomainAddress {
@@ -36,7 +38,7 @@ interface DomainAddress {
 
 interface DnsRecordResult {
   kind: "TXT" | "MX" | "CNAME";
-  purpose: "verification" | "mx" | "spf" | "dkim" | "dmarc" | "other";
+  purpose: "verification" | "mx" | "inbound_mx" | "spf" | "dkim" | "dmarc" | "other";
   host: string;            // host portion ("@" or "send", etc.)
   fqdn: string;            // full record name
   /** legacy field name kept for backward compatibility */
@@ -47,7 +49,9 @@ interface DnsRecordResult {
   required: boolean;
   description: string;
   status?: string;         // "verified" | "pending" | "not_started" — from provider
+  direction?: "sending" | "receiving";
 }
+
 
 interface Props {
   user: User | null;
