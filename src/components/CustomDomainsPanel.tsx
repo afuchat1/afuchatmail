@@ -5,11 +5,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Crown, Globe, Loader2, Plus, RefreshCw, Trash2, Copy, CheckCircle2, AlertCircle, Clock, Plug, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
+import { Crown, Globe, Loader2, Plus, RefreshCw, Trash2, Copy, CheckCircle2, AlertCircle, Clock, Plug, ChevronDown, ChevronUp, ShieldCheck, Send, Inbox } from "lucide-react";
 import { PLAN_LIMITS } from "@/hooks/usePlan";
 
 type Tier = keyof typeof PLAN_LIMITS;
@@ -23,6 +24,8 @@ interface CustomDomain {
   last_checked_at: string | null;
   last_error: string | null;
   created_at: string;
+  catch_all: boolean;
+  catch_all_address_id: string | null;
 }
 
 interface DomainAddress {
@@ -36,7 +39,7 @@ interface DomainAddress {
 
 interface DnsRecordResult {
   kind: "TXT" | "MX" | "CNAME";
-  purpose: "verification" | "mx" | "spf" | "dkim" | "dmarc" | "other";
+  purpose: "verification" | "mx" | "inbound_mx" | "spf" | "dkim" | "dmarc" | "other";
   host: string;            // host portion ("@" or "send", etc.)
   fqdn: string;            // full record name
   /** legacy field name kept for backward compatibility */
@@ -47,7 +50,9 @@ interface DnsRecordResult {
   required: boolean;
   description: string;
   status?: string;         // "verified" | "pending" | "not_started" — from provider
+  direction?: "sending" | "receiving";
 }
+
 
 interface Props {
   user: User | null;
@@ -76,7 +81,7 @@ export function CustomDomainsPanel({ user, tier, isAdmin, onUpgrade, onAddressCr
     setLoading(true);
     const { data, error } = await supabase
       .from("custom_domains")
-      .select("id, domain, verification_token, status, verified_at, last_checked_at, last_error, created_at")
+      .select("id, domain, verification_token, status, verified_at, last_checked_at, last_error, created_at, catch_all, catch_all_address_id")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     if (!error && data) setDomains(data as CustomDomain[]);
@@ -116,16 +121,24 @@ export function CustomDomainsPanel({ user, tier, isAdmin, onUpgrade, onAddressCr
   const handleVerify = async (d: CustomDomain) => {
     setVerifyingId(d.id);
     try {
-      const { data, error } = await supabase.functions.invoke("verify-custom-domain", {
-        body: { domain_id: d.id },
+      const { data, error } = await supabase.functions.invoke("custom-domain-dns", {
+        body: { action: "check", domain_id: d.id },
       });
       if (error) throw error;
-      if (data?.success) {
-        toast({ title: "Domain verified", description: `${d.domain} is now ready to use.` });
+      const sending = !!data?.sending_ready;
+      const receiving = !!data?.receiving_ready;
+      if (sending && receiving) {
+        toast({ title: "Domain fully configured", description: `${d.domain} can send and receive mail.` });
+      } else if (sending) {
+        toast({
+          title: "Sending ready, receiving not",
+          description: "Add the inbound MX record so mail addressed to your domain reaches your inbox.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Not verified yet",
-          description: data?.error || "TXT record not found. DNS changes can take a few minutes to propagate.",
+          description: data?.error || "Some DNS records are still missing. Changes can take a few minutes to propagate.",
           variant: "destructive",
         });
       }
@@ -136,6 +149,7 @@ export function CustomDomainsPanel({ user, tier, isAdmin, onUpgrade, onAddressCr
       setVerifyingId(null);
     }
   };
+
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -281,6 +295,10 @@ function DomainRow({
   const [dnsRecords, setDnsRecords] = useState<DnsRecordResult[] | null>(null);
   const [dnsCheckedAt, setDnsCheckedAt] = useState<string | null>(null);
   const [dnsChecking, setDnsChecking] = useState(false);
+  const [readiness, setReadiness] = useState<{ sending: boolean; receiving: boolean } | null>(null);
+  const [catchAllSaving, setCatchAllSaving] = useState(false);
+  const [catchAll, setCatchAll] = useState(!!domain.catch_all);
+  const [catchAllTarget, setCatchAllTarget] = useState<string | null>(domain.catch_all_address_id);
   const [addresses, setAddresses] = useState<DomainAddress[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [deleteAddr, setDeleteAddr] = useState<DomainAddress | null>(null);
@@ -311,6 +329,9 @@ function DomainRow({
       });
       if (error) throw error;
       setDnsRecords((data?.records || []).map((r: any) => ({ ...r })));
+      if (typeof data?.sending_ready === "boolean") {
+        setReadiness({ sending: !!data.sending_ready, receiving: !!data.receiving_ready });
+      }
     } catch (err: any) {
       toast({ title: "Could not load DNS records", description: err?.message || String(err), variant: "destructive" });
     } finally {
@@ -327,12 +348,16 @@ function DomainRow({
       if (error) throw error;
       setDnsRecords(data?.records || []);
       setDnsCheckedAt(data?.checked_at || new Date().toISOString());
+      setReadiness({ sending: !!data?.sending_ready, receiving: !!data?.receiving_ready });
+      const bothOk = !!data?.sending_ready && !!data?.receiving_ready;
       toast({
-        title: data?.required_ok ? "All required records found" : "Some records missing",
-        description: data?.required_ok
+        title: bothOk ? "Sending and receiving ready" : "Some records missing",
+        description: bothOk
           ? "Your domain is correctly configured for AfuChat mail."
-          : "DNS changes can take a few minutes to propagate.",
-        variant: data?.required_ok ? "default" : "destructive",
+          : !data?.receiving_ready && data?.sending_ready
+            ? "Sending works. Add the inbound MX record to receive mail."
+            : "DNS changes can take a few minutes to propagate.",
+        variant: bothOk ? "default" : "destructive",
       });
     } catch (err: any) {
       toast({ title: "DNS check failed", description: err?.message || String(err), variant: "destructive" });
@@ -340,6 +365,32 @@ function DomainRow({
       setDnsChecking(false);
     }
   }, [domain.id, toast]);
+
+  const saveCatchAll = useCallback(
+    async (enabled: boolean, addressId: string | null) => {
+      setCatchAllSaving(true);
+      const { error } = await supabase.rpc("set_domain_catch_all", {
+        _domain_id: domain.id,
+        _enabled: enabled,
+        _address_id: addressId,
+      });
+      setCatchAllSaving(false);
+      if (error) {
+        toast({ title: "Could not update catch-all", description: error.message, variant: "destructive" });
+        return;
+      }
+      setCatchAll(enabled);
+      setCatchAllTarget(addressId);
+      toast({
+        title: enabled ? "Catch-all enabled" : "Catch-all disabled",
+        description: enabled
+          ? "Mail sent to any address on this domain will land in the selected mailbox."
+          : "Only mail to addresses you created will be accepted.",
+      });
+    },
+    [domain.id, toast],
+  );
+
 
   useEffect(() => {
     if (dnsOpen && !dnsRecords && !dnsLoading) {
@@ -422,7 +473,24 @@ function DomainRow({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold font-mono truncate">{domain.domain}</p>
             {statusBadge}
+            {readiness && (
+              <>
+                <Badge
+                  variant="outline"
+                  className={`text-[9px] gap-1 ${readiness.sending ? "text-emerald-600 border-emerald-500/30" : "text-amber-600 border-amber-500/30"}`}
+                >
+                  <Send className="h-2.5 w-2.5" /> {readiness.sending ? "Sending ready" : "Sending pending"}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={`text-[9px] gap-1 ${readiness.receiving ? "text-emerald-600 border-emerald-500/30" : "text-amber-600 border-amber-500/30"}`}
+                >
+                  <Inbox className="h-2.5 w-2.5" /> {readiness.receiving ? "Receiving ready" : "Receiving pending"}
+                </Badge>
+              </>
+            )}
           </div>
+
           {domain.status === "verified" && domain.verified_at && (
             <p className="text-[11px] text-muted-foreground mt-1">
               Verified {new Date(domain.verified_at).toLocaleDateString()}
@@ -595,6 +663,41 @@ function DomainRow({
               </Button>
             </div>
           </form>
+
+          {/* Catch-all routing */}
+          <div className="rounded-xl bg-muted/40 border border-border/40 p-3 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold flex items-center gap-1.5">
+                  <Inbox className="h-3.5 w-3.5" /> Catch-all delivery
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                  Deliver mail sent to any address on {domain.domain} into one mailbox.
+                </p>
+              </div>
+              <Switch
+                checked={catchAll}
+                disabled={catchAllSaving || addresses.length === 0}
+                onCheckedChange={(v) =>
+                  saveCatchAll(v, v ? (catchAllTarget ?? addresses[0]?.id ?? null) : null)
+                }
+              />
+            </div>
+            {catchAll && (
+              <select
+                className="w-full h-9 rounded-lg bg-background border border-border/40 px-2 text-xs font-mono"
+                value={catchAllTarget ?? ""}
+                disabled={catchAllSaving}
+                onChange={(e) => saveCatchAll(true, e.target.value)}
+              >
+                {addresses.map((a) => (
+                  <option key={a.id} value={a.id}>{a.full_email}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">

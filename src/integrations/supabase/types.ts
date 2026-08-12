@@ -43,6 +43,8 @@ export type Database = {
       }
       custom_domains: {
         Row: {
+          catch_all: boolean
+          catch_all_address_id: string | null
           created_at: string
           dns_records: Json | null
           domain: string
@@ -57,6 +59,8 @@ export type Database = {
           verified_at: string | null
         }
         Insert: {
+          catch_all?: boolean
+          catch_all_address_id?: string | null
           created_at?: string
           dns_records?: Json | null
           domain: string
@@ -71,6 +75,8 @@ export type Database = {
           verified_at?: string | null
         }
         Update: {
+          catch_all?: boolean
+          catch_all_address_id?: string | null
           created_at?: string
           dns_records?: Json | null
           domain?: string
@@ -84,7 +90,15 @@ export type Database = {
           verification_token?: string
           verified_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "custom_domains_catch_all_address_id_fkey"
+            columns: ["catch_all_address_id"]
+            isOneToOne: false
+            referencedRelation: "email_addresses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_addresses: {
         Row: {
@@ -977,6 +991,10 @@ export type Database = {
           _ok: boolean
           _service_id: string
         }
+        Returns: undefined
+      }
+      set_domain_catch_all: {
+        Args: { _address_id?: string; _domain_id: string; _enabled: boolean }
         Returns: undefined
       }
       set_recovery_email: { Args: { _email: string }; Returns: undefined }

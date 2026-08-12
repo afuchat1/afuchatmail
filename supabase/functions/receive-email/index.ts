@@ -114,7 +114,11 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     const rawTo = webhookData?.to;
+    const rawCc = webhookData?.cc;
     const toAddresses: string[] = (Array.isArray(rawTo) ? rawTo : [rawTo])
+      .map(extractAddr)
+      .filter(Boolean);
+    const ccCandidates: string[] = (Array.isArray(rawCc) ? rawCc : [rawCc])
       .map(extractAddr)
       .filter(Boolean);
 
@@ -125,21 +129,64 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-    const toEmail = toAddresses[0];
 
+    // Every address this message was delivered to, in priority order.
+    const candidates = [...new Set([...toAddresses, ...ccCandidates])];
 
-    
-    // === EARLY REJECT: Check if recipient exists BEFORE fetching email body ===
-    const { data: emailAddress, error: emailError } = await supabaseAdmin
+    // === Resolve the local mailbox this message belongs to ===
+    // 1) an exact address (platform domain OR a user's custom domain)
+    // 2) otherwise, a catch-all on a verified custom domain
+    type Recipient = { id: string; user_id: string; is_alias: boolean; alias_for_id: string | null };
+    let emailAddress: Recipient | null = null;
+    let toEmail = toAddresses[0];
+
+    const { data: exactMatches } = await supabaseAdmin
       .from("email_addresses")
-      .select("id, user_id, is_alias, alias_for_id")
-      .eq("full_email", toEmail)
-      .single();
+      .select("id, user_id, is_alias, alias_for_id, full_email")
+      .in("full_email", candidates);
 
-    if (emailError || !emailAddress) {
-      console.warn("Rejected email to non-existent address:", toEmail);
+    if (exactMatches && exactMatches.length > 0) {
+      for (const candidate of candidates) {
+        const hit = exactMatches.find((m: any) => m.full_email === candidate);
+        if (hit) {
+          emailAddress = hit as Recipient;
+          toEmail = candidate;
+          break;
+        }
+      }
+    }
+
+    if (!emailAddress) {
+      // Catch-all delivery for verified custom domains.
+      const domains = [...new Set(candidates.map((c) => c.split("@")[1]).filter(Boolean))];
+      if (domains.length > 0) {
+        const { data: catchAllDomains } = await supabaseAdmin
+          .from("custom_domains")
+          .select("domain, catch_all, catch_all_address_id, status")
+          .in("domain", domains)
+          .eq("catch_all", true)
+          .eq("status", "verified");
+
+        const hitDomain = (catchAllDomains ?? []).find((d: any) => d.catch_all_address_id);
+        if (hitDomain) {
+          const { data: catchAllAddr } = await supabaseAdmin
+            .from("email_addresses")
+            .select("id, user_id, is_alias, alias_for_id")
+            .eq("id", (hitDomain as any).catch_all_address_id)
+            .maybeSingle();
+          if (catchAllAddr) {
+            emailAddress = catchAllAddr as Recipient;
+            toEmail = candidates.find((c) => c.endsWith(`@${(hitDomain as any).domain}`)) ?? toEmail;
+            console.log("Delivering via catch-all for domain:", (hitDomain as any).domain);
+          }
+        }
+      }
+    }
+
+    if (!emailAddress) {
+      console.warn("Rejected email to non-existent address:", candidates.join(", "));
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "Recipient email address not found",
           email: toEmail,
           rejected: true
@@ -152,6 +199,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("Found email address for user:", emailAddress.user_id);
+
 
     // Now fetch the email body content since we confirmed the recipient exists
     let emailHtml = webhookData.html || "";

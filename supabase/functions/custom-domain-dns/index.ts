@@ -39,7 +39,7 @@ interface ResendDnsRecord {
 }
 
 interface NormalizedRecord {
-  purpose: "spf" | "dkim" | "dmarc" | "mx" | "verification" | "other";
+  purpose: "spf" | "dkim" | "dmarc" | "mx" | "inbound_mx" | "verification" | "other";
   kind: "TXT" | "MX" | "CNAME";
   host: string;          // host portion relative to the domain ("@" for apex)
   fqdn: string;          // full record name
@@ -49,7 +49,53 @@ interface NormalizedRecord {
   status?: string;
   required: boolean;
   description: string;
+  direction: "sending" | "receiving";
 }
+
+// Inbound mail for a custom domain is routed to our provider's inbound MX.
+// Resend does not issue this record as part of domain verification, so we add
+// it ourselves and verify it with a live DNS lookup.
+const INBOUND_MX_HOST = "inbound.resend.com";
+const INBOUND_MX_PRIORITY = 10;
+
+// DNS-over-HTTPS lookup (Google public resolver). Returns the answer strings.
+async function dohLookup(name: string, type: "MX" | "TXT"): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`,
+      { headers: { accept: "application/dns-json" } },
+    );
+    if (!res.ok) return [];
+    const body = await res.json();
+    const answers: any[] = body?.Answer ?? [];
+    return answers
+      .filter((a) => (type === "MX" ? a.type === 15 : a.type === 16))
+      .map((a) => String(a.data ?? "").replace(/^"|"$/g, "").trim().toLowerCase());
+  } catch (err) {
+    console.warn("DoH lookup failed", name, type, (err as Error)?.message);
+    return [];
+  }
+}
+
+async function inboundMxRecord(domain: string): Promise<NormalizedRecord> {
+  const answers = await dohLookup(domain, "MX");
+  const present = answers.some((a) => a.includes(INBOUND_MX_HOST));
+  return {
+    purpose: "inbound_mx",
+    kind: "MX",
+    host: "@",
+    fqdn: domain,
+    value: INBOUND_MX_HOST,
+    priority: INBOUND_MX_PRIORITY,
+    ttl: 3600,
+    status: present ? "verified" : "pending",
+    required: true,
+    description:
+      "Inbound MX — delivers mail addressed to your domain into your AfuChat inbox. Remove other MX records on the apex, or mail will go to your old provider.",
+    direction: "receiving",
+  };
+}
+
 
 function hostFor(domain: string, fqdn: string): string {
   const d = domain.toLowerCase().replace(/\.$/, "");
@@ -71,7 +117,7 @@ function describe(record: string, type: string): { purpose: NormalizedRecord["pu
     return { purpose: "dmarc", required: false, description: "DMARC — tells receivers what to do if SPF/DKIM fail. Recommended." };
   }
   if (r === "MX" || type === "MX") {
-    return { purpose: "mx", required: true, description: "MX — routes inbound mail for your domain to AfuChat." };
+    return { purpose: "mx", required: true, description: "MX — bounce and feedback routing for your sending subdomain." };
   }
   return { purpose: "other", required: true, description: `${r || type} record required by the email provider.` };
 }
@@ -91,9 +137,26 @@ function normalizeResendRecords(domain: string, records: ResendDnsRecord[]): Nor
       status: r.status,
       required: meta.required,
       description: meta.description,
+      direction: "sending" as const,
     };
   });
 }
+
+// Sending records come from the provider; the inbound MX is ours.
+async function buildAllRecords(domain: string, providerRecords: ResendDnsRecord[]): Promise<NormalizedRecord[]> {
+  const sending = normalizeResendRecords(domain, providerRecords);
+  const inbound = await inboundMxRecord(domain);
+  return [...sending, inbound];
+}
+
+const readiness = (records: NormalizedRecord[], providerStatus: string) => {
+  const receiving = records.find((r) => r.purpose === "inbound_mx");
+  return {
+    sending_ready: providerStatus === "verified",
+    receiving_ready: receiving?.status === "verified",
+  };
+};
+
 
 async function resendFetch(path: string, init: RequestInit = {}) {
   if (!RESEND_API_KEY) {
@@ -202,7 +265,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Always make sure the domain exists at the email provider so we can
     // give the user a real DKIM key + MX record (these are domain-specific).
     const ensured = await ensureResendDomain(row.domain, row.resend_domain_id);
-    const normalized = normalizeResendRecords(row.domain, ensured.records);
+    const normalized = await buildAllRecords(row.domain, ensured.records);
 
     // Persist resend id + cached records for fast subsequent loads.
     await supabaseAdmin
@@ -220,6 +283,7 @@ const handler = async (req: Request): Promise<Response> => {
         status: row.status,
         provider_status: ensured.status ?? "unknown",
         records: normalized,
+        ...readiness(normalized, ensured.status ?? "unknown"),
       });
     }
 
@@ -230,9 +294,10 @@ const handler = async (req: Request): Promise<Response> => {
       // After the verify call, re-fetch to get the up-to-date statuses.
       const fresh = await resendFetch(`/domains/${ensured.id}`);
       const freshRecords: ResendDnsRecord[] = fresh.body?.records ?? ensured.records ?? [];
-      const freshNormalized = normalizeResendRecords(row.domain, freshRecords);
       const providerStatus: string = fresh.body?.status ?? ensured.status ?? "pending";
-      const verifiedAtProvider = providerStatus === "verified";
+      const freshNormalized = await buildAllRecords(row.domain, freshRecords);
+      const flags = readiness(freshNormalized, providerStatus);
+      const verifiedAtProvider = flags.sending_ready;
       const requiredOk = freshNormalized.filter((r) => r.required).every((r) => r.status === "verified");
       const allOk = freshNormalized.every((r) => r.status === "verified");
 
@@ -244,7 +309,9 @@ const handler = async (req: Request): Promise<Response> => {
       if (verifiedAtProvider) {
         updates.status = "verified";
         updates.verified_at = nowIso;
-        updates.last_error = null;
+        updates.last_error = flags.receiving_ready
+          ? null
+          : `Sending is live. Inbound mail is not routed yet — add the MX record ${INBOUND_MX_HOST} (priority ${INBOUND_MX_PRIORITY}) on ${row.domain}.`;
       } else if (row.status !== "verified") {
         updates.status = "failed";
         updates.last_error = verifyRes.ok
@@ -259,7 +326,9 @@ const handler = async (req: Request): Promise<Response> => {
         provider_status: providerStatus,
         required_ok: requiredOk,
         all_ok: allOk,
+        ...flags,
         records: freshNormalized,
+
         checked_at: nowIso,
       });
     }
