@@ -265,7 +265,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Always make sure the domain exists at the email provider so we can
     // give the user a real DKIM key + MX record (these are domain-specific).
     const ensured = await ensureResendDomain(row.domain, row.resend_domain_id);
-    const normalized = normalizeResendRecords(row.domain, ensured.records);
+    const normalized = await buildAllRecords(row.domain, ensured.records);
 
     // Persist resend id + cached records for fast subsequent loads.
     await supabaseAdmin
@@ -283,6 +283,7 @@ const handler = async (req: Request): Promise<Response> => {
         status: row.status,
         provider_status: ensured.status ?? "unknown",
         records: normalized,
+        ...readiness(normalized, ensured.status ?? "unknown"),
       });
     }
 
@@ -293,9 +294,10 @@ const handler = async (req: Request): Promise<Response> => {
       // After the verify call, re-fetch to get the up-to-date statuses.
       const fresh = await resendFetch(`/domains/${ensured.id}`);
       const freshRecords: ResendDnsRecord[] = fresh.body?.records ?? ensured.records ?? [];
-      const freshNormalized = normalizeResendRecords(row.domain, freshRecords);
       const providerStatus: string = fresh.body?.status ?? ensured.status ?? "pending";
-      const verifiedAtProvider = providerStatus === "verified";
+      const freshNormalized = await buildAllRecords(row.domain, freshRecords);
+      const flags = readiness(freshNormalized, providerStatus);
+      const verifiedAtProvider = flags.sending_ready;
       const requiredOk = freshNormalized.filter((r) => r.required).every((r) => r.status === "verified");
       const allOk = freshNormalized.every((r) => r.status === "verified");
 
@@ -307,7 +309,9 @@ const handler = async (req: Request): Promise<Response> => {
       if (verifiedAtProvider) {
         updates.status = "verified";
         updates.verified_at = nowIso;
-        updates.last_error = null;
+        updates.last_error = flags.receiving_ready
+          ? null
+          : `Sending is live. Inbound mail is not routed yet — add the MX record ${INBOUND_MX_HOST} (priority ${INBOUND_MX_PRIORITY}) on ${row.domain}.`;
       } else if (row.status !== "verified") {
         updates.status = "failed";
         updates.last_error = verifyRes.ok
@@ -322,7 +326,9 @@ const handler = async (req: Request): Promise<Response> => {
         provider_status: providerStatus,
         required_ok: requiredOk,
         all_ok: allOk,
+        ...flags,
         records: freshNormalized,
+
         checked_at: nowIso,
       });
     }
