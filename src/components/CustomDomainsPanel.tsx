@@ -80,7 +80,7 @@ export function CustomDomainsPanel({ user, tier, isAdmin, onUpgrade, onAddressCr
     setLoading(true);
     const { data, error } = await supabase
       .from("custom_domains")
-      .select("id, domain, verification_token, status, verified_at, last_checked_at, last_error, created_at")
+      .select("id, domain, verification_token, status, verified_at, last_checked_at, last_error, created_at, catch_all, catch_all_address_id")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     if (!error && data) setDomains(data as CustomDomain[]);
