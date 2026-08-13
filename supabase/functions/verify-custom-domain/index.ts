@@ -42,6 +42,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json(401, { error: "Missing authorization header" });
+    const accessToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!accessToken || accessToken === authHeader) {
+      return json(401, { error: "Invalid authorization header" });
+    }
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -50,9 +54,8 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } },
     );
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(accessToken);
     if (userError || !user) return json(401, { error: "Authentication failed" });
 
 
