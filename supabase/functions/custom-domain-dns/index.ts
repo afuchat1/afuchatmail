@@ -186,11 +186,18 @@ async function buildAllRecords(domain: string, providerRecords: ResendDnsRecord[
 
 const readiness = (records: NormalizedRecord[], providerStatus: string) => {
   const receiving = records.find((r) => r.purpose === "inbound_mx");
+  const ownership = records.find((r) => r.purpose === "verification");
+  // When the provider cannot host this domain as a sending domain, mail is
+  // relayed through the platform sending domain instead. That only needs
+  // proven ownership, so sending is still available in relay mode.
+  const relayMode = providerStatus === "unavailable";
   return {
-    sending_ready: providerStatus === "verified",
+    sending_ready: relayMode ? ownership?.status === "verified" : providerStatus === "verified",
+    sending_mode: relayMode ? "relay" : "direct",
     receiving_ready: receiving?.status === "verified",
   };
 };
+
 
 
 async function resendFetch(path: string, init: RequestInit = {}) {
@@ -336,18 +343,24 @@ const handler = async (req: Request): Promise<Response> => {
       );
       const flags = readiness(fallbackRecords, "unavailable");
       const nowIso = new Date().toISOString();
+      const limitUpdates: Record<string, unknown> = {
+        dns_records: fallbackRecords,
+        last_checked_at: nowIso,
+        last_error: providerError.message,
+      };
+      // Ownership proven → the domain is usable in relay mode.
+      if (flags.sending_ready && row.status !== "verified") {
+        limitUpdates.status = "verified";
+        limitUpdates.verified_at = nowIso;
+      }
       await supabaseAdmin
         .from("custom_domains")
-        .update({
-          dns_records: fallbackRecords,
-          last_checked_at: nowIso,
-          last_error: providerError.message,
-        })
+        .update(limitUpdates)
         .eq("id", row.id);
 
       return json(200, {
         domain: row.domain,
-        status: row.status,
+        status: (limitUpdates.status as string) ?? row.status,
         provider_status: "limit_reached",
         provider_limit: true,
         warning: providerError.message,
@@ -356,6 +369,7 @@ const handler = async (req: Request): Promise<Response> => {
         checked_at: nowIso,
       });
     }
+
     const normalized = await buildAllRecords(row.domain, ensured.records);
 
     // Persist resend id + cached records for fast subsequent loads.

@@ -56,12 +56,14 @@ interface DnsRecordResult {
 interface DnsResponse {
   records?: DnsRecordResult[];
   sending_ready?: boolean;
+  sending_mode?: "relay" | "direct";
   receiving_ready?: boolean;
   checked_at?: string;
   provider_limit?: boolean;
   warning?: string;
   error?: string;
 }
+
 
 
 interface Props {
@@ -356,7 +358,12 @@ function DomainRow({
       if (typeof data?.sending_ready === "boolean") {
         setReadiness({ sending: !!data.sending_ready, receiving: !!data.receiving_ready });
       }
-      setDnsError(data.provider_limit ? (data.warning || "Sending-domain capacity is currently unavailable.") : null);
+      setDnsError(
+        data.provider_limit && !data.sending_ready
+          ? (data.warning || "Sending-domain capacity is currently unavailable.")
+          : null,
+      );
+
     } catch (err: any) {
       const limit = err?.code === "PROVIDER_DOMAIN_LIMIT";
       setDnsError(err?.message || String(err));
@@ -379,18 +386,30 @@ function DomainRow({
       setDnsRecords(data.records || []);
       setDnsCheckedAt(data?.checked_at || new Date().toISOString());
       setReadiness({ sending: !!data?.sending_ready, receiving: !!data?.receiving_ready });
-      setDnsError(data.provider_limit ? (data.warning || "Sending-domain capacity is currently unavailable.") : null);
+      const relay = data.sending_mode === "relay" && !!data.sending_ready;
+      setDnsError(
+        data.provider_limit && !data.sending_ready
+          ? (data.warning || "Sending-domain capacity is currently unavailable.")
+          : null,
+      );
       const bothOk = !!data.sending_ready && !!data.receiving_ready;
       toast({
-        title: data.provider_limit ? "Receiving setup checked" : bothOk ? "Sending and receiving ready" : "Some records missing",
-        description: data.provider_limit
-          ? "DNS management remains available, but sending needs additional provider domain capacity."
-          : bothOk
-          ? "Your domain is correctly configured for AfuChat mail."
-          : !data?.receiving_ready && data?.sending_ready
-            ? "Sending works. Add the inbound MX record to receive mail."
-            : "DNS changes can take a few minutes to propagate.",
+        title: bothOk
+          ? relay ? "Sending (relay) and receiving ready" : "Sending and receiving ready"
+          : data.provider_limit && !data.sending_ready
+            ? "Receiving setup checked"
+            : "Some records missing",
+        description: bothOk
+          ? relay
+            ? "Mail is sent through AfuChat's relay with your address as sender and Reply-To."
+            : "Your domain is correctly configured for AfuChat mail."
+          : data.provider_limit && !data.sending_ready
+            ? "Add the ownership TXT record to enable sending via AfuChat's relay."
+            : !data?.receiving_ready && data?.sending_ready
+              ? "Sending works. Add the inbound MX record to receive mail."
+              : "DNS changes can take a few minutes to propagate.",
         variant: bothOk ? "default" : "destructive",
+
       });
     } catch (err: any) {
       const limit = err?.code === "PROVIDER_DOMAIN_LIMIT";
