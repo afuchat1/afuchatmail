@@ -596,10 +596,16 @@ function DomainRow({
               </Button>
             </div>
 
-            {dnsLoading && !dnsRecords ? (
+            {dnsError && !dnsRecords ? (
+              <div className="flex items-start gap-2 text-xs text-destructive py-2">
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>{dnsError}</span>
+              </div>
+            ) : dnsLoading && !dnsRecords ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading DNS records…
               </div>
+
             ) : dnsRecords && dnsRecords.length > 0 ? (
               <>
                 {dnsCheckedAt && (
