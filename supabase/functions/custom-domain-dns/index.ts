@@ -209,9 +209,15 @@ async function ensureResendDomain(domain: string, existingId: string | null): Pr
     body: JSON.stringify({ name: domain, region: "us-east-1" }),
   });
   if (!created.ok) {
-    throw new Error(
-      `Resend domain create failed (${created.status}): ${typeof created.body === "string" ? created.body : JSON.stringify(created.body)}`,
-    );
+    const detail = typeof created.body === "string" ? created.body : (created.body?.message ?? JSON.stringify(created.body));
+    const err = new Error(
+      created.status === 403
+        ? `Email provider plan limit reached: ${detail}`
+        : `Resend domain create failed (${created.status}): ${detail}`,
+    ) as Error & { statusCode?: number; code?: string };
+    err.statusCode = created.status === 403 ? 409 : 502;
+    err.code = created.status === 403 ? "PROVIDER_DOMAIN_LIMIT" : "PROVIDER_ERROR";
+    throw err;
   }
   const id = created.body?.id;
   if (!id) throw new Error("Resend did not return a domain id");
@@ -336,8 +342,9 @@ const handler = async (req: Request): Promise<Response> => {
     return json(400, { error: "Unknown action" });
   } catch (err) {
     console.error("custom-domain-dns error:", err);
-    const msg = err instanceof Error ? err.message : String(err);
-    return json(500, { error: msg, code: "DNS_HELPER_ERROR" });
+    const e = err as Error & { statusCode?: number; code?: string };
+    const msg = e?.message ?? String(err);
+    return json(e?.statusCode ?? 500, { error: msg, code: e?.code ?? "DNS_HELPER_ERROR" });
   }
 };
 
