@@ -96,6 +96,41 @@ async function inboundMxRecord(domain: string): Promise<NormalizedRecord> {
   };
 }
 
+async function ownershipRecord(domain: string, token: string): Promise<NormalizedRecord> {
+  const value = `afuchat-verify=${token}`;
+  const answers = await dohLookup(domain, "TXT");
+  return {
+    purpose: "verification",
+    kind: "TXT",
+    host: "@",
+    fqdn: domain,
+    value,
+    ttl: 3600,
+    status: answers.some((answer) => answer.includes(value.toLowerCase())) ? "verified" : "pending",
+    required: true,
+    description: "Ownership verification — proves that you control this domain.",
+    direction: "receiving",
+  };
+}
+
+async function buildProviderLimitRecords(
+  domain: string,
+  token: string,
+  cachedRecords: unknown,
+): Promise<NormalizedRecord[]> {
+  const cached = Array.isArray(cachedRecords)
+    ? cachedRecords.filter((record): record is NormalizedRecord =>
+      !!record && typeof record === "object" && "kind" in record && "value" in record
+    )
+    : [];
+  const sending = cached.filter((record) => record.direction === "sending");
+  const [ownership, inbound] = await Promise.all([
+    ownershipRecord(domain, token),
+    inboundMxRecord(domain),
+  ]);
+  return [ownership, ...sending, inbound];
+}
+
 
 function hostFor(domain: string, fqdn: string): string {
   const d = domain.toLowerCase().replace(/\.$/, "");
@@ -284,7 +319,43 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Always make sure the domain exists at the email provider so we can
     // give the user a real DKIM key + MX record (these are domain-specific).
-    const ensured = await ensureResendDomain(row.domain, row.resend_domain_id);
+    let ensured: Awaited<ReturnType<typeof ensureResendDomain>>;
+    try {
+      ensured = await ensureResendDomain(row.domain, row.resend_domain_id);
+    } catch (err) {
+      const providerError = err as Error & { code?: string };
+      if (providerError.code !== "PROVIDER_DOMAIN_LIMIT") throw err;
+
+      // A provider account limit is an operational state, not a failed web
+      // request. Return the records we can still configure so the settings UI
+      // remains usable and receiving/ownership checks continue to work.
+      const fallbackRecords = await buildProviderLimitRecords(
+        row.domain,
+        row.verification_token,
+        row.dns_records,
+      );
+      const flags = readiness(fallbackRecords, "unavailable");
+      const nowIso = new Date().toISOString();
+      await supabaseAdmin
+        .from("custom_domains")
+        .update({
+          dns_records: fallbackRecords,
+          last_checked_at: nowIso,
+          last_error: providerError.message,
+        })
+        .eq("id", row.id);
+
+      return json(200, {
+        domain: row.domain,
+        status: row.status,
+        provider_status: "limit_reached",
+        provider_limit: true,
+        warning: providerError.message,
+        records: fallbackRecords,
+        ...flags,
+        checked_at: nowIso,
+      });
+    }
     const normalized = await buildAllRecords(row.domain, ensured.records);
 
     // Persist resend id + cached records for fast subsequent loads.

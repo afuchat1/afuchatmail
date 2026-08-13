@@ -53,6 +53,16 @@ interface DnsRecordResult {
   direction?: "sending" | "receiving";
 }
 
+interface DnsResponse {
+  records?: DnsRecordResult[];
+  sending_ready?: boolean;
+  receiving_ready?: boolean;
+  checked_at?: string;
+  provider_limit?: boolean;
+  warning?: string;
+  error?: string;
+}
+
 
 interface Props {
   user: User | null;
@@ -322,7 +332,7 @@ function DomainRow({
     fetchAddresses();
   }, [fetchAddresses]);
 
-  const callDns = useCallback(async (action: "records" | "check") => {
+  const callDns = useCallback(async (action: "records" | "check"): Promise<DnsResponse> => {
     const { data, error } = await supabase.functions.invoke("custom-domain-dns", {
       body: { action, domain_id: domain.id },
     });
@@ -342,11 +352,11 @@ function DomainRow({
     setDnsLoading(true);
     try {
       const data = await callDns("records");
-      setDnsRecords((data?.records || []).map((r: any) => ({ ...r })));
+      setDnsRecords(data.records || []);
       if (typeof data?.sending_ready === "boolean") {
         setReadiness({ sending: !!data.sending_ready, receiving: !!data.receiving_ready });
       }
-      setDnsError(null);
+      setDnsError(data.provider_limit ? (data.warning || "Sending-domain capacity is currently unavailable.") : null);
     } catch (err: any) {
       const limit = err?.code === "PROVIDER_DOMAIN_LIMIT";
       setDnsError(err?.message || String(err));
@@ -366,14 +376,16 @@ function DomainRow({
     setDnsChecking(true);
     try {
       const data = await callDns("check");
-      setDnsRecords(data?.records || []);
+      setDnsRecords(data.records || []);
       setDnsCheckedAt(data?.checked_at || new Date().toISOString());
       setReadiness({ sending: !!data?.sending_ready, receiving: !!data?.receiving_ready });
-      setDnsError(null);
-      const bothOk = !!data?.sending_ready && !!data?.receiving_ready;
+      setDnsError(data.provider_limit ? (data.warning || "Sending-domain capacity is currently unavailable.") : null);
+      const bothOk = !!data.sending_ready && !!data.receiving_ready;
       toast({
-        title: bothOk ? "Sending and receiving ready" : "Some records missing",
-        description: bothOk
+        title: data.provider_limit ? "Receiving setup checked" : bothOk ? "Sending and receiving ready" : "Some records missing",
+        description: data.provider_limit
+          ? "DNS management remains available, but sending needs additional provider domain capacity."
+          : bothOk
           ? "Your domain is correctly configured for AfuChat mail."
           : !data?.receiving_ready && data?.sending_ready
             ? "Sending works. Add the inbound MX record to receive mail."
@@ -596,12 +608,13 @@ function DomainRow({
               </Button>
             </div>
 
-            {dnsError && !dnsRecords ? (
+            {dnsError ? (
               <div className="flex items-start gap-2 text-xs text-destructive py-2">
                 <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                 <span>{dnsError}</span>
               </div>
-            ) : dnsLoading && !dnsRecords ? (
+            ) : null}
+            {dnsLoading && !dnsRecords ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading DNS records…
               </div>
