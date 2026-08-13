@@ -238,9 +238,20 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-    if (userError || !user) return json(401, { error: "Authentication failed" });
+    // Validate the caller's JWT with an anon-key client that forwards the
+    // Authorization header (service-role clients cannot resolve user tokens
+    // under the signing-keys auth system).
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      console.error("auth failed", userError?.message);
+      return json(401, { error: "Authentication failed" });
+    }
+
 
     const body = await req.json().catch(() => ({}));
     const action: "records" | "check" = body?.action ?? "records";

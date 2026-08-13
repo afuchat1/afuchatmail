@@ -43,13 +43,18 @@ const handler = async (req: Request): Promise<Response> => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json(401, { error: "Missing authorization header" });
 
-    const token = authHeader.replace("Bearer ", "");
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
     if (userError || !user) return json(401, { error: "Authentication failed" });
+
 
     const body = await req.json().catch(() => ({}));
     if (!body?.domain_id) return json(400, { error: "domain_id is required" });
