@@ -58,28 +58,65 @@ interface NormalizedRecord {
 const INBOUND_MX_HOST = "inbound.resend.com";
 const INBOUND_MX_PRIORITY = 10;
 
-// DNS-over-HTTPS lookup (Google public resolver). Returns the answer strings.
-async function dohLookup(name: string, type: "MX" | "TXT"): Promise<string[]> {
-  try {
-    const res = await fetch(
-      `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`,
-      { headers: { accept: "application/dns-json" } },
-    );
-    if (!res.ok) return [];
-    const body = await res.json();
-    const answers: any[] = body?.Answer ?? [];
-    return answers
-      .filter((a) => (type === "MX" ? a.type === 15 : a.type === 16))
-      .map((a) => String(a.data ?? "").replace(/^"|"$/g, "").trim().toLowerCase());
-  } catch (err) {
-    console.warn("DoH lookup failed", name, type, (err as Error)?.message);
-    return [];
+// DNS-over-HTTPS lookup (Google public resolver).
+// Returns the answer strings, or null when the lookup itself could not be
+// completed (network/resolver failure). null must never be treated as
+// "record missing" — that is how previously verified domains flip back to
+// unverified for no reason.
+async function dohLookup(name: string, type: "MX" | "TXT"): Promise<string[] | null> {
+  const resolvers = [
+    `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`,
+    `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${type}`,
+  ];
+  for (const url of resolvers) {
+    try {
+      const res = await fetch(url, { headers: { accept: "application/dns-json" } });
+      if (!res.ok) continue;
+      const body = await res.json();
+      // NXDOMAIN (3) / NOERROR (0) are authoritative answers; anything else
+      // (SERVFAIL etc.) is inconclusive.
+      const rcode = Number(body?.Status ?? 0);
+      if (rcode !== 0 && rcode !== 3) continue;
+      const answers: any[] = body?.Answer ?? [];
+      return answers
+        .filter((a) => (type === "MX" ? a.type === 15 : a.type === 16))
+        .map((a) => String(a.data ?? "").replace(/^"|"$/g, "").trim().toLowerCase());
+    } catch (err) {
+      console.warn("DoH lookup failed", name, type, (err as Error)?.message);
+    }
   }
+  return null;
 }
 
-async function inboundMxRecord(domain: string): Promise<NormalizedRecord> {
+/** Once a record has been seen live, keep it verified unless DNS positively says it is gone. */
+function stickyStatus(present: boolean | null, priorStatus?: string): string {
+  if (present === true) return "verified";
+  if (present === null) return priorStatus === "verified" ? "verified" : (priorStatus ?? "pending");
+  // Positive absence: only downgrade if it was never verified before.
+  return priorStatus === "verified" ? "verified" : "pending";
+}
+
+type CachedMap = Map<string, NormalizedRecord>;
+
+function cachedRecordMap(cachedRecords: unknown): CachedMap {
+  const map: CachedMap = new Map();
+  if (Array.isArray(cachedRecords)) {
+    for (const record of cachedRecords) {
+      if (record && typeof record === "object" && "purpose" in record) {
+        const r = record as NormalizedRecord;
+        map.set(`${r.purpose}:${(r.fqdn ?? "").toLowerCase()}`, r);
+      }
+    }
+  }
+  return map;
+}
+
+const priorStatusOf = (cache: CachedMap, purpose: string, fqdn: string) =>
+  cache.get(`${purpose}:${(fqdn ?? "").toLowerCase()}`)?.status;
+
+async function inboundMxRecord(domain: string, cache: CachedMap = new Map()): Promise<NormalizedRecord> {
   const answers = await dohLookup(domain, "MX");
-  const present = answers.some((a) => a.includes(INBOUND_MX_HOST));
+  const present = answers === null ? null : answers.some((a) => a.includes(INBOUND_MX_HOST));
   return {
     purpose: "inbound_mx",
     kind: "MX",
@@ -88,7 +125,7 @@ async function inboundMxRecord(domain: string): Promise<NormalizedRecord> {
     value: INBOUND_MX_HOST,
     priority: INBOUND_MX_PRIORITY,
     ttl: 3600,
-    status: present ? "verified" : "pending",
+    status: stickyStatus(present, priorStatusOf(cache, "inbound_mx", domain)),
     required: true,
     description:
       "Inbound MX — delivers mail addressed to your domain into your AfuChat inbox. Remove other MX records on the apex, or mail will go to your old provider.",
@@ -96,9 +133,10 @@ async function inboundMxRecord(domain: string): Promise<NormalizedRecord> {
   };
 }
 
-async function ownershipRecord(domain: string, token: string): Promise<NormalizedRecord> {
+async function ownershipRecord(domain: string, token: string, cache: CachedMap = new Map()): Promise<NormalizedRecord> {
   const value = `afuchat-verify=${token}`;
   const answers = await dohLookup(domain, "TXT");
+  const present = answers === null ? null : answers.some((answer) => answer.includes(value.toLowerCase()));
   return {
     purpose: "verification",
     kind: "TXT",
@@ -106,7 +144,7 @@ async function ownershipRecord(domain: string, token: string): Promise<Normalize
     fqdn: domain,
     value,
     ttl: 3600,
-    status: answers.some((answer) => answer.includes(value.toLowerCase())) ? "verified" : "pending",
+    status: stickyStatus(present, priorStatusOf(cache, "verification", domain)),
     required: true,
     description: "Ownership verification — proves that you control this domain.",
     direction: "receiving",
@@ -118,15 +156,11 @@ async function buildProviderLimitRecords(
   token: string,
   cachedRecords: unknown,
 ): Promise<NormalizedRecord[]> {
-  const cached = Array.isArray(cachedRecords)
-    ? cachedRecords.filter((record): record is NormalizedRecord =>
-      !!record && typeof record === "object" && "kind" in record && "value" in record
-    )
-    : [];
-  const sending = cached.filter((record) => record.direction === "sending");
+  const cache = cachedRecordMap(cachedRecords);
+  const sending = [...cache.values()].filter((record) => record.direction === "sending");
   const [ownership, inbound] = await Promise.all([
-    ownershipRecord(domain, token),
-    inboundMxRecord(domain),
+    ownershipRecord(domain, token, cache),
+    inboundMxRecord(domain, cache),
   ]);
   return [ownership, ...sending, inbound];
 }
@@ -157,10 +191,14 @@ function describe(record: string, type: string): { purpose: NormalizedRecord["pu
   return { purpose: "other", required: true, description: `${r || type} record required by the email provider.` };
 }
 
-function normalizeResendRecords(domain: string, records: ResendDnsRecord[]): NormalizedRecord[] {
+function normalizeResendRecords(domain: string, records: ResendDnsRecord[], cache: CachedMap = new Map()): NormalizedRecord[] {
   return (records || []).map((r) => {
     const meta = describe(r.record, r.type);
     const fqdn = r.name;
+    const prior = priorStatusOf(cache, meta.purpose, fqdn);
+    // Provider statuses can flap back to "pending" while it re-checks; once a
+    // record has been verified we keep it verified.
+    const status = r.status === "verified" || prior === "verified" ? "verified" : (r.status ?? "pending");
     return {
       purpose: meta.purpose,
       kind: (r.type as "TXT" | "MX" | "CNAME") || "TXT",
@@ -169,7 +207,7 @@ function normalizeResendRecords(domain: string, records: ResendDnsRecord[]): Nor
       value: r.value,
       priority: r.priority,
       ttl: r.ttl,
-      status: r.status,
+      status,
       required: meta.required,
       description: meta.description,
       direction: "sending" as const,
@@ -177,22 +215,37 @@ function normalizeResendRecords(domain: string, records: ResendDnsRecord[]): Nor
   });
 }
 
-// Sending records come from the provider; the inbound MX is ours.
-async function buildAllRecords(domain: string, providerRecords: ResendDnsRecord[]): Promise<NormalizedRecord[]> {
-  const sending = normalizeResendRecords(domain, providerRecords);
-  const inbound = await inboundMxRecord(domain);
-  return [...sending, inbound];
+// Sending records come from the provider; ownership + inbound MX are ours.
+async function buildAllRecords(
+  domain: string,
+  providerRecords: ResendDnsRecord[],
+  token: string,
+  cachedRecords: unknown,
+): Promise<NormalizedRecord[]> {
+  const cache = cachedRecordMap(cachedRecords);
+  const sending = normalizeResendRecords(domain, providerRecords, cache);
+  const [ownership, inbound] = await Promise.all([
+    ownershipRecord(domain, token, cache),
+    inboundMxRecord(domain, cache),
+  ]);
+  return [ownership, ...sending, inbound];
 }
 
-const readiness = (records: NormalizedRecord[], providerStatus: string) => {
+const readiness = (
+  records: NormalizedRecord[],
+  providerStatus: string,
+  domainStatus?: string,
+) => {
   const receiving = records.find((r) => r.purpose === "inbound_mx");
   const ownership = records.find((r) => r.purpose === "verification");
   // When the provider cannot host this domain as a sending domain, mail is
   // relayed through the platform sending domain instead. That only needs
   // proven ownership, so sending is still available in relay mode.
-  const relayMode = providerStatus === "unavailable";
+  const relayMode = providerStatus === "unavailable" || providerStatus === "limit_reached";
+  const wasVerified = domainStatus === "verified";
   return {
-    sending_ready: relayMode ? ownership?.status === "verified" : providerStatus === "verified",
+    sending_ready: wasVerified ||
+      (relayMode ? ownership?.status === "verified" : providerStatus === "verified"),
     sending_mode: relayMode ? "relay" : "direct",
     receiving_ready: receiving?.status === "verified",
   };
