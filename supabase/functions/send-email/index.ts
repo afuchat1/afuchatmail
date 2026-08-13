@@ -152,12 +152,10 @@ const handler = async (req: Request): Promise<Response> => {
     let emailResponse: any = await doSend(emailData.from_address);
 
     const provErr0 = (emailResponse as any)?.error;
-    const needsRelay =
-      !!provErr0 &&
-      fromDomain !== "afuchat.com" &&
-      /domain|not verified|not found|sender/i.test(
-        `${provErr0?.message || ""} ${provErr0?.name || ""}`,
-      );
+    // Any provider rejection for a custom-domain sender is retried through the
+    // platform relay — a custom domain that is verified in AfuChat must always
+    // be able to send, whether or not the provider hosts it as a sending domain.
+    const needsRelay = !!provErr0 && fromDomain !== "afuchat.com";
 
     if (needsRelay) {
       console.warn("Relaying custom-domain send through platform domain:", {
