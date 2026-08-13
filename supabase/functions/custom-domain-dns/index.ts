@@ -186,11 +186,18 @@ async function buildAllRecords(domain: string, providerRecords: ResendDnsRecord[
 
 const readiness = (records: NormalizedRecord[], providerStatus: string) => {
   const receiving = records.find((r) => r.purpose === "inbound_mx");
+  const ownership = records.find((r) => r.purpose === "verification");
+  // When the provider cannot host this domain as a sending domain, mail is
+  // relayed through the platform sending domain instead. That only needs
+  // proven ownership, so sending is still available in relay mode.
+  const relayMode = providerStatus === "unavailable";
   return {
-    sending_ready: providerStatus === "verified",
+    sending_ready: relayMode ? ownership?.status === "verified" : providerStatus === "verified",
+    sending_mode: relayMode ? "relay" : "direct",
     receiving_ready: receiving?.status === "verified",
   };
 };
+
 
 
 async function resendFetch(path: string, init: RequestInit = {}) {
