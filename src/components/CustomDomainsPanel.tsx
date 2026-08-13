@@ -321,34 +321,54 @@ function DomainRow({
     fetchAddresses();
   }, [fetchAddresses]);
 
+  const callDns = useCallback(async (action: "records" | "check") => {
+    const { data, error } = await supabase.functions.invoke("custom-domain-dns", {
+      body: { action, domain_id: domain.id },
+    });
+    if (!error) return data;
+    // Read the real response body — invoke() reports every non-2xx as a generic error.
+    let payload: any = null;
+    const ctx = (error as any)?.context;
+    if (ctx && typeof ctx.text === "function") {
+      try { payload = JSON.parse(await ctx.text()); } catch { /* ignore */ }
+    }
+    const err: any = new Error(payload?.error || error.message);
+    err.code = payload?.code;
+    throw err;
+  }, [domain.id]);
+
   const loadRecords = useCallback(async () => {
     setDnsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("custom-domain-dns", {
-        body: { action: "records", domain_id: domain.id },
-      });
-      if (error) throw error;
+      const data = await callDns("records");
       setDnsRecords((data?.records || []).map((r: any) => ({ ...r })));
       if (typeof data?.sending_ready === "boolean") {
         setReadiness({ sending: !!data.sending_ready, receiving: !!data.receiving_ready });
       }
+      setDnsError(null);
     } catch (err: any) {
-      toast({ title: "Could not load DNS records", description: err?.message || String(err), variant: "destructive" });
+      const limit = err?.code === "PROVIDER_DOMAIN_LIMIT";
+      setDnsError(err?.message || String(err));
+      toast({
+        title: limit ? "Email provider domain limit reached" : "Could not load DNS records",
+        description: limit
+          ? "The email provider plan on this account allows only one sending domain. Upgrade it to add more."
+          : err?.message || String(err),
+        variant: "destructive",
+      });
     } finally {
       setDnsLoading(false);
     }
-  }, [domain.id, toast]);
+  }, [callDns, toast]);
 
   const runDnsCheck = useCallback(async () => {
     setDnsChecking(true);
     try {
-      const { data, error } = await supabase.functions.invoke("custom-domain-dns", {
-        body: { action: "check", domain_id: domain.id },
-      });
-      if (error) throw error;
+      const data = await callDns("check");
       setDnsRecords(data?.records || []);
       setDnsCheckedAt(data?.checked_at || new Date().toISOString());
       setReadiness({ sending: !!data?.sending_ready, receiving: !!data?.receiving_ready });
+      setDnsError(null);
       const bothOk = !!data?.sending_ready && !!data?.receiving_ready;
       toast({
         title: bothOk ? "Sending and receiving ready" : "Some records missing",
@@ -360,11 +380,20 @@ function DomainRow({
         variant: bothOk ? "default" : "destructive",
       });
     } catch (err: any) {
-      toast({ title: "DNS check failed", description: err?.message || String(err), variant: "destructive" });
+      const limit = err?.code === "PROVIDER_DOMAIN_LIMIT";
+      setDnsError(err?.message || String(err));
+      toast({
+        title: limit ? "Email provider domain limit reached" : "DNS check failed",
+        description: limit
+          ? "The email provider plan on this account allows only one sending domain. Upgrade it to add more."
+          : err?.message || String(err),
+        variant: "destructive",
+      });
     } finally {
       setDnsChecking(false);
     }
-  }, [domain.id, toast]);
+  }, [callDns, toast]);
+
 
   const saveCatchAll = useCallback(
     async (enabled: boolean, addressId: string | null) => {
