@@ -264,6 +264,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(JSON.stringify({ 
       success: true, 
+      relayed,
       email_sent: emailResponse,
       email_stored: insertedEmail 
     }), {
