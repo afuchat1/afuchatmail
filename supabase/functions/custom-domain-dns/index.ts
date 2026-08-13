@@ -343,18 +343,24 @@ const handler = async (req: Request): Promise<Response> => {
       );
       const flags = readiness(fallbackRecords, "unavailable");
       const nowIso = new Date().toISOString();
+      const limitUpdates: Record<string, unknown> = {
+        dns_records: fallbackRecords,
+        last_checked_at: nowIso,
+        last_error: providerError.message,
+      };
+      // Ownership proven → the domain is usable in relay mode.
+      if (flags.sending_ready && row.status !== "verified") {
+        limitUpdates.status = "verified";
+        limitUpdates.verified_at = nowIso;
+      }
       await supabaseAdmin
         .from("custom_domains")
-        .update({
-          dns_records: fallbackRecords,
-          last_checked_at: nowIso,
-          last_error: providerError.message,
-        })
+        .update(limitUpdates)
         .eq("id", row.id);
 
       return json(200, {
         domain: row.domain,
-        status: row.status,
+        status: (limitUpdates.status as string) ?? row.status,
         provider_status: "limit_reached",
         provider_limit: true,
         warning: providerError.message,
@@ -363,6 +369,7 @@ const handler = async (req: Request): Promise<Response> => {
         checked_at: nowIso,
       });
     }
+
     const normalized = await buildAllRecords(row.domain, ensured.records);
 
     // Persist resend id + cached records for fast subsequent loads.
