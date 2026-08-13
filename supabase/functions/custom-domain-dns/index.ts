@@ -342,8 +342,9 @@ const handler = async (req: Request): Promise<Response> => {
     return json(400, { error: "Unknown action" });
   } catch (err) {
     console.error("custom-domain-dns error:", err);
-    const msg = err instanceof Error ? err.message : String(err);
-    return json(500, { error: msg, code: "DNS_HELPER_ERROR" });
+    const e = err as Error & { statusCode?: number; code?: string };
+    const msg = e?.message ?? String(err);
+    return json(e?.statusCode ?? 500, { error: msg, code: e?.code ?? "DNS_HELPER_ERROR" });
   }
 };
 
