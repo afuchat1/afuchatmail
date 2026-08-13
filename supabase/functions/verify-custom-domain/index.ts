@@ -112,7 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
     await supabaseAdmin
       .from("custom_domains")
       .update({
-        status: row.status === "verified" ? "verified" : "failed",
+        status: row.status === "verified" ? "verified" : "pending",
         last_checked_at: nowIso,
         last_error: reason,
         dns_records: fresh.body?.records ?? null,
@@ -121,7 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     return json(200, {
       success: false,
-      status: row.status === "verified" ? "verified" : "failed",
+      status: row.status === "verified" ? "verified" : "pending",
       provider_status: providerStatus,
       error: reason,
     });
