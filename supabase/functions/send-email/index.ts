@@ -129,17 +129,47 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Send email via Resend
-    const emailResponse = await resend.emails.send({
-      from: emailData.from_address,
-      to: emailData.to_addresses,
-      cc: emailData.cc_addresses,
-      bcc: emailData.bcc_addresses,
-      subject: emailData.subject,
-      html: emailData.body_html,
-      text: emailData.body_text,
-      replyTo: emailData.reply_to,
-    });
+    // Send email via Resend.
+    // Custom domains may not be registered as sending domains with the email
+    // provider (provider-side domain capacity). In that case we relay the
+    // message through the platform sending domain while preserving the user's
+    // custom address as the display name and Reply-To, so replies come back
+    // to their custom mailbox.
+    const RELAY_SENDER = "relay@afuchat.com";
+    const doSend = (from: string, replyTo?: string) =>
+      resend.emails.send({
+        from,
+        to: emailData.to_addresses,
+        cc: emailData.cc_addresses,
+        bcc: emailData.bcc_addresses,
+        subject: emailData.subject,
+        html: emailData.body_html,
+        text: emailData.body_text,
+        replyTo: replyTo || emailData.reply_to,
+      });
+
+    let relayed = false;
+    let emailResponse: any = await doSend(emailData.from_address);
+
+    const provErr0 = (emailResponse as any)?.error;
+    const needsRelay =
+      !!provErr0 &&
+      fromDomain !== "afuchat.com" &&
+      /domain|not verified|not found|sender/i.test(
+        `${provErr0?.message || ""} ${provErr0?.name || ""}`,
+      );
+
+    if (needsRelay) {
+      console.warn("Relaying custom-domain send through platform domain:", {
+        fromDomain,
+        providerError: provErr0?.message,
+      });
+      relayed = true;
+      emailResponse = await doSend(
+        `${fromLower} <${RELAY_SENDER}>`,
+        emailData.reply_to || fromLower,
+      );
+    }
 
     if ((emailResponse as any)?.error) {
       const provErr = (emailResponse as any).error;
@@ -153,6 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders } },
       );
     }
+
 
     console.log("Email sent successfully:", emailResponse);
 
