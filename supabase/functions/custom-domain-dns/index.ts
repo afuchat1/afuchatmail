@@ -243,10 +243,14 @@ const readiness = (
   // proven ownership, so sending is still available in relay mode.
   const relayMode = providerStatus === "unavailable" || providerStatus === "limit_reached";
   const wasVerified = domainStatus === "verified";
+  const providerVerified = providerStatus === "verified";
+  const ownershipVerified = ownership?.status === "verified";
   return {
-    sending_ready: wasVerified ||
-      (relayMode ? ownership?.status === "verified" : providerStatus === "verified"),
-    sending_mode: relayMode ? "relay" : "direct",
+    // Proven ownership is enough: if the provider has not verified the domain
+    // for direct sending, outgoing mail is relayed through the platform
+    // sending domain with the custom address as sender/Reply-To.
+    sending_ready: wasVerified || providerVerified || ownershipVerified,
+    sending_mode: providerVerified && !relayMode ? "direct" : "relay",
     receiving_ready: receiving?.status === "verified",
   };
 };
@@ -394,7 +398,7 @@ const handler = async (req: Request): Promise<Response> => {
         row.verification_token,
         row.dns_records,
       );
-      const flags = readiness(fallbackRecords, "unavailable");
+      const flags = readiness(fallbackRecords, "unavailable", row.status);
       const nowIso = new Date().toISOString();
       const limitUpdates: Record<string, unknown> = {
         dns_records: fallbackRecords,
@@ -423,7 +427,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const normalized = await buildAllRecords(row.domain, ensured.records);
+    const normalized = await buildAllRecords(row.domain, ensured.records, row.verification_token, row.dns_records);
 
     // Persist resend id + cached records for fast subsequent loads.
     await supabaseAdmin
@@ -441,7 +445,7 @@ const handler = async (req: Request): Promise<Response> => {
         status: row.status,
         provider_status: ensured.status ?? "unknown",
         records: normalized,
-        ...readiness(normalized, ensured.status ?? "unknown"),
+        ...readiness(normalized, ensured.status ?? "unknown", row.status),
       });
     }
 
@@ -453,8 +457,8 @@ const handler = async (req: Request): Promise<Response> => {
       const fresh = await resendFetch(`/domains/${ensured.id}`);
       const freshRecords: ResendDnsRecord[] = fresh.body?.records ?? ensured.records ?? [];
       const providerStatus: string = fresh.body?.status ?? ensured.status ?? "pending";
-      const freshNormalized = await buildAllRecords(row.domain, freshRecords);
-      const flags = readiness(freshNormalized, providerStatus);
+      const freshNormalized = await buildAllRecords(row.domain, freshRecords, row.verification_token, row.dns_records);
+      const flags = readiness(freshNormalized, providerStatus, row.status);
       const verifiedAtProvider = flags.sending_ready;
       const requiredOk = freshNormalized.filter((r) => r.required).every((r) => r.status === "verified");
       const allOk = freshNormalized.every((r) => r.status === "verified");
@@ -471,7 +475,7 @@ const handler = async (req: Request): Promise<Response> => {
           ? null
           : `Sending is live. Inbound mail is not routed yet — add the MX record ${INBOUND_MX_HOST} (priority ${INBOUND_MX_PRIORITY}) on ${row.domain}.`;
       } else if (row.status !== "verified") {
-        updates.status = "failed";
+        updates.status = "pending";
         updates.last_error = verifyRes.ok
           ? `Provider says domain is ${providerStatus}. DNS records may still be propagating.`
           : `Verify call failed (${verifyRes.status}): ${typeof verifyRes.body === "string" ? verifyRes.body : JSON.stringify(verifyRes.body)}`;
