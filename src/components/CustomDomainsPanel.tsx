@@ -56,12 +56,14 @@ interface DnsRecordResult {
 interface DnsResponse {
   records?: DnsRecordResult[];
   sending_ready?: boolean;
+  sending_mode?: "relay" | "direct";
   receiving_ready?: boolean;
   checked_at?: string;
   provider_limit?: boolean;
   warning?: string;
   error?: string;
 }
+
 
 
 interface Props {
