@@ -295,6 +295,7 @@ function DomainRow({
   const [dnsRecords, setDnsRecords] = useState<DnsRecordResult[] | null>(null);
   const [dnsCheckedAt, setDnsCheckedAt] = useState<string | null>(null);
   const [dnsChecking, setDnsChecking] = useState(false);
+  const [dnsError, setDnsError] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<{ sending: boolean; receiving: boolean } | null>(null);
   const [catchAllSaving, setCatchAllSaving] = useState(false);
   const [catchAll, setCatchAll] = useState(!!domain.catch_all);
