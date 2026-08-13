@@ -358,7 +358,12 @@ function DomainRow({
       if (typeof data?.sending_ready === "boolean") {
         setReadiness({ sending: !!data.sending_ready, receiving: !!data.receiving_ready });
       }
-      setDnsError(data.provider_limit ? (data.warning || "Sending-domain capacity is currently unavailable.") : null);
+      setDnsError(
+        data.provider_limit && !data.sending_ready
+          ? (data.warning || "Sending-domain capacity is currently unavailable.")
+          : null,
+      );
+
     } catch (err: any) {
       const limit = err?.code === "PROVIDER_DOMAIN_LIMIT";
       setDnsError(err?.message || String(err));
