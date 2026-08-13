@@ -423,10 +423,10 @@ function DomainRow({
 
 
   useEffect(() => {
-    if (dnsOpen && !dnsRecords && !dnsLoading) {
+    if (dnsOpen && !dnsRecords && !dnsLoading && !dnsError) {
       loadRecords();
     }
-  }, [dnsOpen, dnsRecords, dnsLoading, loadRecords]);
+  }, [dnsOpen, dnsRecords, dnsLoading, dnsError, loadRecords]);
 
   const statusBadge = (() => {
     if (domain.status === "verified") {

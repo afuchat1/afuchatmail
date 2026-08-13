@@ -238,15 +238,18 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
-    // Validate the caller's JWT with an anon-key client that forwards the
-    // Authorization header (service-role clients cannot resolve user tokens
-    // under the signing-keys auth system).
+    const accessToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!accessToken || accessToken === authHeader) {
+      return json(401, { error: "Invalid authorization header" });
+    }
+
+    // Pass the bearer token explicitly. Edge clients do not persist a browser
+    // session, so getUser() without a token can report "Auth session missing".
     const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } },
     );
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(accessToken);
     if (userError || !user) {
       console.error("auth failed", userError?.message);
       return json(401, { error: "Authentication failed" });
