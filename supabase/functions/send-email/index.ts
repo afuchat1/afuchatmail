@@ -228,7 +228,6 @@ const handler = async (req: Request): Promise<Response> => {
     // platform domain is used strictly as the delivery/envelope path while the
     // custom address stays the visible sender name and Reply-To.
     const RELAY_SENDER = "relay@afuchat.com";
-    const localPart = fromLower.split("@")[0] || "mail";
     const doSend = (from: string, replyTo?: string, headers?: Record<string, string>) =>
       resend.emails.send({
         from,
@@ -256,7 +255,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
       relayed = true;
       emailResponse = await doSend(
-        `"${fromLower}" <${localPart}@afuchat.com>`.replace(`${localPart}@afuchat.com`, RELAY_SENDER),
+        `"${fromLower}" <${RELAY_SENDER}>`,
         emailData.reply_to || fromLower,
         {
           "Reply-To": emailData.reply_to || fromLower,
