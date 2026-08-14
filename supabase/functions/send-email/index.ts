@@ -227,7 +227,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Fallback: the provider cannot host the domain (plan capacity). Then the
     // platform domain is used strictly as the delivery/envelope path while the
     // custom address stays the visible sender name and Reply-To.
-    const RELAY_SENDER = "relay@afuchat.com";
+    // No platform relay sender: custom-domain mail must leave with the user's own address.
     const doSend = (from: string, replyTo?: string, headers?: Record<string, string>) =>
       resend.emails.send({
         from,
@@ -245,25 +245,27 @@ const handler = async (req: Request): Promise<Response> => {
     let emailResponse: any = await doSend(emailData.from_address);
 
     const provErr0 = (emailResponse as any)?.error;
-    const needsRelay = !!provErr0 && fromDomain !== "afuchat.com";
-
-    if (needsRelay) {
-      console.warn("Relaying custom-domain send through platform delivery domain:", {
+    if (provErr0 && fromDomain !== "afuchat.com") {
+      // Never relay under a platform address: the recipient would see
+      // relay@afuchat.com in From. Surface an actionable error instead.
+      console.error("Custom-domain send refused by provider:", {
         fromDomain,
         providerDomainReady,
         providerError: provErr0?.message,
       });
-      relayed = true;
-      emailResponse = await doSend(
-        `"${fromLower}" <${RELAY_SENDER}>`,
-        emailData.reply_to || fromLower,
-        {
-          "Reply-To": emailData.reply_to || fromLower,
-          "X-Original-From": fromLower,
-          "X-AfuChat-Delivery": "relay",
-        },
+      return new Response(
+        JSON.stringify({
+          error:
+            `The email provider will not send from ${fromDomain} yet, so the message was not sent (we refuse to fall back to a visible @afuchat.com sender). ` +
+            `The provider account must be able to host ${fromDomain} as a sending domain. Provider said: ${provErr0?.message || "unknown error"}`,
+          code: "CUSTOM_DOMAIN_SEND_BLOCKED",
+          domain: fromDomain,
+          provider_status: provErr0?.statusCode,
+        }),
+        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders } },
       );
     }
+
 
 
     if ((emailResponse as any)?.error) {
