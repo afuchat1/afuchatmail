@@ -27,6 +27,72 @@ interface SendEmailRequest {
   }>;
 }
 
+const RESEND_API = "https://api.resend.com";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+
+async function resendFetch(path: string, init: RequestInit = {}) {
+  const res = await fetch(`${RESEND_API}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+  const text = await res.text();
+  let body: any = null;
+  try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+  return { ok: res.ok, status: res.status, body };
+}
+
+/**
+ * Ensure the custom domain exists at the email provider and is verified, so
+ * outgoing mail can carry the user's own address in the From header.
+ * Returns { verified } — false means we must relay through the platform domain.
+ */
+async function ensureProviderSendingDomain(
+  domain: string,
+  existingId: string | null,
+): Promise<{ id: string | null; status?: string; verified: boolean }> {
+  const isVerified = (s?: string) => String(s ?? "").toLowerCase() === "verified";
+
+  const inspect = async (id: string) => {
+    const got = await resendFetch(`/domains/${id}`);
+    if (!got.ok || !got.body) return null;
+    return { id: got.body.id ?? id, status: got.body.status as string | undefined };
+  };
+
+  let current = existingId ? await inspect(existingId) : null;
+
+  if (!current) {
+    const list = await resendFetch("/domains");
+    const arr: any[] = list.ok ? (list.body?.data ?? list.body ?? []) : [];
+    const match = arr.find((d: any) => String(d?.name).toLowerCase() === domain.toLowerCase());
+    if (match?.id) current = await inspect(match.id);
+  }
+
+  if (!current) {
+    const created = await resendFetch("/domains", {
+      method: "POST",
+      body: JSON.stringify({ name: domain, region: "us-east-1" }),
+    });
+    if (!created.ok) {
+      // Plan capacity or other provider refusal — relay path will be used.
+      return { id: existingId, status: created.status === 403 ? "limit_reached" : "provider_error", verified: false };
+    }
+    current = { id: created.body?.id, status: created.body?.status };
+  }
+
+  if (current?.id && !isVerified(current.status)) {
+    await resendFetch(`/domains/${current.id}/verify`, { method: "POST" });
+    const fresh = await inspect(current.id);
+    if (fresh) current = fresh;
+  }
+
+  return { id: current?.id ?? existingId, status: current?.status, verified: isVerified(current?.status) };
+}
+
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
