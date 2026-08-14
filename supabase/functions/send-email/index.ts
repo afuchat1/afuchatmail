@@ -227,7 +227,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Fallback: the provider cannot host the domain (plan capacity). Then the
     // platform domain is used strictly as the delivery/envelope path while the
     // custom address stays the visible sender name and Reply-To.
-    const RELAY_SENDER = "relay@afuchat.com";
+    // No platform relay sender: custom-domain mail must leave with the user's own address.
     const doSend = (from: string, replyTo?: string, headers?: Record<string, string>) =>
       resend.emails.send({
         from,
