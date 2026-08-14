@@ -27,6 +27,72 @@ interface SendEmailRequest {
   }>;
 }
 
+const RESEND_API = "https://api.resend.com";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+
+async function resendFetch(path: string, init: RequestInit = {}) {
+  const res = await fetch(`${RESEND_API}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+  const text = await res.text();
+  let body: any = null;
+  try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+  return { ok: res.ok, status: res.status, body };
+}
+
+/**
+ * Ensure the custom domain exists at the email provider and is verified, so
+ * outgoing mail can carry the user's own address in the From header.
+ * Returns { verified } — false means we must relay through the platform domain.
+ */
+async function ensureProviderSendingDomain(
+  domain: string,
+  existingId: string | null,
+): Promise<{ id: string | null; status?: string; verified: boolean }> {
+  const isVerified = (s?: string) => String(s ?? "").toLowerCase() === "verified";
+
+  const inspect = async (id: string) => {
+    const got = await resendFetch(`/domains/${id}`);
+    if (!got.ok || !got.body) return null;
+    return { id: got.body.id ?? id, status: got.body.status as string | undefined };
+  };
+
+  let current = existingId ? await inspect(existingId) : null;
+
+  if (!current) {
+    const list = await resendFetch("/domains");
+    const arr: any[] = list.ok ? (list.body?.data ?? list.body ?? []) : [];
+    const match = arr.find((d: any) => String(d?.name).toLowerCase() === domain.toLowerCase());
+    if (match?.id) current = await inspect(match.id);
+  }
+
+  if (!current) {
+    const created = await resendFetch("/domains", {
+      method: "POST",
+      body: JSON.stringify({ name: domain, region: "us-east-1" }),
+    });
+    if (!created.ok) {
+      // Plan capacity or other provider refusal — relay path will be used.
+      return { id: existingId, status: created.status === 403 ? "limit_reached" : "provider_error", verified: false };
+    }
+    current = { id: created.body?.id, status: created.body?.status };
+  }
+
+  if (current?.id && !isVerified(current.status)) {
+    await resendFetch(`/domains/${current.id}/verify`, { method: "POST" });
+    const fresh = await inspect(current.id);
+    if (fresh) current = fresh;
+  }
+
+  return { id: current?.id ?? existingId, status: current?.status, verified: isVerified(current?.status) };
+}
+
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -111,10 +177,11 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } },
       );
     }
+    let providerDomainReady = fromDomain === "afuchat.com";
     if (fromDomain !== "afuchat.com") {
       const { data: cd } = await supabaseAdmin
         .from("custom_domains")
-        .select("status")
+        .select("id, status, resend_domain_id")
         .eq("user_id", user.id)
         .eq("domain", fromDomain)
         .maybeSingle();
@@ -127,16 +194,41 @@ const handler = async (req: Request): Promise<Response> => {
           { status: 412, headers: { "Content-Type": "application/json", ...corsHeaders } },
         );
       }
+
+      // Make the provider aware of the domain so mail can leave WITH the
+      // custom address in the From header (no platform domain visible).
+      // Registration/verification is attempted on every send until it sticks;
+      // if the provider cannot host the domain (plan capacity), we fall back
+      // to the platform relay purely as a delivery path.
+      try {
+        const ensured = await ensureProviderSendingDomain(fromDomain, cd.resend_domain_id ?? null);
+        providerDomainReady = ensured.verified;
+        if (ensured.id && ensured.id !== cd.resend_domain_id) {
+          await supabaseAdmin
+            .from("custom_domains")
+            .update({ resend_domain_id: ensured.id, provider_status: ensured.status ?? null })
+            .eq("id", cd.id);
+        } else if (ensured.status) {
+          await supabaseAdmin
+            .from("custom_domains")
+            .update({ provider_status: ensured.status })
+            .eq("id", cd.id);
+        }
+      } catch (err) {
+        console.warn("Provider sending-domain setup unavailable:", (err as Error)?.message);
+      }
     }
 
+
     // Send email via Resend.
-    // Custom domains may not be registered as sending domains with the email
-    // provider (provider-side domain capacity). In that case we relay the
-    // message through the platform sending domain while preserving the user's
-    // custom address as the display name and Reply-To, so replies come back
-    // to their custom mailbox.
+    // Preferred path: the custom domain is registered + verified at the
+    // provider, so the message goes out with the user's own address in From —
+    // no platform domain anywhere in the visible headers.
+    // Fallback: the provider cannot host the domain (plan capacity). Then the
+    // platform domain is used strictly as the delivery/envelope path while the
+    // custom address stays the visible sender name and Reply-To.
     const RELAY_SENDER = "relay@afuchat.com";
-    const doSend = (from: string, replyTo?: string) =>
+    const doSend = (from: string, replyTo?: string, headers?: Record<string, string>) =>
       resend.emails.send({
         from,
         to: emailData.to_addresses,
@@ -146,28 +238,33 @@ const handler = async (req: Request): Promise<Response> => {
         html: emailData.body_html,
         text: emailData.body_text,
         replyTo: replyTo || emailData.reply_to,
+        headers,
       });
 
     let relayed = false;
     let emailResponse: any = await doSend(emailData.from_address);
 
     const provErr0 = (emailResponse as any)?.error;
-    // Any provider rejection for a custom-domain sender is retried through the
-    // platform relay — a custom domain that is verified in AfuChat must always
-    // be able to send, whether or not the provider hosts it as a sending domain.
     const needsRelay = !!provErr0 && fromDomain !== "afuchat.com";
 
     if (needsRelay) {
-      console.warn("Relaying custom-domain send through platform domain:", {
+      console.warn("Relaying custom-domain send through platform delivery domain:", {
         fromDomain,
+        providerDomainReady,
         providerError: provErr0?.message,
       });
       relayed = true;
       emailResponse = await doSend(
-        `${fromLower} <${RELAY_SENDER}>`,
+        `"${fromLower}" <${RELAY_SENDER}>`,
         emailData.reply_to || fromLower,
+        {
+          "Reply-To": emailData.reply_to || fromLower,
+          "X-Original-From": fromLower,
+          "X-AfuChat-Delivery": "relay",
+        },
       );
     }
+
 
     if ((emailResponse as any)?.error) {
       const provErr = (emailResponse as any).error;
