@@ -111,10 +111,11 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } },
       );
     }
+    let providerDomainReady = fromDomain === "afuchat.com";
     if (fromDomain !== "afuchat.com") {
       const { data: cd } = await supabaseAdmin
         .from("custom_domains")
-        .select("status")
+        .select("id, status, resend_domain_id")
         .eq("user_id", user.id)
         .eq("domain", fromDomain)
         .maybeSingle();
@@ -127,7 +128,31 @@ const handler = async (req: Request): Promise<Response> => {
           { status: 412, headers: { "Content-Type": "application/json", ...corsHeaders } },
         );
       }
+
+      // Make the provider aware of the domain so mail can leave WITH the
+      // custom address in the From header (no platform domain visible).
+      // Registration/verification is attempted on every send until it sticks;
+      // if the provider cannot host the domain (plan capacity), we fall back
+      // to the platform relay purely as a delivery path.
+      try {
+        const ensured = await ensureProviderSendingDomain(fromDomain, cd.resend_domain_id ?? null);
+        providerDomainReady = ensured.verified;
+        if (ensured.id && ensured.id !== cd.resend_domain_id) {
+          await supabaseAdmin
+            .from("custom_domains")
+            .update({ resend_domain_id: ensured.id, provider_status: ensured.status ?? null })
+            .eq("id", cd.id);
+        } else if (ensured.status) {
+          await supabaseAdmin
+            .from("custom_domains")
+            .update({ provider_status: ensured.status })
+            .eq("id", cd.id);
+        }
+      } catch (err) {
+        console.warn("Provider sending-domain setup unavailable:", (err as Error)?.message);
+      }
     }
+
 
     // Send email via Resend.
     // Custom domains may not be registered as sending domains with the email
