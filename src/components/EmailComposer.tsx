@@ -438,7 +438,30 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        let message = error.message || "Could not send email";
+        let code: string | undefined;
+        try {
+          const ctx = (error as any)?.context;
+          if (ctx && typeof ctx.text === "function") {
+            const raw = await ctx.text();
+            const parsed = JSON.parse(raw);
+            if (parsed?.error) message = parsed.error;
+            code = parsed?.code;
+          }
+        } catch { /* keep default message */ }
+
+        if (code === "CUSTOM_DOMAIN_SEND_BLOCKED") {
+          toast({
+            title: "Custom domain not ready for sending",
+            description: `${fromAddress.split("@")[1]} isn't authorised with the email provider yet. Verify its DNS records (or use an @afuchat.com address) and try again.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({ title: "Failed to send", description: message, variant: "destructive" });
+        }
+        return;
+      }
 
       if (scheduledAt) {
         const schedDate = new Date(scheduledAt);
@@ -448,8 +471,9 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
       }
       onClose();
     } catch (error: any) {
-      toast({ title: "Failed to send", description: error.message, variant: "destructive" });
+      toast({ title: "Failed to send", description: error?.message || "Something went wrong", variant: "destructive" });
     } finally { setSending(false); }
+
   };
 
   // Desktop: positioned + sized; mobile: sheet from bottom
