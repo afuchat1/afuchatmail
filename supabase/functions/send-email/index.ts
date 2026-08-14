@@ -221,13 +221,15 @@ const handler = async (req: Request): Promise<Response> => {
 
 
     // Send email via Resend.
-    // Custom domains may not be registered as sending domains with the email
-    // provider (provider-side domain capacity). In that case we relay the
-    // message through the platform sending domain while preserving the user's
-    // custom address as the display name and Reply-To, so replies come back
-    // to their custom mailbox.
+    // Preferred path: the custom domain is registered + verified at the
+    // provider, so the message goes out with the user's own address in From —
+    // no platform domain anywhere in the visible headers.
+    // Fallback: the provider cannot host the domain (plan capacity). Then the
+    // platform domain is used strictly as the delivery/envelope path while the
+    // custom address stays the visible sender name and Reply-To.
     const RELAY_SENDER = "relay@afuchat.com";
-    const doSend = (from: string, replyTo?: string) =>
+    const localPart = fromLower.split("@")[0] || "mail";
+    const doSend = (from: string, replyTo?: string, headers?: Record<string, string>) =>
       resend.emails.send({
         from,
         to: emailData.to_addresses,
@@ -237,28 +239,33 @@ const handler = async (req: Request): Promise<Response> => {
         html: emailData.body_html,
         text: emailData.body_text,
         replyTo: replyTo || emailData.reply_to,
+        headers,
       });
 
     let relayed = false;
     let emailResponse: any = await doSend(emailData.from_address);
 
     const provErr0 = (emailResponse as any)?.error;
-    // Any provider rejection for a custom-domain sender is retried through the
-    // platform relay — a custom domain that is verified in AfuChat must always
-    // be able to send, whether or not the provider hosts it as a sending domain.
     const needsRelay = !!provErr0 && fromDomain !== "afuchat.com";
 
     if (needsRelay) {
-      console.warn("Relaying custom-domain send through platform domain:", {
+      console.warn("Relaying custom-domain send through platform delivery domain:", {
         fromDomain,
+        providerDomainReady,
         providerError: provErr0?.message,
       });
       relayed = true;
       emailResponse = await doSend(
-        `${fromLower} <${RELAY_SENDER}>`,
+        `"${fromLower}" <${localPart}@afuchat.com>`.replace(`${localPart}@afuchat.com`, RELAY_SENDER),
         emailData.reply_to || fromLower,
+        {
+          "Reply-To": emailData.reply_to || fromLower,
+          "X-Original-From": fromLower,
+          "X-AfuChat-Delivery": "relay",
+        },
       );
     }
+
 
     if ((emailResponse as any)?.error) {
       const provErr = (emailResponse as any).error;
