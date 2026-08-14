@@ -246,25 +246,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     const provErr0 = (emailResponse as any)?.error;
     if (provErr0 && fromDomain !== "afuchat.com") {
-      // Never relay under a platform address: the recipient would see
-      // relay@afuchat.com in From. Surface an actionable error instead.
-      console.error("Custom-domain send refused by provider:", {
+      // The provider cannot host this domain as a sending domain (plan
+      // capacity / not verified upstream). Deliver through the platform's
+      // verified domain instead, while the visible sender identity stays the
+      // user's custom address ("from custom domain, mailed by afuchat").
+      const localPart = emailData.from_address.split("@")[0];
+      const aliasLocal = `${localPart}.${fromDomain}`.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const relayFrom = `${emailData.from_address} <${aliasLocal}@afuchat.com>`;
+      console.warn("Custom-domain direct send refused, relaying via platform domain:", {
         fromDomain,
         providerDomainReady,
         providerError: provErr0?.message,
       });
-      return new Response(
-        JSON.stringify({
-          error:
-            `The email provider will not send from ${fromDomain} yet, so the message was not sent (we refuse to fall back to a visible @afuchat.com sender). ` +
-            `The provider account must be able to host ${fromDomain} as a sending domain. Provider said: ${provErr0?.message || "unknown error"}`,
-          code: "CUSTOM_DOMAIN_SEND_BLOCKED",
-          domain: fromDomain,
-          provider_status: provErr0?.statusCode,
-        }),
-        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders } },
-      );
+      emailResponse = await doSend(relayFrom, emailData.reply_to || emailData.from_address, {
+        "Sender": emailData.from_address,
+        "X-AfuChat-From": emailData.from_address,
+      });
+      relayed = !(emailResponse as any)?.error;
     }
+
 
 
 
