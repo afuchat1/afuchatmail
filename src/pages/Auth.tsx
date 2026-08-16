@@ -59,6 +59,10 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
 
   const isOAuthFlow = searchParams.get("oauth") === "true";
+  // Preserve a same-origin relative return path (used by the MCP consent flow).
+  const rawNext = searchParams.get("next") || "";
+  const nextPath = /^\/(?!\/)[^\s]*$/.test(rawNext) ? rawNext : "/dashboard";
+
   const rawScope = searchParams.get("scope") || "";
   const validatedScope = rawScope.split(" ").filter(s => VALID_SCOPES.includes(s.trim())).join(" ") || "read:mailbox read:messages";
   const oauthParams: OAuthParams | null = isOAuthFlow
