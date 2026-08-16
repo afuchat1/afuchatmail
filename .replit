@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "python-base-3.13"]
 [agent]
 expertMode = true
 integrations = ["javascript_database:1.0.0"]
@@ -44,3 +44,6 @@ externalPort = 80
 [userenv]
 
 [userenv.shared]
+VITE_SUPABASE_PROJECT_ID = "lqowocmjmhbkoxlwyxku"
+VITE_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6ImFub24iLCJpYXQiOjE3ODI4Mjg1NzksImV4cCI6MjA5ODQwNDU3OX0.NgE6jPWYTGprdPrCxJ7WpgSE12RIXrY4zHC4aK5knZc"
+VITE_SUPABASE_URL = "https://lqowocmjmhbkoxlwyxku.supabase.co"

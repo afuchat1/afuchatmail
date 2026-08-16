@@ -10,7 +10,7 @@ import { defineTool } from "npm:@lovable.dev/mcp-js@0.26.2";
 import { z } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/supabase.ts
-import { createClient } from "npm:@supabase/supabase-js@^2.83.0";
+import { createClient } from "npm:@supabase/supabase-js@^2.109.0";
 function runtimeEnv(name) {
   const runtime = globalThis;
   return runtime.Deno?.env?.get?.(name) ?? runtime.process?.env?.[name];
@@ -241,7 +241,7 @@ var create_draft_default = defineTool5({
 });
 
 // src/lib/mcp/index.ts
-var projectRef = "vfcukxlzqfeehhkiogpf";
+var projectRef = "lqowocmjmhbkoxlwyxku";
 var mcp_default = defineMcp({
   name: "fucha-mail",
   title: "Fucha Mail",

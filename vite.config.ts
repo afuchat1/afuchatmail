@@ -7,7 +7,7 @@ import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   server: {
-    host: "::",
+    host: "0.0.0.0",
     port: 5000,
     allowedHosts: true as const,
     watch: {

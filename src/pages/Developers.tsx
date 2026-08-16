@@ -185,7 +185,7 @@ const Developers = () => {
     toast.success(`${label} copied to clipboard`);
   };
 
-  const apiBaseUrl = `https://vfcukxlzqfeehhkiogpf.supabase.co/functions/v1/afumail-api`;
+  const apiBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/afumail-api`;
 
   return (
     <div className="min-h-screen bg-background">
