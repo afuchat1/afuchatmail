@@ -1,0 +1,1 @@
+- [Vite compiler compatibility](vite-native-plugin-compatibility.md) — the imported app's native SWC plugin can bus-error in this Replit runtime; use the standard React plugin when that occurs.
