@@ -85,7 +85,9 @@ const App = () => (
               <Route path="/changelog" element={<Changelog />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/telegram" element={<TelegramMiniApp />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/oauth/authorize" element={<OAuthAuthorize />} />
+
               <Route path="/oauth/auth" element={<OAuthAuthorize />} />
               <Route path="/oauth" element={<OAuthAuthorize />} />
               <Route path="/oauth/*" element={<OAuthAuthorize />} />
