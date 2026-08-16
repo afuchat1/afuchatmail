@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.2",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://vfcukxlzqfeehhkiogpf.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "fucha-mail",
+      "version": "0.1.0",
+      "title": "Fucha Mail"
+    },
+    "tools": [
+      {
+        "name": "list_addresses",
+        "title": "List email addresses",
+        "description": "List the email addresses (and aliases) that belong to the signed-in user, including which one is primary.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_emails",
+        "title": "List emails",
+        "description": "List the signed-in user's emails, newest first. Optionally filter by unread, starred, or a search term matching subject or sender.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "description": "How many emails to return (max 50)."
+            },
+            "unread_only": {
+              "type": "boolean",
+              "default": false,
+              "description": "Only return unread emails."
+            },
+            "starred_only": {
+              "type": "boolean",
+              "default": false,
+              "description": "Only return starred emails."
+            },
+            "search": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Match against subject or sender address."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_email",
+        "title": "Get email",
+        "description": "Read one of the signed-in user's emails in full, including its body text.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "email_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The id of the email to read."
+            }
+          },
+          "required": [
+            "email_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_email",
+        "title": "Update email flags",
+        "description": "Mark one of the signed-in user's emails as read/unread, starred/unstarred, or important/not important.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "email_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The id of the email to update."
+            },
+            "is_read": {
+              "type": "boolean",
+              "description": "Set the read state."
+            },
+            "is_starred": {
+              "type": "boolean",
+              "description": "Set the starred state."
+            },
+            "is_important": {
+              "type": "boolean",
+              "description": "Set the important state."
+            }
+          },
+          "required": [
+            "email_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_draft",
+        "title": "Create draft email",
+        "description": "Create a draft email for the signed-in user. Drafts are not sent — the user reviews and sends them in the app.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "email"
+              },
+              "minItems": 1,
+              "description": "Recipient email addresses."
+            },
+            "subject": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Subject line."
+            },
+            "body_text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Plain text body of the draft."
+            },
+            "cc": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "email"
+              },
+              "description": "Optional CC recipients."
+            },
+            "from_address_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Which of the user's addresses to send from. Defaults to the primary address."
+            }
+          },
+          "required": [
+            "to",
+            "subject",
+            "body_text"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
