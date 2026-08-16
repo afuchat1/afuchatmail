@@ -101,7 +101,7 @@ const Auth = () => {
           setUserEmail(em);
           setPreparingOAuth(false);
         } else {
-          navigate("/dashboard");
+          navigate(nextPath);
         }
       }
       setCheckingAuth(false);
@@ -118,7 +118,7 @@ const Auth = () => {
             setPreparingOAuth(false);
           }, 0);
         } else {
-          navigate("/dashboard");
+          navigate(nextPath);
         }
       } else {
         setIsAuthenticated(false);
@@ -224,7 +224,7 @@ const Auth = () => {
         options: {
           emailRedirectTo: isOAuthFlow
             ? `${window.location.origin}/auth?${searchParams.toString()}`
-            : `${window.location.origin}/dashboard`,
+            : `${window.location.origin}${nextPath}`,
           data: { full_name: fullName, username: u, first_name: firstName.trim(), last_name: lastName.trim() },
         },
       });
@@ -269,7 +269,7 @@ const Auth = () => {
       const { error } = await supabase.rpc("set_recovery_email", { _email: value });
       if (error) throw error;
       toast({ title: "Recovery email saved", description: "You can now reset your password if you ever forget it." });
-      navigate("/dashboard");
+      navigate(nextPath);
     } catch (err: any) {
       toast({
         variant: "destructive",
