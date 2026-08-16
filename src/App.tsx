@@ -31,6 +31,8 @@ const Changelog = lazy(() => import("@/pages/Changelog"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const TelegramMiniApp = lazy(() => import("@/pages/TelegramMiniApp"));
 const OAuthAuthorize = lazy(() => import("@/pages/OAuthAuthorize"));
+const OAuthConsent = lazy(() => import("@/pages/OAuthConsent"));
+
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -83,7 +85,9 @@ const App = () => (
               <Route path="/changelog" element={<Changelog />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/telegram" element={<TelegramMiniApp />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/oauth/authorize" element={<OAuthAuthorize />} />
+
               <Route path="/oauth/auth" element={<OAuthAuthorize />} />
               <Route path="/oauth" element={<OAuthAuthorize />} />
               <Route path="/oauth/*" element={<OAuthAuthorize />} />
