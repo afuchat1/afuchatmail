@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import "./TelegramMiniApp.css";
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+import { SUPABASE_FUNCTIONS_URL } from "@/integrations/supabase/config";
 const APP_URL = "https://email.afuchat.com";
 
 // ── Types ──
@@ -39,7 +38,7 @@ function useTelegram() {
 
 // ── API helpers ──
 async function authCall(initData: string): Promise<Session | { error: string }> {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/telegram-miniapp-auth`, {
+  const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/telegram-miniapp-auth`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ initData }),
   });
@@ -47,7 +46,7 @@ async function authCall(initData: string): Promise<Session | { error: string }> 
 }
 
 async function apiCall(userId: string, action: string, extra: Record<string, any> = {}) {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/telegram-miniapp-api`, {
+  const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/telegram-miniapp-api`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ user_id: userId, action, ...extra }),
   });

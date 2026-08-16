@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_FUNCTIONS_URL } from "@/integrations/supabase/config";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -185,7 +186,7 @@ const Developers = () => {
     toast.success(`${label} copied to clipboard`);
   };
 
-  const apiBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/afumail-api`;
+  const apiBaseUrl = `${SUPABASE_FUNCTIONS_URL}/afumail-api`;
 
   return (
     <div className="min-h-screen bg-background">

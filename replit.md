@@ -11,7 +11,7 @@ AfuChat Mail is a fully-featured @afuchat.com email service SPA built with React
 - **PWA**: vite-plugin-pwa (service worker, manifest, offline caching)
 
 ## Key Config
-- `VITE_SUPABASE_URL`, `VITE_SUPABASE_PROJECT_ID`, and `VITE_SUPABASE_PUBLISHABLE_KEY` are configured as shared Replit environment variables; do not commit Supabase credentials to `.env`
+- Supabase connection settings are intentionally hardcoded in `src/integrations/supabase/config.ts` so the browser connects directly to Supabase without Replit environment variables
 - Supabase anon key is intentionally public (embedded in frontend bundle)
 - `lovable-tagger` devDependency removed (Lovable-only tool)
 - `vite.config.ts`: removed `componentTagger`

@@ -11,52 +11,18 @@ import { z } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/supabase.ts
 import { createClient } from "npm:@supabase/supabase-js@^2.109.0";
-function runtimeEnv(name) {
-  const runtime = globalThis;
-  return runtime.Deno?.env?.get?.(name) ?? runtime.process?.env?.[name];
-}
-function configuredEnv(names) {
-  for (const name of names) {
-    const value = runtimeEnv(name)?.trim();
-    if (value) return value;
-  }
-  return void 0;
-}
-function supabaseProjectUrl() {
-  const url = configuredEnv(["SUPABASE_URL", "VITE_SUPABASE_URL"]);
-  if (!url) throw new Error("SUPABASE_URL (or VITE_SUPABASE_URL) is required");
-  return url;
-}
-function supabasePublishableKey() {
-  const direct = configuredEnv([
-    "SUPABASE_PUBLISHABLE_KEY",
-    "VITE_SUPABASE_PUBLISHABLE_KEY"
-  ]);
-  if (direct) return direct;
-  const keyset = runtimeEnv("SUPABASE_PUBLISHABLE_KEYS");
-  if (keyset) {
-    try {
-      const parsed = JSON.parse(keyset);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        const keys = parsed;
-        const key = [keys.default, ...Object.values(keys)].find(
-          (v) => typeof v === "string" && v.trim().startsWith("sb_publishable_")
-        )?.trim();
-        if (key) return key;
-      }
-    } catch {
-    }
-  }
-  const legacy = configuredEnv(["SUPABASE_ANON_KEY", "VITE_SUPABASE_ANON_KEY"]);
-  if (legacy) return legacy;
-  throw new Error(
-    "SUPABASE_PUBLISHABLE_KEY, SUPABASE_PUBLISHABLE_KEYS, or SUPABASE_ANON_KEY is required"
-  );
-}
+
+// src/integrations/supabase/config.ts
+var SUPABASE_PROJECT_ID = "lqowocmjmhbkoxlwyxku";
+var SUPABASE_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co`;
+var SUPABASE_PUBLISHABLE_KEY = "sb_publishable_GivejXjATbLLc15I102__g_VaPih8-C";
+var SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
+
+// src/lib/mcp/supabase.ts
 function supabaseForUser(ctx) {
   const token = ctx.getToken();
   if (!token) throw new Error("supabaseForUser requires a verified OAuth token");
-  return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
+  return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
@@ -241,14 +207,13 @@ var create_draft_default = defineTool5({
 });
 
 // src/lib/mcp/index.ts
-var projectRef = "lqowocmjmhbkoxlwyxku";
 var mcp_default = defineMcp({
   name: "fucha-mail",
   title: "Fucha Mail",
   version: "0.1.0",
   instructions: "Tools for the Fucha Mail email account of the signed-in user. Use `list_addresses` to see their addresses, `list_emails` to browse or search mail, `get_email` to read one message in full, `update_email` to change read/starred/important flags, and `create_draft` to prepare a message the user sends from the app. Nothing here sends email on the user's behalf.",
   auth: auth.oauth.issuer({
-    issuer: `https://${projectRef}.supabase.co/auth/v1`,
+    issuer: `https://${SUPABASE_PROJECT_ID}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
   tools: [list_addresses_default, list_emails_default, get_email_default, update_email_default, create_draft_default]

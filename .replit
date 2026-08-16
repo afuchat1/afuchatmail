@@ -41,9 +41,3 @@ outputType = "webview"
 localPort = 5000
 externalPort = 80
 
-[userenv]
-
-[userenv.shared]
-VITE_SUPABASE_PROJECT_ID = "lqowocmjmhbkoxlwyxku"
-VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_GivejXjATbLLc15I102__g_VaPih8-C"
-VITE_SUPABASE_URL = "https://lqowocmjmhbkoxlwyxku.supabase.co"

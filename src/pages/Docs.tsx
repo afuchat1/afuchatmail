@@ -16,11 +16,12 @@ import {
   ChevronRight,
   Globe,
 } from "lucide-react";
+import { SUPABASE_FUNCTIONS_URL } from "@/integrations/supabase/config";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Real API constants — these reflect the deployed afumail-api edge function
 // ─────────────────────────────────────────────────────────────────────────────
-const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/afumail-api`;
+const API_BASE = `${SUPABASE_FUNCTIONS_URL}/afumail-api`;
 const AUTHORIZE_URL = "https://email.afuchat.com/oauth/authorize";
 const DEVELOPER_CONSOLE = "/developers";
 

@@ -2,11 +2,10 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, AlertCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations/supabase/config";
 
 type State = "operational" | "degraded" | "down" | "checking";
 
-const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 const POLL_MS = 60_000;
 const TIMEOUT = 6_000;
 const DISMISS_KEY = "afuchat:status-banner-dismissed";
@@ -46,10 +45,9 @@ export function StatusBanner() {
   }, []);
 
   const check = useCallback(async () => {
-    if (!SUPABASE_URL) return;
     const [auth, db, fn] = await Promise.all([
       probe(`${SUPABASE_URL}/auth/v1/health`),
-      probe(`${SUPABASE_URL}/rest/v1/?apikey=${SUPABASE_ANON}`, { method: "HEAD" }),
+      probe(`${SUPABASE_URL}/rest/v1/?apikey=${SUPABASE_PUBLISHABLE_KEY}`, { method: "HEAD" }),
       probe(`${SUPABASE_URL}/functions/v1/send-email`, {
         method: "OPTIONS",
         headers: {

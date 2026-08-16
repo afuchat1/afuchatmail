@@ -1,6 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+// Push delivery requires a separate browser-public VAPID key. It is not a
+// Supabase setting and is intentionally disabled until one is configured.
+const VAPID_PUBLIC_KEY = "";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -29,6 +31,9 @@ export async function registerServiceWorker() {
 
 export async function subscribeToPushNotifications(emailAddressId: string) {
   try {
+    if (!VAPID_PUBLIC_KEY) {
+      throw new Error('Push notifications are not configured for this app');
+    }
     // Request notification permission
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
