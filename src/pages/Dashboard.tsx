@@ -66,6 +66,7 @@ const Dashboard = () => {
   const [emailAddresses, setEmailAddresses] = useState<EmailAddress[]>([]);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [showComposer, setShowComposer] = useState(false);
   const [composerInitialBody, setComposerInitialBody] = useState<string | undefined>(undefined);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -130,12 +131,12 @@ const Dashboard = () => {
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
       } else {
         setUser(session.user);
-        fetchEmailAddresses(session.user.id);
+        await ensureWorkspace(session.user);
       }
     }).finally(() => {
       if (mounted) setInitializing(false);
@@ -145,6 +146,7 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        void ensureWorkspace(session.user);
         setInitializing(false);
       }
     });
@@ -271,13 +273,83 @@ const Dashboard = () => {
     if (user && selectedEmailAddressId) fetchUnreadCount(user.id);
   }, [user, selectedEmailAddressId]);
 
-  const fetchEmailAddresses = async (userId: string) => {
-    const { data } = await supabase
+  const ensureWorkspace = async (currentUser: User) => {
+    setWorkspaceError(null);
+    const { data, error } = await supabase
       .from("email_addresses")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", currentUser.id)
       .order("created_at", { ascending: false });
-    setEmailAddresses(data || []);
+    if (error) {
+      setWorkspaceError(`Supabase could not load your email addresses: ${error.message}`);
+      return;
+    }
+
+    let addresses = (data || []) as EmailAddress[];
+
+    // Older accounts can exist without the provisioning trigger having run.
+    // Repair only the missing user-owned records; normal signups keep using
+    // the database triggers and this path becomes a no-op.
+    if (addresses.length === 0) {
+      const metadataUsername = String(currentUser.user_metadata?.username || "");
+      const emailLocalPart = String(currentUser.email || "").split("@")[0] || "";
+      const localPart = (metadataUsername || emailLocalPart)
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, "")
+        .slice(0, 30);
+
+      if (localPart.length >= 3) {
+        const { error: addressError } = await supabase
+          .from("email_addresses")
+          .insert({ user_id: currentUser.id, local_part: localPart, is_primary: true })
+          .select("*")
+          .single();
+        if (addressError && !addressError.message.toLowerCase().includes("duplicate")) {
+          setWorkspaceError(`Your account exists, but its mailbox could not be provisioned: ${addressError.message}`);
+          return;
+        }
+        const refreshed = await supabase
+          .from("email_addresses")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .order("created_at", { ascending: false });
+        if (refreshed.error) {
+          setWorkspaceError(`Supabase could not reload your mailbox: ${refreshed.error.message}`);
+          return;
+        }
+        addresses = (refreshed.data || []) as EmailAddress[];
+      }
+    }
+
+    const savedId = localStorage.getItem("selectedEmailAddressId");
+    const validSavedId = savedId && addresses.some((address) => address.id === savedId);
+    const primary = addresses.find((address) => address.is_primary) || addresses[0];
+    setEmailAddresses(addresses);
+    if (addresses.length > 0 && (!selectedEmailAddressId || !addresses.some((a) => a.id === selectedEmailAddressId))) {
+      setSelectedEmailAddressId(validSavedId ? savedId : primary.id);
+    }
+
+    const { data: folders, error: folderError } = await supabase
+      .from("folders")
+      .select("id")
+      .eq("user_id", currentUser.id)
+      .limit(1);
+    if (folderError) {
+      setWorkspaceError(`Supabase could not load your folders: ${folderError.message}`);
+      return;
+    }
+    if (!folders || folders.length === 0) {
+      const { error: createFoldersError } = await supabase.from("folders").insert([
+        { user_id: currentUser.id, name: "Inbox", type: "inbox", icon: "inbox" },
+        { user_id: currentUser.id, name: "Sent", type: "sent", icon: "send" },
+        { user_id: currentUser.id, name: "Drafts", type: "drafts", icon: "file-text" },
+        { user_id: currentUser.id, name: "Spam", type: "spam", icon: "alert-circle" },
+        { user_id: currentUser.id, name: "Trash", type: "trash", icon: "trash-2" },
+      ]);
+      if (createFoldersError) {
+        setWorkspaceError(`Your mailbox was found, but default folders could not be created: ${createFoldersError.message}`);
+      }
+    }
   };
 
   const fetchUnreadCount = async (userId: string) => {
@@ -455,6 +527,14 @@ const Dashboard = () => {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
+      {workspaceError && (
+        <div className="border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div className="mx-auto flex max-w-4xl items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{workspaceError}</span>
+          </div>
+        </div>
+      )}
 
       {activeSubscription && (
         <div className="border-b bg-primary/5 px-4 py-2 text-xs text-primary">
