@@ -93,7 +93,7 @@ export const EmailSidebar = ({
   useEffect(() => {
     if (!selectedEmailAddressId) return;
     const channel = supabase
-      .channel("sidebar-unread-realtime")
+      .channel(`sidebar-unread-realtime-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "emails" },

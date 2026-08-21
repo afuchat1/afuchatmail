@@ -113,8 +113,11 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
   useEffect(() => {
     if (!emailAddressId) return;
 
+    // The dashboard keeps desktop and mobile lists mounted together for
+    // responsive transitions. Each list needs its own topic; reusing a topic
+    // can make Supabase attach callbacks to an already-subscribed channel.
     const channel = supabase
-      .channel('emails-changes')
+      .channel(`emails-changes-${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         {

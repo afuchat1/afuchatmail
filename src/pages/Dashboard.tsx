@@ -267,7 +267,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel("unread-count-dashboard")
+      .channel(`unread-count-dashboard-${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "emails", filter: `user_id=eq.${user.id}` }, () => {
         fetchUnreadCount(user.id);
       })
