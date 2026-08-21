@@ -1,1 +1,2 @@
 - [Vite compiler compatibility](vite-native-plugin-compatibility.md) — the imported app's native SWC plugin can bus-error in this Replit runtime; use the standard React plugin when that occurs.
+- [Supabase production target](supabase-production-target.md) — use the hardcoded migrated production project; the checked-in Vite env still points at the paused source project.
