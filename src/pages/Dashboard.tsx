@@ -138,6 +138,10 @@ const Dashboard = () => {
         setUser(session.user);
         await ensureWorkspace(session.user);
       }
+    }).catch((error: unknown) => {
+      if (mounted) {
+        setWorkspaceError(error instanceof Error ? error.message : "Could not connect to your Supabase workspace.");
+      }
     }).finally(() => {
       if (mounted) setInitializing(false);
     });
@@ -146,7 +150,9 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        void ensureWorkspace(session.user);
+        void ensureWorkspace(session.user).catch((error: unknown) => {
+          setWorkspaceError(error instanceof Error ? error.message : "Could not connect to your Supabase workspace.");
+        });
         setInitializing(false);
       }
     });

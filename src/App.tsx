@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { lazy, Suspense } from "react";
+import { Component, lazy, Suspense } from "react";
 import Index from "@/pages/Index";
 import { RouteSeo } from "@/components/RouteSeo";
 
@@ -52,6 +52,48 @@ const PageLoader = () => (
   </div>
 );
 
+class AppErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("AfuChat Mail render error:", error, info);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-6">
+          <div className="w-full max-w-md rounded-xl border bg-card p-6 text-center shadow-sm">
+            <h1 className="text-lg font-semibold">AfuChat Mail could not load</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              The workspace encountered an unexpected error while loading. Refresh the page to reconnect to Supabase.
+            </p>
+            {this.state.error.message && (
+              <p className="mt-3 rounded-md bg-muted p-3 text-left text-xs text-muted-foreground">
+                {this.state.error.message}
+              </p>
+            )}
+            <button
+              className="mt-5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+              onClick={() => window.location.reload()}
+            >
+              Reload workspace
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const App = () => (
   <HelmetProvider>
   <QueryClientProvider client={queryClient}>
@@ -61,8 +103,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <RouteSeo />
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
+          <AppErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
 
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
@@ -95,8 +138,9 @@ const App = () => (
               <Route path="/o/oauth2/auth" element={<OAuthAuthorize />} />
               <Route path="/o/oauth2/authorize" element={<OAuthAuthorize />} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+              </Routes>
+            </Suspense>
+          </AppErrorBoundary>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
