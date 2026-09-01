@@ -6,8 +6,10 @@
 //   - scripts/target-import-helpers.sql (public.migrate_import RPC)
 //
 // Secrets used: TARGET_SUPABASE_URL, TARGET_SUPABASE_SERVICE_ROLE_KEY,
-//               SUPABASE_DB_URL (source), MIGRATION_ADMIN_TOKEN (optional gate)
+//               SUPABASE_DB_URL (source)
+// Access: caller must present a valid session for a user with the `admin` role.
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
