@@ -6,8 +6,10 @@
 //   - scripts/target-import-helpers.sql (public.migrate_import RPC)
 //
 // Secrets used: TARGET_SUPABASE_URL, TARGET_SUPABASE_SERVICE_ROLE_KEY,
-//               SUPABASE_DB_URL (source), MIGRATION_ADMIN_TOKEN (optional gate)
+//               SUPABASE_DB_URL (source)
+// Access: caller must present a valid session for a user with the `admin` role.
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,17 +57,27 @@ Deno.serve(async (req) => {
   const targetUrl = (Deno.env.get("TARGET_SUPABASE_URL") ?? "").replace(/\/+$/, "");
   const targetKey = Deno.env.get("TARGET_SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const dbUrl = Deno.env.get("SUPABASE_DB_URL") ?? "";
-  const gate = Deno.env.get("MIGRATION_ADMIN_TOKEN");
 
   if (!targetUrl || !targetKey) {
     return json({ error: "TARGET_SUPABASE_URL / TARGET_SUPABASE_SERVICE_ROLE_KEY are not configured" }, 500);
   }
   if (!dbUrl) return json({ error: "SUPABASE_DB_URL is not available" }, 500);
 
-  if (gate) {
-    const provided = req.headers.get("x-migration-token");
-    if (provided !== gate) return json({ error: "Forbidden" }, 403);
-  }
+  // --- Access control: admin session required -------------------------------
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) return json({ error: "Authentication required" }, 401);
+
+  const authClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+  const { data: { user }, error: authErr } = await authClient.auth.getUser();
+  if (authErr || !user) return json({ error: "Invalid or expired session" }, 401);
+
+  const { data: isAdmin } = await authClient.rpc("has_role", { _user_id: user.id, _role: "admin" });
+  if (isAdmin !== true) return json({ error: "Admin role required" }, 403);
+
 
   let body: { dry_run?: boolean; only?: string[] } = {};
   try { body = await req.json(); } catch { /* no body */ }
