@@ -57,17 +57,27 @@ Deno.serve(async (req) => {
   const targetUrl = (Deno.env.get("TARGET_SUPABASE_URL") ?? "").replace(/\/+$/, "");
   const targetKey = Deno.env.get("TARGET_SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const dbUrl = Deno.env.get("SUPABASE_DB_URL") ?? "";
-  const gate = Deno.env.get("MIGRATION_ADMIN_TOKEN");
 
   if (!targetUrl || !targetKey) {
     return json({ error: "TARGET_SUPABASE_URL / TARGET_SUPABASE_SERVICE_ROLE_KEY are not configured" }, 500);
   }
   if (!dbUrl) return json({ error: "SUPABASE_DB_URL is not available" }, 500);
 
-  if (gate) {
-    const provided = req.headers.get("x-migration-token");
-    if (provided !== gate) return json({ error: "Forbidden" }, 403);
-  }
+  // --- Access control: admin session required -------------------------------
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) return json({ error: "Authentication required" }, 401);
+
+  const authClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+  const { data: { user }, error: authErr } = await authClient.auth.getUser();
+  if (authErr || !user) return json({ error: "Invalid or expired session" }, 401);
+
+  const { data: isAdmin } = await authClient.rpc("has_role", { _user_id: user.id, _role: "admin" });
+  if (isAdmin !== true) return json({ error: "Admin role required" }, 403);
+
 
   let body: { dry_run?: boolean; only?: string[] } = {};
   try { body = await req.json(); } catch { /* no body */ }
