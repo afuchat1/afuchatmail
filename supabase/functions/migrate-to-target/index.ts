@@ -105,10 +105,9 @@ Deno.serve(async (req) => {
         throw new Error(`${table}: table is missing on target`);
       }
 
-      const payload = JSON.stringify(rows);
       const result = await tx.unsafe(
-        `insert into "${schema}"."${name}" (${names}) select ${names} from jsonb_populate_recordset(null::"${schema}"."${name}", $1::jsonb) on conflict do nothing`,
-        [payload],
+        `insert into "${schema}"."${name}" (${names}) select ${names} from jsonb_populate_recordset(null::"${schema}"."${name}", $1) on conflict do nothing`,
+        [tx.json(rows)],
       );
 
       if (table === "auth.users") {
