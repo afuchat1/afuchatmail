@@ -31,8 +31,8 @@ const PLAN: { table: string; chunk: number; order: string }[] = [
   { table: "oauth_applications", chunk: 200, order: "created_at" },
   { table: "oauth_authorization_codes", chunk: 200, order: "created_at" },
   { table: "oauth_tokens", chunk: 200, order: "created_at" },
-  { table: "subscriptions", chunk: 200, order: "created_at" },
   { table: "payment_transactions", chunk: 100, order: "created_at" },
+  { table: "subscriptions", chunk: 200, order: "created_at" },
   { table: "telegram_links", chunk: 200, order: "linked_at" },
   { table: "push_subscriptions", chunk: 200, order: "created_at" },
   { table: "admin_audit_log", chunk: 200, order: "created_at" },
@@ -93,7 +93,6 @@ Deno.serve(async (req) => {
     if (!schema || !name) throw new Error(`Invalid migration table: ${table}`);
 
     return await targetSql.begin(async (tx) => {
-      await tx`select set_config('session_replication_role', 'replica', true)`;
       const columns = await tx`
         select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as names
           from information_schema.columns
