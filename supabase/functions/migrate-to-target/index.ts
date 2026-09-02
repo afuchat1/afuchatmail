@@ -1,12 +1,10 @@
 // One-shot migration: copies auth users (with password hashes) and all app
 // data from this backend into the target Supabase project.
 //
-// Requires on the target project:
-//   - scripts/new-supabase-schema.sql  (schema)
-//   - scripts/target-import-helpers.sql (public.migrate_import RPC)
+// Requires the schema to already exist on the target project.
 //
 // Secrets used: TARGET_SUPABASE_URL, TARGET_SUPABASE_SERVICE_ROLE_KEY,
-//               SUPABASE_DB_URL (source)
+//               TARGET_SUPABASE_DB_URL, SUPABASE_DB_URL (source)
 // Access: caller must present a valid session for a user with the `admin` role.
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
@@ -56,11 +54,13 @@ Deno.serve(async (req) => {
 
   const targetUrl = (Deno.env.get("TARGET_SUPABASE_URL") ?? "").replace(/\/+$/, "");
   const targetKey = Deno.env.get("TARGET_SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const targetDbUrl = Deno.env.get("TARGET_SUPABASE_DB_URL") ?? "";
   const dbUrl = Deno.env.get("SUPABASE_DB_URL") ?? "";
 
   if (!targetUrl || !targetKey) {
     return json({ error: "TARGET_SUPABASE_URL / TARGET_SUPABASE_SERVICE_ROLE_KEY are not configured" }, 500);
   }
+  if (!targetDbUrl) return json({ error: "TARGET_SUPABASE_DB_URL is not configured" }, 500);
   if (!dbUrl) return json({ error: "SUPABASE_DB_URL is not available" }, 500);
 
   // --- Access control: admin session required -------------------------------
@@ -85,21 +85,45 @@ Deno.serve(async (req) => {
   const only = Array.isArray(body.only) && body.only.length ? new Set(body.only) : null;
 
   const sql = postgres(dbUrl, { prepare: false, max: 2, ssl: "require" });
+  const targetSql = postgres(targetDbUrl, { prepare: false, max: 1, ssl: "require" });
   const report: Record<string, unknown>[] = [];
 
   const pushRows = async (table: string, rows: unknown[]) => {
-    const res = await fetch(`${targetUrl}/rest/v1/rpc/migrate_import`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: targetKey,
-        Authorization: `Bearer ${targetKey}`,
-      },
-      body: JSON.stringify({ _target: table, _rows: rows }),
+    const [schema, name] = table.includes(".") ? table.split(".") : ["public", table];
+    if (!schema || !name) throw new Error(`Invalid migration table: ${table}`);
+
+    return await targetSql.begin(async (tx) => {
+      await tx`select set_config('session_replication_role', 'replica', true)`;
+      const columns = await tx`
+        select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as names
+          from information_schema.columns
+         where table_schema = ${schema}
+           and table_name = ${name}
+           and is_generated = 'NEVER'
+           and coalesce(identity_generation, '') <> 'ALWAYS'`;
+      const names = columns[0]?.names;
+      if (typeof names !== "string" || !names) {
+        throw new Error(`${table}: table is missing on target`);
+      }
+
+      const payload = JSON.stringify(rows);
+      const result = await tx.unsafe(
+        `insert into "${schema}"."${name}" (${names}) select ${names} from jsonb_populate_recordset(null::"${schema}"."${name}", $1::jsonb) on conflict do nothing`,
+        [payload],
+      );
+
+      if (table === "auth.users") {
+        const ids = rows
+          .map((row) => (row as Record<string, unknown>)?.id)
+          .filter((id): id is string => typeof id === "string");
+        if (ids.length) {
+          await tx`delete from public.email_addresses where user_id = any(${ids}::uuid[])`;
+          await tx`delete from public.folders where user_id = any(${ids}::uuid[])`;
+        }
+      }
+
+      return result.count;
     });
-    const text = await res.text();
-    if (!res.ok) throw new Error(`${table}: target returned ${res.status} ${text}`);
-    return text;
   };
 
   try {
@@ -154,5 +178,6 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: String((err as Error).message ?? err), report }, 500);
   } finally {
     await sql.end({ timeout: 5 });
+    await targetSql.end({ timeout: 5 });
   }
 });
