@@ -115,6 +115,10 @@ Deno.serve(async (req) => {
           .map((row) => (row as Record<string, unknown>)?.id)
           .filter((id): id is string => typeof id === "string");
         if (ids.length) {
+          // Remove auto-provisioned rows created by target triggers so the
+          // real data imported later wins instead of being skipped by
+          // "on conflict do nothing".
+          await tx`delete from public.profiles where id = any(${ids}::uuid[])`;
           await tx`delete from public.email_addresses where user_id = any(${ids}::uuid[])`;
           await tx`delete from public.folders where user_id = any(${ids}::uuid[])`;
         }
