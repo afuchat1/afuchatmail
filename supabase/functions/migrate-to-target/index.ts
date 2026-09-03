@@ -155,6 +155,9 @@ Deno.serve(async (req) => {
     for (const step of PLAN) {
       if (only && !only.has(step.table)) continue;
 
+      // auth.identities is handled together with auth.users.
+      if (step.table === "auth.identities") continue;
+
       const [schema, name] = step.table.includes(".")
         ? step.table.split(".")
         : ["public", step.table];
@@ -178,6 +181,51 @@ Deno.serve(async (req) => {
       }
       if (dryRun) {
         report.push({ table: step.table, rows: total, dry_run: true });
+        continue;
+      }
+
+      // Combined auth.users + auth.identities import in one transaction.
+      if (step.table === "auth.users") {
+        const identityStep = PLAN.find((s) => s.table === "auth.identities")!;
+        const identityTotalRows = await sql.unsafe(
+          `select count(*)::bigint as c from auth."identities"`,
+        );
+        const identityTotal = Number(identityTotalRows[0].c);
+
+        let migratedUsers = 0;
+        let migratedIdentities = 0;
+        for (let offset = 0; offset < total; offset += step.chunk) {
+          const userRows = await sql.unsafe(
+            `select to_jsonb(t) as row from auth."users" t
+               order by "${step.order}" nulls first
+               limit ${step.chunk} offset ${offset}`,
+          );
+          const userPayload = userRows.map((r: Record<string, unknown>) => r.row);
+          if (userPayload.length === 0) break;
+
+          const ids = userPayload
+            .map((row) => (row as Record<string, unknown>)?.id)
+            .filter((id): id is string => typeof id === "string");
+
+          let identityPayload: unknown[] = [];
+          if (ids.length && identityTotal > 0) {
+            const identityRows = await sql.unsafe(
+              `select to_jsonb(t) as row from auth."identities" t
+                 where user_id = any(${ids.map((_, i) => `$${i + 1}`).join(", ")}::uuid[])
+                 order by "${identityStep.order}" nulls first`,
+              ids,
+            );
+            identityPayload = identityRows.map((r: Record<string, unknown>) => r.row);
+          }
+
+          await pushAuthUsersAndIdentities(userPayload, identityPayload);
+          migratedUsers += userPayload.length;
+          migratedIdentities += identityPayload.length;
+        }
+        report.push({ table: "auth.users", rows: total, migrated: migratedUsers });
+        report.push({ table: "auth.identities", rows: identityTotal, migrated: migratedIdentities });
+        console.log(`[migrate] auth.users: ${migratedUsers}/${total}`);
+        console.log(`[migrate] auth.identities: ${migratedIdentities}/${identityTotal}`);
         continue;
       }
 
