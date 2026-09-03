@@ -88,8 +88,13 @@ Deno.serve(async (req) => {
   const sql = postgres(dbUrl, { prepare: false, max: 2, ssl: "require" });
   const targetSql = postgres(targetDbUrl, { prepare: false, max: 1, ssl: "require" });
   const report: Record<string, unknown>[] = [];
+  const columnCache = new Map<string, string>();
 
   const columnNames = async (schema: string, name: string) => {
+    const key = `${schema}.${name}`;
+    const cached = columnCache.get(key);
+    if (cached) return cached;
+
     const columns = await targetSql`
       select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as names
         from information_schema.columns
@@ -101,6 +106,7 @@ Deno.serve(async (req) => {
     if (typeof names !== "string" || !names) {
       throw new Error(`${schema}.${name}: table is missing on target`);
     }
+    columnCache.set(key, names);
     return names;
   };
 
