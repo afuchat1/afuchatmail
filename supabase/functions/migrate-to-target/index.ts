@@ -126,7 +126,9 @@ Deno.serve(async (req) => {
 
   // Auth users and identities must land in the same transaction so the FK
   // from identities to users is satisfied without relying on cross-transaction
-  // visibility.
+  // visibility. We also skip identities for any user_id that is not present in
+  // the target after the insert, so a partially-imported or pre-existing user
+  // set never causes an FK violation.
   const pushAuthUsersAndIdentities = async (users: unknown[], identities: unknown[]) => {
     return await targetSql.begin(async (tx) => {
       const userNames = await columnNames("auth", "users", tx);
@@ -149,10 +151,20 @@ Deno.serve(async (req) => {
 
       if (identities.length) {
         const identityNames = await columnNames("auth", "identities", tx);
-        await tx.unsafe(
-          `insert into "auth"."identities" (${identityNames}) select ${identityNames} from jsonb_populate_recordset(null::"auth"."identities", $1) on conflict do nothing`,
-          [tx.json(identities)],
-        );
+        const present = await tx`
+          select id::text from auth.users where id = any(${ids}::uuid[])
+        `;
+        const presentSet = new Set(present.map((r: { id: string }) => r.id));
+        const filteredIdentities = identities.filter((row) => {
+          const userId = (row as Record<string, unknown>)?.user_id;
+          return typeof userId === "string" && presentSet.has(userId);
+        });
+        if (filteredIdentities.length) {
+          await tx.unsafe(
+            `insert into "auth"."identities" (${identityNames}) select ${identityNames} from jsonb_populate_recordset(null::"auth"."identities", $1) on conflict do nothing`,
+            [tx.json(filteredIdentities)],
+          );
+        }
       }
 
       return userResult.count;
