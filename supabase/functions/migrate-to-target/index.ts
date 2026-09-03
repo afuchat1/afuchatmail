@@ -16,7 +16,8 @@ const corsHeaders = {
 };
 
 // Load order matters only for readability — the target import runs with
-// triggers/FK checks relaxed.
+// triggers/FK checks relaxed. Chunk sizes are tuned to the table width and
+// row count to keep round-trips low.
 const PLAN: { table: string; chunk: number; order: string }[] = [
   { table: "auth.users", chunk: 100, order: "created_at" },
   { table: "auth.identities", chunk: 200, order: "created_at" },
@@ -24,22 +25,22 @@ const PLAN: { table: string; chunk: number; order: string }[] = [
   { table: "folders", chunk: 500, order: "created_at" },
   { table: "email_addresses", chunk: 500, order: "created_at" },
   { table: "custom_domains", chunk: 200, order: "created_at" },
-  { table: "emails", chunk: 25, order: "created_at" },
-  { table: "email_templates", chunk: 50, order: "created_at" },
+  { table: "emails", chunk: 100, order: "created_at" },
+  { table: "email_templates", chunk: 200, order: "created_at" },
   { table: "user_settings", chunk: 200, order: "created_at" },
   { table: "user_roles", chunk: 500, order: "created_at" },
   { table: "oauth_applications", chunk: 200, order: "created_at" },
   { table: "oauth_authorization_codes", chunk: 200, order: "created_at" },
   { table: "oauth_tokens", chunk: 200, order: "created_at" },
-  { table: "payment_transactions", chunk: 100, order: "created_at" },
+  { table: "payment_transactions", chunk: 200, order: "created_at" },
   { table: "subscriptions", chunk: 200, order: "created_at" },
   { table: "telegram_links", chunk: 200, order: "linked_at" },
   { table: "push_subscriptions", chunk: 200, order: "created_at" },
-  { table: "admin_audit_log", chunk: 200, order: "created_at" },
+  { table: "admin_audit_log", chunk: 500, order: "created_at" },
   { table: "password_reset_tokens", chunk: 200, order: "created_at" },
   { table: "status_latest", chunk: 200, order: "checked_at" },
-  { table: "status_daily", chunk: 500, order: "day" },
-  { table: "status_incidents", chunk: 100, order: "created_at" },
+  { table: "status_daily", chunk: 1000, order: "day" },
+  { table: "status_incidents", chunk: 1500, order: "created_at" },
 ];
 
 function json(body: unknown, status = 200) {
