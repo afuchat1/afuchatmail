@@ -88,43 +88,66 @@ Deno.serve(async (req) => {
   const targetSql = postgres(targetDbUrl, { prepare: false, max: 1, ssl: "require" });
   const report: Record<string, unknown>[] = [];
 
+  const columnNames = async (schema: string, name: string) => {
+    const columns = await targetSql`
+      select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as names
+        from information_schema.columns
+       where table_schema = ${schema}
+         and table_name = ${name}
+         and is_generated = 'NEVER'
+         and coalesce(identity_generation, '') <> 'ALWAYS'`;
+    const names = columns[0]?.names;
+    if (typeof names !== "string" || !names) {
+      throw new Error(`${schema}.${name}: table is missing on target`);
+    }
+    return names;
+  };
+
   const pushRows = async (table: string, rows: unknown[]) => {
     const [schema, name] = table.includes(".") ? table.split(".") : ["public", table];
     if (!schema || !name) throw new Error(`Invalid migration table: ${table}`);
 
-    return await targetSql.begin(async (tx) => {
-      const columns = await tx`
-        select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as names
-          from information_schema.columns
-         where table_schema = ${schema}
-           and table_name = ${name}
-           and is_generated = 'NEVER'
-           and coalesce(identity_generation, '') <> 'ALWAYS'`;
-      const names = columns[0]?.names;
-      if (typeof names !== "string" || !names) {
-        throw new Error(`${table}: table is missing on target`);
-      }
+    const names = await columnNames(schema, name);
+    const result = await targetSql.unsafe(
+      `insert into "${schema}"."${name}" (${names}) select ${names} from jsonb_populate_recordset(null::"${schema}"."${name}", $1) on conflict do nothing`,
+      [targetSql.json(rows)],
+    );
 
-      const result = await tx.unsafe(
-        `insert into "${schema}"."${name}" (${names}) select ${names} from jsonb_populate_recordset(null::"${schema}"."${name}", $1) on conflict do nothing`,
-        [tx.json(rows)],
+    return result.count;
+  };
+
+  // Auth users and identities must land in the same transaction so the FK
+  // from identities to users is satisfied without relying on cross-transaction
+  // visibility.
+  const pushAuthUsersAndIdentities = async (users: unknown[], identities: unknown[]) => {
+    return await targetSql.begin(async (tx) => {
+      const userNames = await columnNames("auth", "users");
+      const userResult = await tx.unsafe(
+        `insert into "auth"."users" (${userNames}) select ${userNames} from jsonb_populate_recordset(null::"auth"."users", $1) on conflict do nothing`,
+        [tx.json(users)],
       );
 
-      if (table === "auth.users") {
-        const ids = rows
-          .map((row) => (row as Record<string, unknown>)?.id)
-          .filter((id): id is string => typeof id === "string");
-        if (ids.length) {
-          // Remove auto-provisioned rows created by target triggers so the
-          // real data imported later wins instead of being skipped by
-          // "on conflict do nothing".
-          await tx`delete from public.profiles where id = any(${ids}::uuid[])`;
-          await tx`delete from public.email_addresses where user_id = any(${ids}::uuid[])`;
-          await tx`delete from public.folders where user_id = any(${ids}::uuid[])`;
-        }
+      const ids = users
+        .map((row) => (row as Record<string, unknown>)?.id)
+        .filter((id): id is string => typeof id === "string");
+      if (ids.length) {
+        // Remove auto-provisioned rows created by target triggers so the
+        // real data imported later wins instead of being skipped by
+        // "on conflict do nothing".
+        await tx`delete from public.profiles where id = any(${ids}::uuid[])`;
+        await tx`delete from public.email_addresses where user_id = any(${ids}::uuid[])`;
+        await tx`delete from public.folders where user_id = any(${ids}::uuid[])`;
       }
 
-      return result.count;
+      if (identities.length) {
+        const identityNames = await columnNames("auth", "identities");
+        await tx.unsafe(
+          `insert into "auth"."identities" (${identityNames}) select ${identityNames} from jsonb_populate_recordset(null::"auth"."identities", $1) on conflict do nothing`,
+          [tx.json(identities)],
+        );
+      }
+
+      return userResult.count;
     });
   };
 
