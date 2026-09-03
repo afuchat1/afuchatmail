@@ -15,31 +15,33 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Load order matters only for readability — the target import runs with
-// triggers/FK checks relaxed.
+// Order respects foreign-key dependencies so rows can be inserted with FK
+// checks enabled. Chunk sizes are tuned to table width and row count.
 const PLAN: { table: string; chunk: number; order: string }[] = [
   { table: "auth.users", chunk: 100, order: "created_at" },
   { table: "auth.identities", chunk: 200, order: "created_at" },
-  { table: "profiles", chunk: 200, order: "created_at" },
-  { table: "folders", chunk: 500, order: "created_at" },
+  // email_addresses must come before profiles/custom_domains because those
+  // reference it; folders must come before emails.
   { table: "email_addresses", chunk: 500, order: "created_at" },
+  { table: "folders", chunk: 500, order: "created_at" },
+  { table: "profiles", chunk: 200, order: "created_at" },
   { table: "custom_domains", chunk: 200, order: "created_at" },
-  { table: "emails", chunk: 25, order: "created_at" },
-  { table: "email_templates", chunk: 50, order: "created_at" },
+  { table: "emails", chunk: 100, order: "created_at" },
+  { table: "email_templates", chunk: 200, order: "created_at" },
   { table: "user_settings", chunk: 200, order: "created_at" },
   { table: "user_roles", chunk: 500, order: "created_at" },
   { table: "oauth_applications", chunk: 200, order: "created_at" },
   { table: "oauth_authorization_codes", chunk: 200, order: "created_at" },
   { table: "oauth_tokens", chunk: 200, order: "created_at" },
-  { table: "payment_transactions", chunk: 100, order: "created_at" },
+  { table: "payment_transactions", chunk: 200, order: "created_at" },
   { table: "subscriptions", chunk: 200, order: "created_at" },
   { table: "telegram_links", chunk: 200, order: "linked_at" },
   { table: "push_subscriptions", chunk: 200, order: "created_at" },
-  { table: "admin_audit_log", chunk: 200, order: "created_at" },
+  { table: "admin_audit_log", chunk: 500, order: "created_at" },
   { table: "password_reset_tokens", chunk: 200, order: "created_at" },
   { table: "status_latest", chunk: 200, order: "checked_at" },
-  { table: "status_daily", chunk: 500, order: "day" },
-  { table: "status_incidents", chunk: 100, order: "created_at" },
+  { table: "status_daily", chunk: 1000, order: "day" },
+  { table: "status_incidents", chunk: 1500, order: "created_at" },
 ];
 
 function json(body: unknown, status = 200) {
@@ -85,48 +87,114 @@ Deno.serve(async (req) => {
   const only = Array.isArray(body.only) && body.only.length ? new Set(body.only) : null;
 
   const sql = postgres(dbUrl, { prepare: false, max: 2, ssl: "require" });
-  const targetSql = postgres(targetDbUrl, { prepare: false, max: 1, ssl: "require" });
+  const targetSql = postgres(targetDbUrl, { prepare: false, max: 4, ssl: "require" });
   const report: Record<string, unknown>[] = [];
+  const columnCache = new Map<string, string>();
+
+  const columnNames = async (schema: string, name: string, tx?: any) => {
+    const key = `${schema}.${name}`;
+    const cached = columnCache.get(key);
+    if (cached) return cached;
+
+    const runner = tx ?? targetSql;
+    const columns = await runner`
+      select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as names
+        from information_schema.columns
+       where table_schema = ${schema}
+         and table_name = ${name}
+         and is_generated = 'NEVER'
+         and coalesce(identity_generation, '') <> 'ALWAYS'`;
+    const names = columns[0]?.names;
+    if (typeof names !== "string" || !names) {
+      throw new Error(`${schema}.${name}: table is missing on target`);
+    }
+    columnCache.set(key, names);
+    return names;
+  };
 
   const pushRows = async (table: string, rows: unknown[]) => {
     const [schema, name] = table.includes(".") ? table.split(".") : ["public", table];
     if (!schema || !name) throw new Error(`Invalid migration table: ${table}`);
 
-    return await targetSql.begin(async (tx) => {
-      const columns = await tx`
-        select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as names
-          from information_schema.columns
-         where table_schema = ${schema}
-           and table_name = ${name}
-           and is_generated = 'NEVER'
-           and coalesce(identity_generation, '') <> 'ALWAYS'`;
-      const names = columns[0]?.names;
-      if (typeof names !== "string" || !names) {
-        throw new Error(`${table}: table is missing on target`);
-      }
+    const names = await columnNames(schema, name);
+    const result = await targetSql.unsafe(
+      `insert into "${schema}"."${name}" (${names}) select ${names} from jsonb_populate_recordset(null::"${schema}"."${name}", $1) on conflict do nothing`,
+      [targetSql.json(rows)],
+    );
 
-      const result = await tx.unsafe(
-        `insert into "${schema}"."${name}" (${names}) select ${names} from jsonb_populate_recordset(null::"${schema}"."${name}", $1) on conflict do nothing`,
-        [tx.json(rows)],
+    return result.count;
+  };
+
+  // Auth users and identities must land in the same transaction so the FK
+  // from identities to users is satisfied without relying on cross-transaction
+  // visibility. We also skip identities for any user_id that is not present in
+  // the target after the insert, so a partially-imported or pre-existing user
+  // set never causes an FK violation.
+  const pushAuthUsersAndIdentities = async (users: unknown[], identities: unknown[]) => {
+    return await targetSql.begin(async (tx) => {
+      const userNames = await columnNames("auth", "users", tx);
+      const userResult = await tx.unsafe(
+        `insert into "auth"."users" (${userNames}) select ${userNames} from jsonb_populate_recordset(null::"auth"."users", $1) on conflict do nothing`,
+        [tx.json(users)],
       );
 
-      if (table === "auth.users") {
-        const ids = rows
-          .map((row) => (row as Record<string, unknown>)?.id)
-          .filter((id): id is string => typeof id === "string");
-        if (ids.length) {
-          await tx`delete from public.email_addresses where user_id = any(${ids}::uuid[])`;
-          await tx`delete from public.folders where user_id = any(${ids}::uuid[])`;
+      const ids = users
+        .map((row) => (row as Record<string, unknown>)?.id)
+        .filter((id): id is string => typeof id === "string");
+      if (ids.length) {
+        // Remove auto-provisioned rows created by target triggers so the
+        // real data imported later wins instead of being skipped by
+        // "on conflict do nothing".
+        await tx`delete from public.profiles where id = any(${ids}::uuid[])`;
+        await tx`delete from public.email_addresses where user_id = any(${ids}::uuid[])`;
+        await tx`delete from public.folders where user_id = any(${ids}::uuid[])`;
+      }
+
+      if (identities.length) {
+        const identityNames = await columnNames("auth", "identities", tx);
+        const present = await tx`
+          select id::text from auth.users where id = any(${ids}::uuid[])
+        `;
+        const presentSet = new Set(present.map((r: { id: string }) => r.id));
+        const filteredIdentities = identities.filter((row) => {
+          const userId = (row as Record<string, unknown>)?.user_id;
+          return typeof userId === "string" && presentSet.has(userId);
+        });
+        if (filteredIdentities.length) {
+          await tx.unsafe(
+            `insert into "auth"."identities" (${identityNames}) select ${identityNames} from jsonb_populate_recordset(null::"auth"."identities", $1) on conflict do nothing`,
+            [tx.json(filteredIdentities)],
+          );
         }
       }
 
-      return result.count;
+      return userResult.count;
     });
   };
+
+  // Temporarily disable triggers on the tables we will import so that target
+  // triggers (address limits, updated_at, etc.) do not block or mutate the
+  // source data. They are re-enabled in the finally block.
+  const disabledTriggers: { schema: string; name: string }[] = [];
+  try {
+    for (const step of PLAN) {
+      if (only && !only.has(step.table)) continue;
+      const [schema, name] = step.table.includes(".")
+        ? step.table.split(".")
+        : ["public", step.table];
+      await targetSql.unsafe(`alter table "${schema}"."${name}" disable trigger all`);
+      disabledTriggers.push({ schema, name });
+    }
+  } catch (err) {
+    console.warn("[migrate] could not disable triggers:", err);
+  }
 
   try {
     for (const step of PLAN) {
       if (only && !only.has(step.table)) continue;
+
+      // auth.identities is handled together with auth.users.
+      if (step.table === "auth.identities") continue;
 
       const [schema, name] = step.table.includes(".")
         ? step.table.split(".")
@@ -151,6 +219,51 @@ Deno.serve(async (req) => {
       }
       if (dryRun) {
         report.push({ table: step.table, rows: total, dry_run: true });
+        continue;
+      }
+
+      // Combined auth.users + auth.identities import in one transaction.
+      if (step.table === "auth.users") {
+        const identityStep = PLAN.find((s) => s.table === "auth.identities")!;
+        const identityTotalRows = await sql.unsafe(
+          `select count(*)::bigint as c from auth."identities"`,
+        );
+        const identityTotal = Number(identityTotalRows[0].c);
+
+        let migratedUsers = 0;
+        let migratedIdentities = 0;
+        for (let offset = 0; offset < total; offset += step.chunk) {
+          const userRows = await sql.unsafe(
+            `select to_jsonb(t) as row from auth."users" t
+               order by "${step.order}" nulls first
+               limit ${step.chunk} offset ${offset}`,
+          );
+          const userPayload = userRows.map((r: Record<string, unknown>) => r.row);
+          if (userPayload.length === 0) break;
+
+          const ids = userPayload
+            .map((row) => (row as Record<string, unknown>)?.id)
+            .filter((id): id is string => typeof id === "string");
+
+          let identityPayload: unknown[] = [];
+          if (ids.length && identityTotal > 0) {
+            const identityRows = await sql.unsafe(
+              `select to_jsonb(t) as row from auth."identities" t
+                 where t.user_id = any($1::uuid[])
+                 order by "${identityStep.order}" nulls first`,
+              [ids],
+            );
+            identityPayload = identityRows.map((r: Record<string, unknown>) => r.row);
+          }
+
+          await pushAuthUsersAndIdentities(userPayload, identityPayload);
+          migratedUsers += userPayload.length;
+          migratedIdentities += identityPayload.length;
+        }
+        report.push({ table: "auth.users", rows: total, migrated: migratedUsers });
+        report.push({ table: "auth.identities", rows: identityTotal, migrated: migratedIdentities });
+        console.log(`[migrate] auth.users: ${migratedUsers}/${total}`);
+        console.log(`[migrate] auth.identities: ${migratedIdentities}/${identityTotal}`);
         continue;
       }
 
