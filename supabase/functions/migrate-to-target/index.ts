@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
   // visibility.
   const pushAuthUsersAndIdentities = async (users: unknown[], identities: unknown[]) => {
     return await targetSql.begin(async (tx) => {
-      const userNames = await columnNames("auth", "users");
+      const userNames = await columnNames("auth", "users", tx);
       const userResult = await tx.unsafe(
         `insert into "auth"."users" (${userNames}) select ${userNames} from jsonb_populate_recordset(null::"auth"."users", $1) on conflict do nothing`,
         [tx.json(users)],
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
       }
 
       if (identities.length) {
-        const identityNames = await columnNames("auth", "identities");
+        const identityNames = await columnNames("auth", "identities", tx);
         await tx.unsafe(
           `insert into "auth"."identities" (${identityNames}) select ${identityNames} from jsonb_populate_recordset(null::"auth"."identities", $1) on conflict do nothing`,
           [tx.json(identities)],
