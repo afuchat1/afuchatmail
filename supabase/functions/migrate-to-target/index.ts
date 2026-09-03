@@ -209,10 +209,12 @@ Deno.serve(async (req) => {
 
           let identityPayload: unknown[] = [];
           if (ids.length && identityTotal > 0) {
-            const identityRows = await sql`
-              select to_jsonb(t) as row from auth.identities t
-               where t.user_id = any(${ids}::uuid[])
-               order by ${sql(identityStep.order)} nulls first`;
+            const identityRows = await sql.unsafe(
+              `select to_jsonb(t) as row from auth."identities" t
+                 where t.user_id = any($1::uuid[])
+                 order by "${identityStep.order}" nulls first`,
+              [ids],
+            );
             identityPayload = identityRows.map((r: Record<string, unknown>) => r.row);
           }
 
