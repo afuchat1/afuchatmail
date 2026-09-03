@@ -86,16 +86,17 @@ Deno.serve(async (req) => {
   const only = Array.isArray(body.only) && body.only.length ? new Set(body.only) : null;
 
   const sql = postgres(dbUrl, { prepare: false, max: 2, ssl: "require" });
-  const targetSql = postgres(targetDbUrl, { prepare: false, max: 1, ssl: "require" });
+  const targetSql = postgres(targetDbUrl, { prepare: false, max: 4, ssl: "require" });
   const report: Record<string, unknown>[] = [];
   const columnCache = new Map<string, string>();
 
-  const columnNames = async (schema: string, name: string) => {
+  const columnNames = async (schema: string, name: string, tx?: any) => {
     const key = `${schema}.${name}`;
     const cached = columnCache.get(key);
     if (cached) return cached;
 
-    const columns = await targetSql`
+    const runner = tx ?? targetSql;
+    const columns = await runner`
       select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as names
         from information_schema.columns
        where table_schema = ${schema}
