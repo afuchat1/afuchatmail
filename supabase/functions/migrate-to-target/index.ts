@@ -15,15 +15,16 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Load order matters only for readability — the target import runs with
-// triggers/FK checks relaxed. Chunk sizes are tuned to the table width and
-// row count to keep round-trips low.
+// Order respects foreign-key dependencies so rows can be inserted with FK
+// checks enabled. Chunk sizes are tuned to table width and row count.
 const PLAN: { table: string; chunk: number; order: string }[] = [
   { table: "auth.users", chunk: 100, order: "created_at" },
   { table: "auth.identities", chunk: 200, order: "created_at" },
-  { table: "profiles", chunk: 200, order: "created_at" },
-  { table: "folders", chunk: 500, order: "created_at" },
+  // email_addresses must come before profiles/custom_domains because those
+  // reference it; folders must come before emails.
   { table: "email_addresses", chunk: 500, order: "created_at" },
+  { table: "folders", chunk: 500, order: "created_at" },
+  { table: "profiles", chunk: 200, order: "created_at" },
   { table: "custom_domains", chunk: 200, order: "created_at" },
   { table: "emails", chunk: 100, order: "created_at" },
   { table: "email_templates", chunk: 200, order: "created_at" },
