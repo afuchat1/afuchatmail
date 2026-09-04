@@ -135,18 +135,20 @@ Deno.serve(async (req) => {
     const filters = [
       ...(validUserIds
         ? [{
-            column: "user_id",
+            columns: ["user_id", "id"],
             validIds: validUserIds,
             nullable: true,
           }]
         : []),
-      ...(fkFilters ?? []).map((f) => ({ ...f, nullable: true })),
+      ...(fkFilters ?? []).map((f) => ({ columns: [f.column], validIds: f.validIds, nullable: true })),
     ];
 
     if (filters.length) {
       payload = rows.filter((row) => {
-        for (const { column, validIds, nullable } of filters) {
-          const value = (row as Record<string, unknown>)?.[column];
+        for (const { columns, validIds, nullable } of filters) {
+          const value = columns
+            .map((c) => (row as Record<string, unknown>)?.[c])
+            .find((v) => v !== undefined && v !== null);
           if (value === null || value === undefined) {
             if (!nullable) {
               skipped++;
