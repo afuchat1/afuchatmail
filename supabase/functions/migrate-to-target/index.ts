@@ -87,7 +87,10 @@ Deno.serve(async (req) => {
   const only = Array.isArray(body.only) && body.only.length ? new Set(body.only) : null;
 
   const sql = postgres(dbUrl, { prepare: false, max: 2, ssl: "require" });
-  const targetSql = postgres(targetDbUrl, { prepare: false, max: 4, ssl: "require" });
+  // Use a single target connection so session-level settings (e.g. disabled
+  // triggers) persist across the whole migration and transactions can share
+  // the same connection safely.
+  const targetSql = postgres(targetDbUrl, { prepare: false, max: 1, ssl: "require" });
   const report: Record<string, unknown>[] = [];
   const columnCache = new Map<string, string>();
 
