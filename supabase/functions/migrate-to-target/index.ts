@@ -292,10 +292,10 @@ Deno.serve(async (req) => {
     console.error("[migrate] failed:", err);
     return json({ ok: false, error: String((err as Error).message ?? err), report }, 500);
   } finally {
-    // Re-enable any triggers we disabled so the target database stays consistent.
+    // Re-enable any user triggers we disabled so the target database stays consistent.
     try {
       for (const { schema, name } of disabledTriggers) {
-        await targetSql.unsafe(`alter table "${schema}"."${name}" enable trigger all`);
+        await targetSql.unsafe(`alter table "${schema}"."${name}" enable trigger user`);
       }
     } catch (enableErr) {
       console.error("[migrate] failed to re-enable triggers:", enableErr);
