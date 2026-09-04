@@ -180,6 +180,14 @@ Deno.serve(async (req) => {
     });
   };
 
+  const verifyTargetUsers = async (ids: string[]) => {
+    if (!ids.length) return [];
+    const rows = await targetSql`
+      select id::text from auth.users where id = any(${ids}::uuid[])
+    `;
+    return rows.map((r: { id: string }) => r.id);
+  };
+
   // Temporarily disable user triggers on the tables we will import so that
   // target triggers (address limits, updated_at, etc.) do not block or mutate
   // the source data. System triggers (FK constraint triggers) are left enabled.
