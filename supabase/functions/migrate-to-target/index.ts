@@ -135,12 +135,11 @@ Deno.serve(async (req) => {
     const filters = [
       ...(validUserIds
         ? [{
-            // Most tables reference auth.users via user_id. Profiles is special:
-            // it uses its primary key `id` as the FK to auth.users.id. We decide
-            // per-row based on which column is actually present.
+            // Most tables reference auth.users via user_id. Profiles is the
+            // only table where the primary key `id` is the FK to auth.users.id.
             resolve: (row: Record<string, unknown>) => {
               if ("user_id" in row) return row.user_id;
-              if ("id" in row) return row.id;
+              if (table === "profiles" && "id" in row) return row.id;
               return undefined;
             },
             validIds: validUserIds,
