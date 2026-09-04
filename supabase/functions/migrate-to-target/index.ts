@@ -283,6 +283,16 @@ Deno.serve(async (req) => {
         report.push({ table: "auth.identities", rows: identityTotal, migrated: migratedIdentities });
         console.log(`[migrate] auth.users: ${migratedUsers}/${total}`);
         console.log(`[migrate] auth.identities: ${migratedIdentities}/${identityTotal}`);
+
+        const allUserIds: string[] = [];
+        for (let offset = 0; offset < total; offset += step.chunk) {
+          const userRows = await sql.unsafe(
+            `select to_jsonb(t) as row from auth."users" t order by "${step.order}" nulls first limit ${step.chunk} offset ${offset}`,
+          );
+          allUserIds.push(...userRows.map((r: Record<string, unknown>) => (r.row as Record<string, unknown>)?.id as string).filter((id): id is string => typeof id === "string"));
+        }
+        const presentIds = await verifyTargetUsers(allUserIds);
+        console.log(`[migrate] target auth.users verification: ${presentIds.length}/${allUserIds.length}`);
         continue;
       }
 
