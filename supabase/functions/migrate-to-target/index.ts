@@ -120,17 +120,31 @@ Deno.serve(async (req) => {
     return names;
   };
 
-  const pushRows = async (table: string, rows: unknown[]) => {
+  const pushRows = async (table: string, rows: unknown[], validUserIds?: Set<string>) => {
     const [schema, name] = table.includes(".") ? table.split(".") : ["public", table];
     if (!schema || !name) throw new Error(`Invalid migration table: ${table}`);
+
+    let payload = rows;
+    let skipped = 0;
+    if (validUserIds) {
+      payload = rows.filter((row) => {
+        const userId = (row as Record<string, unknown>)?.user_id as string | undefined;
+        if (!userId) return true;
+        if (validUserIds.has(userId)) return true;
+        skipped++;
+        return false;
+      });
+    }
+
+    if (payload.length === 0) return { count: 0, skipped };
 
     const names = await columnNames(schema, name);
     const result = await targetSql.unsafe(
       `insert into "${schema}"."${name}" (${names}) select ${names} from jsonb_populate_recordset(null::"${schema}"."${name}", $1) on conflict do nothing`,
-      [targetSql.json(rows)],
+      [targetSql.json(payload)],
     );
 
-    return result.count;
+    return { count: result.count, skipped };
   };
 
   // Auth users and identities must land in the same transaction so the FK
