@@ -361,6 +361,15 @@ Deno.serve(async (req) => {
       if (step.table === "custom_domains" && validTargetIds.has("email_addresses")) {
         fkFilters.push({ column: "catch_all_address_id", validIds: validTargetIds.get("email_addresses")! });
       }
+      if (step.table === "emails") {
+        if (validTargetIds.has("email_addresses")) {
+          fkFilters.push({ column: "email_address_id", validIds: validTargetIds.get("email_addresses")! });
+        }
+        if (validTargetIds.has("folders")) {
+          fkFilters.push({ column: "folder_id", validIds: validTargetIds.get("folders")! });
+          fkFilters.push({ column: "original_folder_id", validIds: validTargetIds.get("folders")! });
+        }
+      }
 
       let migrated = 0;
       let skipped = 0;
