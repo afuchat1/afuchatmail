@@ -317,6 +317,7 @@ Deno.serve(async (req) => {
       }
 
       let migrated = 0;
+      let skipped = 0;
       for (let offset = 0; offset < total; offset += step.chunk) {
         const rows = await sql.unsafe(
           `select to_jsonb(t) as row from ${schema}."${name}" t
@@ -326,19 +327,12 @@ Deno.serve(async (req) => {
         const payload = rows.map((r: Record<string, unknown>) => r.row);
         if (payload.length === 0) break;
 
-        if (step.table === "email_addresses") {
-          const userIds = payload
-            .map((row) => (row as Record<string, unknown>)?.user_id as string)
-            .filter((id): id is string => typeof id === "string");
-          const present = await verifyTargetUsers([...new Set(userIds)]);
-          console.log(`[migrate] email_addresses batch user verification: ${present.length}/${userIds.length} unique`);
-        }
-
-        await pushRows(step.table, payload);
-        migrated += payload.length;
+        const { count, skipped: batchSkipped } = await pushRows(step.table, payload, validTargetUserIds);
+        migrated += count;
+        skipped += batchSkipped;
       }
-      report.push({ table: step.table, rows: total, migrated });
-      console.log(`[migrate] ${step.table}: ${migrated}/${total}`);
+      report.push({ table: step.table, rows: total, migrated, skipped });
+      console.log(`[migrate] ${step.table}: ${migrated}/${total} (skipped ${skipped})`);
     }
 
     return json({ ok: true, dry_run: dryRun, target: targetUrl, report });
