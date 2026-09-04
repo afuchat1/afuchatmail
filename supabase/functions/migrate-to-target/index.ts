@@ -228,6 +228,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // For migrations that skip auth.users, we still need to know which users
+    // exist on the target so FK-dependent rows can be filtered safely.
+    let validTargetUserIds: Set<string> | undefined = only && !only.has("auth.users")
+      ? await getAllTargetUserIds()
+      : undefined;
+
     for (const step of PLAN) {
       if (only && !only.has(step.table)) continue;
 
