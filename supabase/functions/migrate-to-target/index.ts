@@ -351,6 +351,15 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      // Build FK filters for tables whose columns reference already-migrated tables.
+      const fkFilters: { column: string; validIds: Set<string> }[] = [];
+      if (step.table === "profiles" && validTargetIds.has("email_addresses")) {
+        fkFilters.push({ column: "recovery_email_address_id", validIds: validTargetIds.get("email_addresses")! });
+      }
+      if (step.table === "custom_domains" && validTargetIds.has("email_addresses")) {
+        fkFilters.push({ column: "catch_all_address_id", validIds: validTargetIds.get("email_addresses")! });
+      }
+
       let migrated = 0;
       let skipped = 0;
       for (let offset = 0; offset < total; offset += step.chunk) {
@@ -362,10 +371,20 @@ Deno.serve(async (req) => {
         const payload = rows.map((r: Record<string, unknown>) => r.row);
         if (payload.length === 0) break;
 
-        const { count, skipped: batchSkipped } = await pushRows(step.table, payload, validTargetUserIds);
+        const { count, skipped: batchSkipped } = await pushRows(step.table, payload, validTargetUserIds, fkFilters);
         migrated += count;
         skipped += batchSkipped;
       }
+
+      // Cache the ids of tables we just imported so later FK references can be checked.
+      if (["email_addresses", "folders"].includes(step.table) && migrated > 0) {
+        try {
+          validTargetIds.set(step.table, await getAllTargetIds(schema, name));
+        } catch (e) {
+          console.warn(`[migrate] could not cache ids for ${step.table}:`, e);
+        }
+      }
+
       report.push({ table: step.table, rows: total, migrated, skipped });
       console.log(`[migrate] ${step.table}: ${migrated}/${total} (skipped ${skipped})`);
     }
