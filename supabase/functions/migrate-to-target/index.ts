@@ -271,6 +271,22 @@ Deno.serve(async (req) => {
     // validated (e.g. profiles.recovery_email_address_id -> email_addresses).
     const validTargetIds = new Map<string, Set<string>>();
 
+    // Pre-load ids for tables that are not part of this run but are referenced
+    // by tables that are (e.g. emails references email_addresses/folders).
+    for (const step of PLAN) {
+      if (only && only.has(step.table)) continue;
+      if (["email_addresses", "folders"].includes(step.table)) {
+        const [schema, name] = step.table.includes(".")
+          ? step.table.split(".")
+          : ["public", step.table];
+        try {
+          validTargetIds.set(step.table, await getAllTargetIds(schema, name));
+        } catch (e) {
+          console.warn(`[migrate] could not pre-load ids for ${step.table}:`, e);
+        }
+      }
+    }
+
     for (const step of PLAN) {
       if (only && !only.has(step.table)) continue;
 
