@@ -178,19 +178,21 @@ Deno.serve(async (req) => {
   // Temporarily disable user triggers on the tables we will import so that
   // target triggers (address limits, updated_at, etc.) do not block or mutate
   // the source data. System triggers (FK constraint triggers) are left enabled.
-  // Triggers are re-enabled in the finally block.
+  // Auth schema tables are owned by Supabase internals and cannot be altered by
+  // the postgres role, so failures there are ignored. Triggers are re-enabled in
+  // the finally block.
   const disabledTriggers: { schema: string; name: string }[] = [];
-  try {
-    for (const step of PLAN) {
-      if (only && !only.has(step.table)) continue;
-      const [schema, name] = step.table.includes(".")
-        ? step.table.split(".")
-        : ["public", step.table];
+  for (const step of PLAN) {
+    if (only && !only.has(step.table)) continue;
+    const [schema, name] = step.table.includes(".")
+      ? step.table.split(".")
+      : ["public", step.table];
+    try {
       await targetSql.unsafe(`alter table "${schema}"."${name}" disable trigger user`);
       disabledTriggers.push({ schema, name });
+    } catch (err) {
+      console.warn(`[migrate] could not disable triggers on ${schema}.${name}:`, err);
     }
-  } catch (err) {
-    console.warn("[migrate] could not disable triggers:", err);
   }
 
   try {
