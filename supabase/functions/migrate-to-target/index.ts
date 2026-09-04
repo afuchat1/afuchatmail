@@ -394,6 +394,10 @@ Deno.serve(async (req) => {
           fkFilters.push({ column: "original_folder_id", validIds: validTargetIds.get("folders")! });
         }
       }
+      if (step.table === "admin_audit_log" && validTargetUserIds) {
+        fkFilters.push({ column: "admin_user_id", validIds: validTargetUserIds });
+        fkFilters.push({ column: "target_user_id", validIds: validTargetUserIds });
+      }
 
       let migrated = 0;
       let skipped = 0;
