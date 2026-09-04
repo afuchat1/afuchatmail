@@ -56,7 +56,12 @@ Deno.serve(async (req) => {
 
   const targetUrl = (Deno.env.get("TARGET_SUPABASE_URL") ?? "").replace(/\/+$/, "");
   const targetKey = Deno.env.get("TARGET_SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const targetDbUrl = Deno.env.get("TARGET_SUPABASE_DB_URL") ?? "";
+  const targetDbUrl = (Deno.env.get("TARGET_SUPABASE_DB_URL") ?? "")
+    // Supabase's transaction pooler (6543) multiplexes queries across backend
+    // connections, so session-level settings like disabled triggers do not
+    // persist. Force the session pooler (5432) so the migration runs on one
+    // stable backend connection.
+    .replace(/:6543\//, ":5432/");
   const dbUrl = Deno.env.get("SUPABASE_DB_URL") ?? "";
 
   if (!targetUrl || !targetKey) {
@@ -87,7 +92,10 @@ Deno.serve(async (req) => {
   const only = Array.isArray(body.only) && body.only.length ? new Set(body.only) : null;
 
   const sql = postgres(dbUrl, { prepare: false, max: 2, ssl: "require" });
-  const targetSql = postgres(targetDbUrl, { prepare: false, max: 4, ssl: "require" });
+  // Use a single target connection so session-level settings (e.g. disabled
+  // triggers) persist across the whole migration and transactions can share
+  // the same connection safely.
+  const targetSql = postgres(targetDbUrl, { prepare: false, max: 1, ssl: "require" });
   const report: Record<string, unknown>[] = [];
   const columnCache = new Map<string, string>();
 
@@ -112,17 +120,68 @@ Deno.serve(async (req) => {
     return names;
   };
 
-  const pushRows = async (table: string, rows: unknown[]) => {
+  const pushRows = async (
+    table: string,
+    rows: unknown[],
+    validUserIds?: Set<string>,
+    fkFilters?: { column: string; validIds: Set<string> }[],
+  ) => {
     const [schema, name] = table.includes(".") ? table.split(".") : ["public", table];
     if (!schema || !name) throw new Error(`Invalid migration table: ${table}`);
+
+    let payload = rows;
+    let skipped = 0;
+
+    const filters = [
+      ...(validUserIds
+        ? [{
+            // Most tables reference auth.users via user_id. Profiles is the
+            // only table where the primary key `id` is the FK to auth.users.id.
+            resolve: (row: Record<string, unknown>) => {
+              if ("user_id" in row) return row.user_id;
+              if (table === "profiles" && "id" in row) return row.id;
+              return undefined;
+            },
+            validIds: validUserIds,
+            nullable: true,
+          }]
+        : []),
+      ...(fkFilters ?? []).map((f) => ({
+        resolve: (row: Record<string, unknown>) => row[f.column],
+        validIds: f.validIds,
+        nullable: true,
+      })),
+    ];
+
+    if (filters.length) {
+      payload = rows.filter((row) => {
+        for (const { resolve, validIds, nullable } of filters) {
+          const value = resolve(row as Record<string, unknown>);
+          if (value === null || value === undefined) {
+            if (!nullable) {
+              skipped++;
+              return false;
+            }
+            continue;
+          }
+          if (typeof value === "string" && !validIds.has(value)) {
+            skipped++;
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+
+    if (payload.length === 0) return { count: 0, skipped };
 
     const names = await columnNames(schema, name);
     const result = await targetSql.unsafe(
       `insert into "${schema}"."${name}" (${names}) select ${names} from jsonb_populate_recordset(null::"${schema}"."${name}", $1) on conflict do nothing`,
-      [targetSql.json(rows)],
+      [targetSql.json(payload)],
     );
 
-    return result.count;
+    return { count: result.count, skipped };
   };
 
   // Auth users and identities must land in the same transaction so the FK
@@ -172,24 +231,70 @@ Deno.serve(async (req) => {
     });
   };
 
-  // Temporarily disable triggers on the tables we will import so that target
-  // triggers (address limits, updated_at, etc.) do not block or mutate the
-  // source data. They are re-enabled in the finally block.
+  const verifyTargetUsers = async (ids: string[]) => {
+    if (!ids.length) return [];
+    const rows = await targetSql`
+      select id::text from auth.users where id = any(${ids}::uuid[])
+    `;
+    return rows.map((r: { id: string }) => r.id);
+  };
+
+  const getAllTargetUserIds = async () => {
+    const rows = await targetSql`select id::text from auth.users`;
+    return new Set(rows.map((r: { id: string }) => r.id));
+  };
+
+  const getAllTargetIds = async (schema: string, name: string) => {
+    const rows = await targetSql.unsafe(`select id::text from "${schema}"."${name}"`);
+    return new Set(rows.map((r: { id: string }) => r.id));
+  };
+
+  // Temporarily disable user triggers on the tables we will import so that
+  // target triggers (address limits, updated_at, etc.) do not block or mutate
+  // the source data. System triggers (FK constraint triggers) are left enabled.
+  // Auth schema tables are owned by Supabase internals and cannot be altered by
+  // the postgres role, so failures there are ignored. Triggers are re-enabled in
+  // the finally block.
   const disabledTriggers: { schema: string; name: string }[] = [];
-  try {
-    for (const step of PLAN) {
-      if (only && !only.has(step.table)) continue;
-      const [schema, name] = step.table.includes(".")
-        ? step.table.split(".")
-        : ["public", step.table];
-      await targetSql.unsafe(`alter table "${schema}"."${name}" disable trigger all`);
+  for (const step of PLAN) {
+    if (only && !only.has(step.table)) continue;
+    const [schema, name] = step.table.includes(".")
+      ? step.table.split(".")
+      : ["public", step.table];
+    try {
+      await targetSql.unsafe(`alter table "${schema}"."${name}" disable trigger user`);
       disabledTriggers.push({ schema, name });
+    } catch (err) {
+      console.warn(`[migrate] could not disable triggers on ${schema}.${name}:`, err);
     }
-  } catch (err) {
-    console.warn("[migrate] could not disable triggers:", err);
   }
 
   try {
+    // For migrations that skip auth.users, we still need to know which users
+    // exist on the target so FK-dependent rows can be filtered safely.
+    let validTargetUserIds: Set<string> | undefined = only && !only.has("auth.users")
+      ? await getAllTargetUserIds()
+      : undefined;
+    // Track ids of tables already migrated so later FK references can be
+    // validated (e.g. profiles.recovery_email_address_id -> email_addresses).
+    const validTargetIds = new Map<string, Set<string>>();
+
+    // Pre-load ids for tables that are not part of this run but are referenced
+    // by tables that are (e.g. emails references email_addresses/folders).
+    for (const step of PLAN) {
+      if (only && only.has(step.table)) continue;
+      if (["email_addresses", "folders"].includes(step.table)) {
+        const [schema, name] = step.table.includes(".")
+          ? step.table.split(".")
+          : ["public", step.table];
+        try {
+          validTargetIds.set(step.table, await getAllTargetIds(schema, name));
+        } catch (e) {
+          console.warn(`[migrate] could not pre-load ids for ${step.table}:`, e);
+        }
+      }
+    }
+
     for (const step of PLAN) {
       if (only && !only.has(step.table)) continue;
 
@@ -264,10 +369,38 @@ Deno.serve(async (req) => {
         report.push({ table: "auth.identities", rows: identityTotal, migrated: migratedIdentities });
         console.log(`[migrate] auth.users: ${migratedUsers}/${total}`);
         console.log(`[migrate] auth.identities: ${migratedIdentities}/${identityTotal}`);
+
+        // Build the authoritative set of target user ids after auth import so
+        // every dependent table filters rows for users that actually landed.
+        validTargetUserIds = await getAllTargetUserIds();
+        console.log(`[migrate] target auth.users present: ${validTargetUserIds.size}`);
         continue;
       }
 
+      // Build FK filters for tables whose columns reference already-migrated tables.
+      const fkFilters: { column: string; validIds: Set<string> }[] = [];
+      if (step.table === "profiles" && validTargetIds.has("email_addresses")) {
+        fkFilters.push({ column: "recovery_email_address_id", validIds: validTargetIds.get("email_addresses")! });
+      }
+      if (step.table === "custom_domains" && validTargetIds.has("email_addresses")) {
+        fkFilters.push({ column: "catch_all_address_id", validIds: validTargetIds.get("email_addresses")! });
+      }
+      if (step.table === "emails") {
+        if (validTargetIds.has("email_addresses")) {
+          fkFilters.push({ column: "email_address_id", validIds: validTargetIds.get("email_addresses")! });
+        }
+        if (validTargetIds.has("folders")) {
+          fkFilters.push({ column: "folder_id", validIds: validTargetIds.get("folders")! });
+          fkFilters.push({ column: "original_folder_id", validIds: validTargetIds.get("folders")! });
+        }
+      }
+      if (step.table === "admin_audit_log" && validTargetUserIds) {
+        fkFilters.push({ column: "admin_user_id", validIds: validTargetUserIds });
+        fkFilters.push({ column: "target_user_id", validIds: validTargetUserIds });
+      }
+
       let migrated = 0;
+      let skipped = 0;
       for (let offset = 0; offset < total; offset += step.chunk) {
         const rows = await sql.unsafe(
           `select to_jsonb(t) as row from ${schema}."${name}" t
@@ -276,11 +409,23 @@ Deno.serve(async (req) => {
         );
         const payload = rows.map((r: Record<string, unknown>) => r.row);
         if (payload.length === 0) break;
-        await pushRows(step.table, payload);
-        migrated += payload.length;
+
+        const { count, skipped: batchSkipped } = await pushRows(step.table, payload, validTargetUserIds, fkFilters);
+        migrated += count;
+        skipped += batchSkipped;
       }
-      report.push({ table: step.table, rows: total, migrated });
-      console.log(`[migrate] ${step.table}: ${migrated}/${total}`);
+
+      // Cache the ids of tables we just imported so later FK references can be checked.
+      if (["email_addresses", "folders"].includes(step.table)) {
+        try {
+          validTargetIds.set(step.table, await getAllTargetIds(schema, name));
+        } catch (e) {
+          console.warn(`[migrate] could not cache ids for ${step.table}:`, e);
+        }
+      }
+
+      report.push({ table: step.table, rows: total, migrated, skipped });
+      console.log(`[migrate] ${step.table}: ${migrated}/${total} (skipped ${skipped})`);
     }
 
     return json({ ok: true, dry_run: dryRun, target: targetUrl, report });
@@ -288,10 +433,10 @@ Deno.serve(async (req) => {
     console.error("[migrate] failed:", err);
     return json({ ok: false, error: String((err as Error).message ?? err), report }, 500);
   } finally {
-    // Re-enable any triggers we disabled so the target database stays consistent.
+    // Re-enable any user triggers we disabled so the target database stays consistent.
     try {
       for (const { schema, name } of disabledTriggers) {
-        await targetSql.unsafe(`alter table "${schema}"."${name}" enable trigger all`);
+        await targetSql.unsafe(`alter table "${schema}"."${name}" enable trigger user`);
       }
     } catch (enableErr) {
       console.error("[migrate] failed to re-enable triggers:", enableErr);
