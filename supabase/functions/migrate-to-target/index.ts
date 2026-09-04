@@ -120,19 +120,46 @@ Deno.serve(async (req) => {
     return names;
   };
 
-  const pushRows = async (table: string, rows: unknown[], validUserIds?: Set<string>) => {
+  const pushRows = async (
+    table: string,
+    rows: unknown[],
+    validUserIds?: Set<string>,
+    fkFilters?: { column: string; validIds: Set<string> }[],
+  ) => {
     const [schema, name] = table.includes(".") ? table.split(".") : ["public", table];
     if (!schema || !name) throw new Error(`Invalid migration table: ${table}`);
 
     let payload = rows;
     let skipped = 0;
-    if (validUserIds) {
+
+    const filters = [
+      ...(validUserIds
+        ? [{
+            column: "user_id",
+            validIds: validUserIds,
+            nullable: true,
+          }]
+        : []),
+      ...(fkFilters ?? []).map((f) => ({ ...f, nullable: true })),
+    ];
+
+    if (filters.length) {
       payload = rows.filter((row) => {
-        const userId = (row as Record<string, unknown>)?.user_id as string | undefined;
-        if (!userId) return true;
-        if (validUserIds.has(userId)) return true;
-        skipped++;
-        return false;
+        for (const { column, validIds, nullable } of filters) {
+          const value = (row as Record<string, unknown>)?.[column];
+          if (value === null || value === undefined) {
+            if (!nullable) {
+              skipped++;
+              return false;
+            }
+            continue;
+          }
+          if (typeof value === "string" && !validIds.has(value)) {
+            skipped++;
+            return false;
+          }
+        }
+        return true;
       });
     }
 
