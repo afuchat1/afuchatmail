@@ -175,9 +175,10 @@ Deno.serve(async (req) => {
     });
   };
 
-  // Temporarily disable triggers on the tables we will import so that target
-  // triggers (address limits, updated_at, etc.) do not block or mutate the
-  // source data. They are re-enabled in the finally block.
+  // Temporarily disable user triggers on the tables we will import so that
+  // target triggers (address limits, updated_at, etc.) do not block or mutate
+  // the source data. System triggers (FK constraint triggers) are left enabled.
+  // Triggers are re-enabled in the finally block.
   const disabledTriggers: { schema: string; name: string }[] = [];
   try {
     for (const step of PLAN) {
@@ -185,7 +186,7 @@ Deno.serve(async (req) => {
       const [schema, name] = step.table.includes(".")
         ? step.table.split(".")
         : ["public", step.table];
-      await targetSql.unsafe(`alter table "${schema}"."${name}" disable trigger all`);
+      await targetSql.unsafe(`alter table "${schema}"."${name}" disable trigger user`);
       disabledTriggers.push({ schema, name });
     }
   } catch (err) {
