@@ -135,20 +135,29 @@ Deno.serve(async (req) => {
     const filters = [
       ...(validUserIds
         ? [{
-            columns: ["user_id", "id"],
+            // Most tables reference auth.users via user_id. Profiles is special:
+            // it uses its primary key `id` as the FK to auth.users.id. We decide
+            // per-row based on which column is actually present.
+            resolve: (row: Record<string, unknown>) => {
+              if ("user_id" in row) return row.user_id;
+              if ("id" in row) return row.id;
+              return undefined;
+            },
             validIds: validUserIds,
             nullable: true,
           }]
         : []),
-      ...(fkFilters ?? []).map((f) => ({ columns: [f.column], validIds: f.validIds, nullable: true })),
+      ...(fkFilters ?? []).map((f) => ({
+        resolve: (row: Record<string, unknown>) => row[f.column],
+        validIds: f.validIds,
+        nullable: true,
+      })),
     ];
 
     if (filters.length) {
       payload = rows.filter((row) => {
-        for (const { columns, validIds, nullable } of filters) {
-          const value = columns
-            .map((c) => (row as Record<string, unknown>)?.[c])
-            .find((v) => v !== undefined && v !== null);
+        for (const { resolve, validIds, nullable } of filters) {
+          const value = resolve(row as Record<string, unknown>);
           if (value === null || value === undefined) {
             if (!nullable) {
               skipped++;
