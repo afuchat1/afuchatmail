@@ -305,6 +305,15 @@ Deno.serve(async (req) => {
         );
         const payload = rows.map((r: Record<string, unknown>) => r.row);
         if (payload.length === 0) break;
+
+        if (step.table === "email_addresses") {
+          const userIds = payload
+            .map((row) => (row as Record<string, unknown>)?.user_id as string)
+            .filter((id): id is string => typeof id === "string");
+          const present = await verifyTargetUsers([...new Set(userIds)]);
+          console.log(`[migrate] email_addresses batch user verification: ${present.length}/${userIds.length} unique`);
+        }
+
         await pushRows(step.table, payload);
         migrated += payload.length;
       }
