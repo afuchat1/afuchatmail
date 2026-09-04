@@ -56,7 +56,12 @@ Deno.serve(async (req) => {
 
   const targetUrl = (Deno.env.get("TARGET_SUPABASE_URL") ?? "").replace(/\/+$/, "");
   const targetKey = Deno.env.get("TARGET_SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const targetDbUrl = Deno.env.get("TARGET_SUPABASE_DB_URL") ?? "";
+  const targetDbUrl = (Deno.env.get("TARGET_SUPABASE_DB_URL") ?? "")
+    // Supabase's transaction pooler (6543) multiplexes queries across backend
+    // connections, so session-level settings like disabled triggers do not
+    // persist. Force the session pooler (5432) so the migration runs on one
+    // stable backend connection.
+    .replace(/:6543\//, ":5432/");
   const dbUrl = Deno.env.get("SUPABASE_DB_URL") ?? "";
 
   if (!targetUrl || !targetKey) {
