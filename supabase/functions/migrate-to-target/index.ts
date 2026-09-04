@@ -238,6 +238,9 @@ Deno.serve(async (req) => {
     let validTargetUserIds: Set<string> | undefined = only && !only.has("auth.users")
       ? await getAllTargetUserIds()
       : undefined;
+    // Track ids of tables already migrated so later FK references can be
+    // validated (e.g. profiles.recovery_email_address_id -> email_addresses).
+    const validTargetIds = new Map<string, Set<string>>();
 
     for (const step of PLAN) {
       if (only && !only.has(step.table)) continue;
