@@ -377,7 +377,7 @@ Deno.serve(async (req) => {
       }
 
       // Cache the ids of tables we just imported so later FK references can be checked.
-      if (["email_addresses", "folders"].includes(step.table) && migrated > 0) {
+      if (["email_addresses", "folders"].includes(step.table)) {
         try {
           validTargetIds.set(step.table, await getAllTargetIds(schema, name));
         } catch (e) {
