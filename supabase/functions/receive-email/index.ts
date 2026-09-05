@@ -113,6 +113,18 @@ const handler = async (req: Request): Promise<Response> => {
       return (m ? m[1] : s).toLowerCase().trim();
     };
 
+    // Postgres text columns reject NUL bytes (22P05). Inbound mail regularly
+    // carries them inside quoted-printable/base64 bodies, which previously made
+    // every such message fail to store. Strip them (and lone surrogates).
+    const scrub = <T,>(v: T): T =>
+      typeof v === "string"
+        ? (v.replace(/\u0000/g, "").replace(/[\uD800-\uDFFF]/g, "") as unknown as T)
+        : v;
+    const scrubList = (v: unknown[]): string[] =>
+      (v ?? []).map((x) => scrub(String(x ?? ""))).filter(Boolean);
+
+
+
     const rawTo = webhookData?.to;
     const rawCc = webhookData?.cc;
     const toAddresses: string[] = (Array.isArray(rawTo) ? rawTo : [rawTo])
@@ -316,11 +328,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Check if this is a reply to an existing thread
     let threadId = null;
-    const isReply = payload.subject.toLowerCase().startsWith('re:');
+    const subjectText = String(payload.subject ?? "");
+    const isReply = subjectText.toLowerCase().startsWith('re:');
     
     if (isReply) {
       // Extract the original subject by removing "Re:" prefix
-      const originalSubject = payload.subject.replace(/^re:\s*/i, '').trim();
+      const originalSubject = subjectText.replace(/^re:\s*/i, '').trim();
       
       // Try to find an existing thread with matching subject and participants
       const { data: existingEmail } = await supabaseAdmin
@@ -354,14 +367,14 @@ const handler = async (req: Request): Promise<Response> => {
         user_id: emailAddress.user_id,
         email_address_id: targetEmailAddressId,
         folder_id: inboxFolder.id,
-        from_address: payload.from,
-        to_addresses: Array.isArray(payload.to) ? payload.to : [payload.to],
-        cc_addresses: ccAddresses,
-        bcc_addresses: bccAddresses,
-        subject: payload.subject,
-        body_html: finalBodyHtml,
-        body_text: finalBodyText,
-        reply_to: payload.reply_to,
+        from_address: scrub(String(payload.from ?? "")),
+        to_addresses: scrubList(Array.isArray(payload.to) ? payload.to : [payload.to]),
+        cc_addresses: scrubList(ccAddresses),
+        bcc_addresses: scrubList(bccAddresses),
+        subject: scrub(String(payload.subject ?? "")),
+        body_html: scrub(finalBodyHtml ?? ""),
+        body_text: scrub(finalBodyText ?? ""),
+        reply_to: payload.reply_to ? scrub(String(payload.reply_to)) : null,
         attachments: attachments,
         received_at: new Date().toISOString(),
         is_read: false,

@@ -13,9 +13,9 @@ import { z } from "npm:zod@^3.25.76";
 import { createClient } from "npm:@supabase/supabase-js@^2.109.0";
 
 // src/integrations/supabase/config.ts
-var SUPABASE_PROJECT_ID = "lqowocmjmhbkoxlwyxku";
-var SUPABASE_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co`;
-var SUPABASE_PUBLISHABLE_KEY = "sb_publishable_GivejXjATbLLc15I102__g_VaPih8-C";
+var SUPABASE_PROJECT_ID = "vfcukxlzqfeehhkiogpf";
+var SUPABASE_URL = "https://vfcukxlzqfeehhkiogpf.supabase.co";
+var SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmY3VreGx6cWZlZWhoa2lvZ3BmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0OTI4NTYsImV4cCI6MjA3OTA2ODg1Nn0.hVE2dRQCTerROZJLlUbZqCuIPggQc4bUoXDK-BOm77A";
 var SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 
 // src/lib/mcp/supabase.ts
