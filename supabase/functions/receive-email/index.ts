@@ -113,6 +113,18 @@ const handler = async (req: Request): Promise<Response> => {
       return (m ? m[1] : s).toLowerCase().trim();
     };
 
+    // Postgres text columns reject NUL bytes (22P05). Inbound mail regularly
+    // carries them inside quoted-printable/base64 bodies, which previously made
+    // every such message fail to store. Strip them (and lone surrogates).
+    const scrub = <T,>(v: T): T =>
+      typeof v === "string"
+        ? (v.replace(/\u0000/g, "").replace(/[\uD800-\uDFFF]/g, "") as unknown as T)
+        : v;
+    const scrubList = (v: unknown[]): string[] =>
+      (v ?? []).map((x) => scrub(String(x ?? ""))).filter(Boolean);
+
+
+
     const rawTo = webhookData?.to;
     const rawCc = webhookData?.cc;
     const toAddresses: string[] = (Array.isArray(rawTo) ? rawTo : [rawTo])
