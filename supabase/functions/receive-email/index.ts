@@ -328,11 +328,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Check if this is a reply to an existing thread
     let threadId = null;
-    const isReply = payload.subject.toLowerCase().startsWith('re:');
+    const subjectText = String(payload.subject ?? "");
+    const isReply = subjectText.toLowerCase().startsWith('re:');
     
     if (isReply) {
       // Extract the original subject by removing "Re:" prefix
-      const originalSubject = payload.subject.replace(/^re:\s*/i, '').trim();
+      const originalSubject = subjectText.replace(/^re:\s*/i, '').trim();
       
       // Try to find an existing thread with matching subject and participants
       const { data: existingEmail } = await supabaseAdmin
