@@ -42,8 +42,9 @@ serve(async (req) => {
     switch (action) {
       case "autocomplete":
         systemPrompt =
-          "You are an email autocomplete assistant. Given the email draft so far, suggest a natural continuation of 1-2 sentences. Only output the suggested continuation text, nothing else. Be concise and professional.";
+          "You are an email autocomplete assistant. Suggest a natural continuation of the draft: one short sentence, at most 18 words. Output only the continuation text, nothing else.";
         userPrompt = `Subject: ${subject || "(no subject)"}\n\nDraft so far:\n${body}`;
+
         model = "engagera-lite";
         break;
 
