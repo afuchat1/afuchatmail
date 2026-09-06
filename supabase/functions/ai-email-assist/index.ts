@@ -84,21 +84,33 @@ serve(async (req) => {
         throw new Error(`Unknown action: ${action}`);
     }
 
-    const response = await fetch(ENGAGERA_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${ENGAGERA_API_KEY}`,
-        "x-guest-session-id": ENGAGERA_GUEST_SESSION_ID,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "user", content: compactPrompt(systemPrompt, userPrompt) },
-        ],
-        stream: false,
-      }),
-    });
+    const ask = (m: string) =>
+      fetch(ENGAGERA_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ENGAGERA_API_KEY}`,
+          "x-guest-session-id": ENGAGERA_GUEST_SESSION_ID,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: m,
+          messages: [
+            { role: "user", content: compactPrompt(systemPrompt, userPrompt) },
+          ],
+          stream: false,
+        }),
+      });
+
+    // Transient upstream failures are common; retry once, then once more on a
+    // lighter model before giving up.
+    let response = await ask(model);
+    if (response.status >= 500) {
+      await new Promise((r) => setTimeout(r, 600));
+      response = await ask(model);
+      if (response.status >= 500 && model !== "engagera-lite") {
+        response = await ask("engagera-lite");
+      }
+    }
 
     if (!response.ok) {
       const errText = await response.text();
@@ -129,14 +141,16 @@ serve(async (req) => {
       "";
 
     if (action === "smart_reply") {
-      try {
-        const jsonMatch = content.match(/\[[\s\S]*\]/);
-        const suggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : [content];
-        return jsonResponse({ suggestions });
-      } catch {
-        return jsonResponse({ suggestions: [content] });
-      }
+      const suggestions = content
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((l) => l.replace(/^[-*\d.)\s"]+/, "").replace(/["]+$/, "").trim())
+        .filter((l) => l.length > 1)
+        .slice(0, 3);
+      return jsonResponse({ suggestions: suggestions.length ? suggestions : [content.trim()] });
     }
+
 
     return jsonResponse({ result: content });
   } catch (e) {
