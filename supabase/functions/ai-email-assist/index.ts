@@ -48,10 +48,13 @@ serve(async (req) => {
         break;
 
       case "smart_reply":
+        // NOTE: asking Engagera for "JSON" reliably makes it fail with a 500,
+        // so ask for plain numbered lines and parse them ourselves.
         systemPrompt =
-          "You are an email smart reply assistant. Given the email content, generate exactly 3 short reply suggestions (1-2 sentences each). Return them as a JSON array of strings. Only output the JSON array, no markdown.";
+          "You are an email smart reply assistant. Read the email and write exactly 3 possible short replies (1-2 sentences each). Output only the 3 replies, one per line, each prefixed with its number and a period. No headings, no extra text.";
         userPrompt = `Email from: ${context || "someone"}\nSubject: ${subject || "(no subject)"}\n\nEmail body:\n${reply_to_body || body}`;
         break;
+
 
       case "improve_tone":
         systemPrompt =
