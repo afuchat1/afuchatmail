@@ -11,16 +11,22 @@ export function useAIEmailAssist() {
 
   const callAI = useCallback(
     async (payload: Record<string, string>) => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
+      // Only background autocomplete supersedes itself; explicit actions
+      // (grammar, tone, smart replies) must never be cancelled by typing.
+      const isAutocomplete = payload.action === "autocomplete";
+      let controller: AbortController | null = null;
+      if (isAutocomplete) {
+        abortRef.current?.abort();
+        controller = new AbortController();
+        abortRef.current = controller;
+      }
 
       setLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("ai-email-assist", {
           body: payload,
         });
-        if (controller.signal.aborted) return null;
+        if (controller?.signal.aborted) return null;
         if (error) throw error;
         if (data?.error) {
           toast({
@@ -32,7 +38,7 @@ export function useAIEmailAssist() {
         }
         return data;
       } catch (err: any) {
-        if (controller.signal.aborted) return null;
+        if (controller?.signal.aborted) return null;
         toast({
           title: "AI error",
           description: err.message || "Something went wrong",
@@ -40,11 +46,12 @@ export function useAIEmailAssist() {
         });
         return null;
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        setLoading(false);
       }
     },
     [toast]
   );
+
 
   const getAutocomplete = useCallback(
     async (body: string, subject: string) => {

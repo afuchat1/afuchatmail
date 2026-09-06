@@ -42,16 +42,20 @@ serve(async (req) => {
     switch (action) {
       case "autocomplete":
         systemPrompt =
-          "You are an email autocomplete assistant. Given the email draft so far, suggest a natural continuation of 1-2 sentences. Only output the suggested continuation text, nothing else. Be concise and professional.";
+          "You are an email autocomplete assistant. Suggest a natural continuation of the draft: one short sentence, at most 18 words. Output only the continuation text, nothing else.";
         userPrompt = `Subject: ${subject || "(no subject)"}\n\nDraft so far:\n${body}`;
+
         model = "engagera-lite";
         break;
 
       case "smart_reply":
+        // NOTE: asking Engagera for "JSON" reliably makes it fail with a 500,
+        // so ask for plain numbered lines and parse them ourselves.
         systemPrompt =
-          "You are an email smart reply assistant. Given the email content, generate exactly 3 short reply suggestions (1-2 sentences each). Return them as a JSON array of strings. Only output the JSON array, no markdown.";
+          "You are an email smart reply assistant. Read the email and write exactly 3 possible short replies (1-2 sentences each). Output only the 3 replies, one per line, each prefixed with its number and a period. No headings, no extra text.";
         userPrompt = `Email from: ${context || "someone"}\nSubject: ${subject || "(no subject)"}\n\nEmail body:\n${reply_to_body || body}`;
         break;
+
 
       case "improve_tone":
         systemPrompt =
@@ -81,21 +85,33 @@ serve(async (req) => {
         throw new Error(`Unknown action: ${action}`);
     }
 
-    const response = await fetch(ENGAGERA_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${ENGAGERA_API_KEY}`,
-        "x-guest-session-id": ENGAGERA_GUEST_SESSION_ID,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "user", content: compactPrompt(systemPrompt, userPrompt) },
-        ],
-        stream: false,
-      }),
-    });
+    const ask = (m: string) =>
+      fetch(ENGAGERA_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ENGAGERA_API_KEY}`,
+          "x-guest-session-id": ENGAGERA_GUEST_SESSION_ID,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: m,
+          messages: [
+            { role: "user", content: compactPrompt(systemPrompt, userPrompt) },
+          ],
+          stream: false,
+        }),
+      });
+
+    // Transient upstream failures are common; retry once, then once more on a
+    // lighter model before giving up.
+    let response = await ask(model);
+    if (response.status >= 500) {
+      await new Promise((r) => setTimeout(r, 600));
+      response = await ask(model);
+      if (response.status >= 500 && model !== "engagera-lite") {
+        response = await ask("engagera-lite");
+      }
+    }
 
     if (!response.ok) {
       const errText = await response.text();
@@ -126,14 +142,16 @@ serve(async (req) => {
       "";
 
     if (action === "smart_reply") {
-      try {
-        const jsonMatch = content.match(/\[[\s\S]*\]/);
-        const suggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : [content];
-        return jsonResponse({ suggestions });
-      } catch {
-        return jsonResponse({ suggestions: [content] });
-      }
+      const suggestions = content
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((l) => l.replace(/^[-*\d.)\s"]+/, "").replace(/["]+$/, "").trim())
+        .filter((l) => l.length > 1)
+        .slice(0, 3);
+      return jsonResponse({ suggestions: suggestions.length ? suggestions : [content.trim()] });
     }
+
 
     return jsonResponse({ result: content });
   } catch (e) {
