@@ -86,9 +86,10 @@ Deno.serve(async (req) => {
   if (isAdmin !== true) return json({ error: "Admin role required" }, 403);
 
 
-  let body: { dry_run?: boolean; only?: string[] } = {};
+  let body: { dry_run?: boolean; only?: string[]; verify?: boolean } = {};
   try { body = await req.json(); } catch { /* no body */ }
   const dryRun = body.dry_run === true;
+  const verify = body.verify === true;
   const only = Array.isArray(body.only) && body.only.length ? new Set(body.only) : null;
 
   const sql = postgres(dbUrl, { prepare: false, max: 2, ssl: "require" });
@@ -96,6 +97,42 @@ Deno.serve(async (req) => {
   // triggers) persist across the whole migration and transactions can share
   // the same connection safely.
   const targetSql = postgres(targetDbUrl, { prepare: false, max: 1, ssl: "require" });
+
+  // Verification mode: compare row counts on both sides and list the source
+  // auth users that are still missing on the target.
+  if (verify) {
+    try {
+      const rows: Record<string, unknown>[] = [];
+      for (const step of PLAN) {
+        const [schema, name] = step.table.includes(".")
+          ? step.table.split(".")
+          : ["public", step.table];
+        let source = -1;
+        let target = -1;
+        try {
+          const s = await sql.unsafe(`select count(*)::bigint as c from "${schema}"."${name}"`);
+          source = Number(s[0].c);
+        } catch { /* missing on source */ }
+        try {
+          const t = await targetSql.unsafe(`select count(*)::bigint as c from "${schema}"."${name}"`);
+          target = Number(t[0].c);
+        } catch { /* missing on target */ }
+        rows.push({ table: step.table, source, target, missing: source - target });
+      }
+      const srcUsers = await sql`select id::text, email from auth.users`;
+      const tgtIds = new Set(
+        (await targetSql`select id::text from auth.users`).map((r: { id: string }) => r.id),
+      );
+      const missingUsers = srcUsers
+        .filter((u: { id: string }) => !tgtIds.has(u.id))
+        .map((u: { id: string; email: string }) => ({ id: u.id, email: u.email }));
+      return json({ ok: true, verify: true, target: targetUrl, counts: rows, missingUsers });
+    } finally {
+      await sql.end({ timeout: 5 });
+      await targetSql.end({ timeout: 5 });
+    }
+  }
+
   const report: Record<string, unknown>[] = [];
   const columnCache = new Map<string, string>();
 
