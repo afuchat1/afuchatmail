@@ -90,6 +90,7 @@ const buildSafeAttachmentPath = (userId: string, file: File) => {
 export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, initialBody }: EmailComposerProps) => {
   const [fromAddress, setFromAddress] = useState(propFromAddress || "");
   const [userEmails, setUserEmails] = useState<Array<{ id: string; full_email: string }>>([]);
+  const [senderSearch, setSenderSearch] = useState("");
   const [to, setTo] = useState(replyTo?.to || "");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
@@ -533,16 +534,39 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
         <div className="p-5 space-y-4 flex-1 overflow-y-auto scroll-smooth-ios">
           <div className="space-y-1.5">
             <Label htmlFor="from" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From</Label>
-            <Select value={fromAddress} onValueChange={setFromAddress}>
-              <SelectTrigger id="from" className="w-full rounded-xl">
-                <SelectValue placeholder="Select email address" />
-              </SelectTrigger>
-              <SelectContent>
-                {userEmails.map((email) => (
-                  <SelectItem key={email.id} value={email.full_email}>{email.full_email}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <Input
+                id="from"
+                value={senderSearch || fromAddress}
+                onChange={(e) => setSenderSearch(e.target.value)}
+                onFocus={() => setSenderSearch("")}
+                placeholder="Search sender or alias..."
+                className="w-full rounded-xl pr-3"
+              />
+            </div>
+            {senderSearch && (
+              <div className="max-h-48 overflow-y-auto rounded-xl border border-border bg-popover">
+                {userEmails
+                  .filter((email) => email.full_email.toLowerCase().includes(senderSearch.toLowerCase()))
+                  .map((email) => (
+                    <button
+                      key={email.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setFromAddress(email.full_email);
+                        setSenderSearch("");
+                      }}
+                      className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent"
+                    >
+                      {email.full_email}
+                    </button>
+                  ))}
+                {userEmails.filter((email) => email.full_email.toLowerCase().includes(senderSearch.toLowerCase())).length === 0 && (
+                  <div className="px-3 py-2.5 text-sm text-muted-foreground">No sender addresses found.</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">
