@@ -48,14 +48,10 @@ export const EmailAddressSwitcher = ({
         .order("created_at", { ascending: true });
       if (error) throw error;
       setEmailAddresses(data || []);
+      // All Inboxes is the default view. An explicitly selected address
+      // remains selectable and is never overwritten here.
       if (data && data.length > 0 && !selectedEmailAddressId) {
-        const savedEmailAddressId = localStorage.getItem('selectedEmailAddressId');
-        if (savedEmailAddressId && data.find(e => e.id === savedEmailAddressId)) {
-          onEmailAddressChange(savedEmailAddressId);
-        } else {
-          const primaryEmail = data.find((e) => e.is_primary) || data[0];
-          onEmailAddressChange(primaryEmail.id);
-        }
+        onEmailAddressChange("all");
       }
     } catch (error) {
       console.error("Error fetching email addresses:", error);
@@ -97,7 +93,7 @@ export const EmailAddressSwitcher = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[260px] max-h-[60vh] overflow-y-auto rounded-xl shadow-lg">
-          {showAllInboxes && emailAddresses.length > 1 && (
+          {showAllInboxes && (
             <DropdownMenuItem onClick={() => onEmailAddressChange("all")} className="cursor-pointer rounded-lg py-2.5">
               <div className="flex items-center justify-between w-full gap-2">
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
