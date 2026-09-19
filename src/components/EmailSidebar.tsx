@@ -155,7 +155,30 @@ export const EmailSidebar = ({
         .eq("is_read", false);
 
       if (selectedEmailAddressId && selectedEmailAddressId !== "all") {
-        query = query.eq("email_address_id", selectedEmailAddressId);
+        const { data: selectedAddress } = await supabase
+          .from("email_addresses")
+          .select("id, is_alias, is_primary")
+          .eq("id", selectedEmailAddressId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        let mailboxAddressIds = [selectedEmailAddressId];
+
+        if (selectedAddress?.is_primary && !selectedAddress.is_alias) {
+          const { data: aliases } = await supabase
+            .from("email_addresses")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("is_alias", true)
+            .eq("alias_for_id", selectedEmailAddressId);
+
+          mailboxAddressIds = [
+            selectedEmailAddressId,
+            ...(aliases || []).map((alias) => alias.id),
+          ];
+        }
+
+        query = query.in("email_address_id", mailboxAddressIds);
       }
 
       const { data } = await query;
