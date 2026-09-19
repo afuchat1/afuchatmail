@@ -15,6 +15,8 @@ interface EmailAddress {
   local_part: string;
   full_email: string;
   is_primary: boolean;
+  is_alias: boolean;
+  alias_for_id?: string | null;
 }
 
 interface EmailAddressSwitcherProps {
@@ -41,9 +43,8 @@ export const EmailAddressSwitcher = ({
       if (!user) return;
       const { data, error } = await supabase
         .from("email_addresses")
-        .select("id, local_part, full_email, is_primary")
+        .select("id, local_part, full_email, is_primary, is_alias, alias_for_id")
         .eq("user_id", user.id)
-        .eq("is_alias", false)
         .order("is_primary", { ascending: false })
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -121,6 +122,7 @@ export const EmailAddressSwitcher = ({
                   <div className="flex flex-col min-w-0">
                     <span className="text-sm font-medium truncate">{email.full_email}</span>
                     {email.is_primary && <span className="text-xs text-muted-foreground">Primary</span>}
+                    {email.is_alias && <span className="text-xs text-muted-foreground">Alias</span>}
                   </div>
                 </div>
                 {selectedEmailAddressId === email.id && (
