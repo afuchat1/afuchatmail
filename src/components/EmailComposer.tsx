@@ -91,6 +91,7 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
   const [fromAddress, setFromAddress] = useState("");
   const [userEmails, setUserEmails] = useState<Array<{ id: string; full_email: string; is_primary: boolean; is_alias: boolean; alias_for_id?: string | null }>>([]);
   const [senderSearch, setSenderSearch] = useState("");
+  const [showSenderDropdown, setShowSenderDropdown] = useState(true);
   const [to, setTo] = useState(replyTo?.to || "");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
@@ -531,32 +532,47 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
             <div className="relative">
               <Input
                 id="from"
-                value={senderSearch}
-                onChange={(e) => setSenderSearch(e.target.value)}
+                value={showSenderDropdown ? senderSearch : fromAddress}
+                onChange={(e) => {
+                  setSenderSearch(e.target.value);
+                  setShowSenderDropdown(true);
+                  setFromAddress("");
+                }}
+                onFocus={() => {
+                  if (!fromAddress) setShowSenderDropdown(true);
+                }}
                 placeholder="Search sender or alias..."
                 className="w-full rounded-xl pr-3"
               />
-              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-border bg-popover shadow-md">
-                {userEmails
-                  .filter((email) => email.full_email.toLowerCase().includes(senderSearch.toLowerCase()))
-                  .map((email) => (
-                    <button
-                      key={email.id}
-                      type="button"
-                      onClick={() => {
-                        setFromAddress(email.full_email);
-                        setSenderSearch(email.full_email);
-                      }}
-                      className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent"
-                    >
-                      {email.full_email}
-                    </button>
-                  ))}
-                {userEmails.filter((email) => email.full_email.toLowerCase().includes(senderSearch.toLowerCase())).length === 0 && (
-                  <div className="px-3 py-2.5 text-sm text-muted-foreground">No sender addresses found.</div>
-                )}
-              </div>
+              {showSenderDropdown && !fromAddress && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-border bg-popover shadow-md">
+                  {userEmails
+                    .filter((email) => email.full_email.toLowerCase().includes(senderSearch.toLowerCase()))
+                    .map((email) => (
+                      <button
+                        key={email.id}
+                        type="button"
+                        onClick={() => {
+                          setFromAddress(email.full_email);
+                          setSenderSearch("");
+                          setShowSenderDropdown(false);
+                        }}
+                        className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent"
+                      >
+                        {email.full_email}
+                      </button>
+                    ))}
+                  {userEmails.filter((email) => email.full_email.toLowerCase().includes(senderSearch.toLowerCase())).length === 0 && (
+                    <div className="px-3 py-2.5 text-sm text-muted-foreground">No sender addresses found.</div>
+                  )}
+                </div>
+              )}
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="to" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To</Label>
+            <RecipientAutocomplete id="to" placeholder="recipient@example.com" value={to} onChange={setTo} />
           </div>
 
           {showCc && (
