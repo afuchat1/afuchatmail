@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
 
 interface Contact {
   email: string;
@@ -157,17 +158,18 @@ export const RecipientAutocomplete = ({ id, value, onChange, placeholder }: Reci
 
   return (
     <div ref={containerRef} className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
       <input
         ref={inputRef}
         id={id}
         type="text"
         value={value}
-        placeholder={placeholder}
+        placeholder={placeholder || "Search recipient address..."}
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
         autoComplete="off"
-        className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex h-10 w-full rounded-xl border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       />
       {open && suggestions.length > 0 && (
         <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-lg overflow-hidden max-h-72 overflow-y-auto">
