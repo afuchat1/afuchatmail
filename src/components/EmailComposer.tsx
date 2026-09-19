@@ -88,7 +88,7 @@ const buildSafeAttachmentPath = (userId: string, file: File) => {
 };
 
 export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, initialBody }: EmailComposerProps) => {
-  const [fromAddress, setFromAddress] = useState(propFromAddress || "");
+  const [fromAddress, setFromAddress] = useState("");
   const [userEmails, setUserEmails] = useState<Array<{ id: string; full_email: string }>>([]);
   const [senderSearch, setSenderSearch] = useState("");
   const [to, setTo] = useState(replyTo?.to || "");
@@ -537,25 +537,21 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
             <div className="relative">
               <Input
                 id="from"
-                value={senderSearch || fromAddress}
+                value={senderSearch}
                 onChange={(e) => setSenderSearch(e.target.value)}
-                onFocus={() => setSenderSearch("")}
                 placeholder="Search sender or alias..."
                 className="w-full rounded-xl pr-3"
               />
-            </div>
-            {senderSearch && (
-              <div className="max-h-48 overflow-y-auto rounded-xl border border-border bg-popover">
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-border bg-popover shadow-md">
                 {userEmails
                   .filter((email) => email.full_email.toLowerCase().includes(senderSearch.toLowerCase()))
                   .map((email) => (
                     <button
                       key={email.id}
                       type="button"
-                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
                         setFromAddress(email.full_email);
-                        setSenderSearch("");
+                        setSenderSearch(email.full_email);
                       }}
                       className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent"
                     >
@@ -566,20 +562,10 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
                   <div className="px-3 py-2.5 text-sm text-muted-foreground">No sender addresses found.</div>
                 )}
               </div>
-            )}
+            </div>
           </div>
 
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="to" className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">To</Label>
-              {!showCc && <button onClick={() => setShowCc(true)} className="text-xs text-primary font-semibold">Cc</button>}
-              {!showBcc && <button onClick={() => setShowBcc(true)} className="text-xs text-primary font-semibold">Bcc</button>}
-            </div>
-            <RecipientAutocomplete id="to" placeholder="recipient@example.com" value={to} onChange={setTo} />
-          </div>
-
-          {showCc && (
-            <div className="space-y-1.5">
               <Label htmlFor="cc" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cc</Label>
               <RecipientAutocomplete id="cc" placeholder="cc@example.com" value={cc} onChange={setCc} />
             </div>
