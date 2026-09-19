@@ -10,7 +10,7 @@
  */
 export const SUPABASE_PROJECT_ID =
   (import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined) ??
-  "vfcukxlzqfeehhkiogpf";
+  "lqowocmjmhbkoxlwyxku";
 export const SUPABASE_URL =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ??
   `https://${SUPABASE_PROJECT_ID}.supabase.co`;
