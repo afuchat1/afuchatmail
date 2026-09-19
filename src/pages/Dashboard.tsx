@@ -81,9 +81,9 @@ const Dashboard = () => {
     status: "idle",
     message: "",
   });
-  const [selectedEmailAddressId, setSelectedEmailAddressId] = useState<string | null>(() => {
-    return localStorage.getItem("selectedEmailAddressId");
-  });
+  // All Inboxes is always the default view. A user can explicitly switch to
+  // one address for a mailbox-only view during the current session.
+  const [selectedEmailAddressId, setSelectedEmailAddressId] = useState<string | null>(null);
 
   // Resizable list panel
   const [listWidth, setListWidth] = useState(DEFAULT_LIST_WIDTH);
@@ -123,11 +123,6 @@ const Dashboard = () => {
     if (!error) setActiveSubscription(data);
   }, []);
 
-  useEffect(() => {
-    if (selectedEmailAddressId) {
-      localStorage.setItem("selectedEmailAddressId", selectedEmailAddressId);
-    }
-  }, [selectedEmailAddressId]);
 
   useEffect(() => {
     let mounted = true;
@@ -327,12 +322,9 @@ const Dashboard = () => {
       }
     }
 
-    const savedId = localStorage.getItem("selectedEmailAddressId");
-    const validSavedId = savedId && addresses.some((address) => address.id === savedId);
-    const primary = addresses.find((address) => address.is_primary) || addresses[0];
     setEmailAddresses(addresses);
     if (addresses.length > 0 && (!selectedEmailAddressId || !addresses.some((a) => a.id === selectedEmailAddressId))) {
-      setSelectedEmailAddressId(validSavedId ? savedId : primary.id);
+      setSelectedEmailAddressId("all");
     }
 
     const { data: folders, error: folderError } = await supabase
@@ -770,7 +762,11 @@ const Dashboard = () => {
       {/* Composer Modal */}
       {showComposer && selectedEmailAddressId && (
         <EmailComposer
-          fromAddress={emailAddresses.find(e => e.id === selectedEmailAddressId)?.full_email}
+          fromAddress={
+            selectedEmailAddressId === "all"
+              ? (emailAddresses.find(e => e.is_primary) || emailAddresses[0])?.full_email
+              : emailAddresses.find(e => e.id === selectedEmailAddressId)?.full_email
+          }
           onClose={handleComposerClose}
           replyTo={selectedEmail ? {
             to: selectedEmail.from_address,
