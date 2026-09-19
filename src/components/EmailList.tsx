@@ -132,8 +132,21 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
           const { data: { user } } = await supabase.auth.getUser();
           if (!user || newEmail.user_id !== user.id) return;
           
-          // Only add email if it matches current email address and folder
-          if (newEmail.email_address_id !== emailAddressId) return;
+          // A primary mailbox also receives mail addressed to any alias
+          // attached to that primary address.
+          let addressMatches = newEmail.email_address_id === emailAddressId;
+          if (emailAddressId !== "all" && !addressMatches) {
+            const { data: aliasAddress } = await supabase
+              .from("email_addresses")
+              .select("id")
+              .eq("id", newEmail.email_address_id)
+              .eq("user_id", user.id)
+              .eq("is_alias", true)
+              .eq("alias_for_id", emailAddressId)
+              .maybeSingle();
+            addressMatches = !!aliasAddress;
+          }
+          if (!addressMatches && emailAddressId !== "all") return;
           
           // Only add email if it matches current folder or no folder is selected
           if (!folderId || newEmail.folder_id === folderId) {
@@ -191,9 +204,39 @@ export const EmailList = ({ folderId, emailAddressId, onEmailSelect, refreshTrig
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      // Filter by email address unless "all" is selected
+      // A mailbox includes its aliases. Aliases are owned by the primary
+      // mailbox through alias_for_id, so selecting the primary address always
+      // shows mail delivered to the primary address and every alias attached
+      // to it. A newly-created secondary mailbox never takes ownership of
+      // those aliases.
       if (emailAddressId !== "all") {
-        query = query.eq("email_address_id", emailAddressId);
+        const { data: selectedAddress, error: addressError } = await supabase
+          .from("email_addresses")
+          .select("id, is_alias, is_primary")
+          .eq("id", emailAddressId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (addressError) throw addressError;
+
+        let mailboxAddressIds = [emailAddressId];
+
+        if (selectedAddress?.is_primary && !selectedAddress.is_alias) {
+          const { data: aliases, error: aliasesError } = await supabase
+            .from("email_addresses")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("is_alias", true)
+            .eq("alias_for_id", emailAddressId);
+
+          if (aliasesError) throw aliasesError;
+          mailboxAddressIds = [
+            emailAddressId,
+            ...(aliases || []).map((alias) => alias.id),
+          ];
+        }
+
+        query = query.in("email_address_id", mailboxAddressIds);
       }
 
       if (folderId) {
