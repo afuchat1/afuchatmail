@@ -570,22 +570,13 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="to" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To</Label>
-            <RecipientAutocomplete id="to" placeholder="recipient@example.com" value={to} onChange={setTo} />
-          </div>
+          <RecipientAutocomplete id="to" placeholder="recipient@example.com" value={to} onChange={setTo} />
 
           {showCc && (
-            <div className="space-y-1.5">
-              <Label htmlFor="cc" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cc</Label>
-              <RecipientAutocomplete id="cc" placeholder="cc@example.com" value={cc} onChange={setCc} />
-            </div>
+            <RecipientAutocomplete id="cc" placeholder="cc@example.com" value={cc} onChange={setCc} />
           )}
           {showBcc && (
-            <div className="space-y-1.5">
-              <Label htmlFor="bcc" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bcc</Label>
-              <RecipientAutocomplete id="bcc" placeholder="bcc@example.com" value={bcc} onChange={setBcc} />
-            </div>
+            <RecipientAutocomplete id="bcc" placeholder="bcc@example.com" value={bcc} onChange={setBcc} />
           )}
 
           <div className="space-y-1.5">
