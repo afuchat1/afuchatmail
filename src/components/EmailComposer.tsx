@@ -89,7 +89,7 @@ const buildSafeAttachmentPath = (userId: string, file: File) => {
 
 export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, initialBody }: EmailComposerProps) => {
   const [fromAddress, setFromAddress] = useState("");
-  const [userEmails, setUserEmails] = useState<Array<{ id: string; full_email: string }>>([]);
+  const [userEmails, setUserEmails] = useState<Array<{ id: string; full_email: string; is_primary: boolean; is_alias: boolean; alias_for_id?: string | null }>>([]);
   const [senderSearch, setSenderSearch] = useState("");
   const [to, setTo] = useState(replyTo?.to || "");
   const [cc, setCc] = useState("");
@@ -281,18 +281,12 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
       if (!user) return;
       const { data, error } = await supabase
         .from("email_addresses")
-        .select("id, full_email, is_primary")
+        .select("id, full_email, is_primary, is_alias, alias_for_id")
         .eq("user_id", user.id)
-        .eq("is_alias", false)
         .order("is_primary", { ascending: false });
       if (error) return;
       if (data && data.length > 0) {
         setUserEmails(data);
-        if (propFromAddress) { setFromAddress(propFromAddress); }
-        else {
-          const primaryEmail = data.find(e => e.is_primary);
-          setFromAddress(primaryEmail?.full_email || data[0].full_email);
-        }
       }
     } catch (error) { /* silent */ }
   };
@@ -565,7 +559,8 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          {showCc && (
+            <div className="space-y-1.5">
               <Label htmlFor="cc" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cc</Label>
               <RecipientAutocomplete id="cc" placeholder="cc@example.com" value={cc} onChange={setCc} />
             </div>
