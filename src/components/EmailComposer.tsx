@@ -408,7 +408,7 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
       value
         .split(/[,;]+/)
         .map(extractEmail)
-        .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+        .filter((email) => email.length > 0 && /^[^\s@]+@[^\s@]+(?:\.[^\s@]+)*$/.test(email));
 
     const toAddresses = splitAddresses(to);
     const ccAddresses = splitAddresses(cc);
