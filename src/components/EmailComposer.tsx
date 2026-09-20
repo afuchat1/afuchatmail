@@ -397,21 +397,32 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
 
   const handleSend = async () => {
     const plain = htmlToPlainText(body);
-    if (!to || !subject || !plain.trim()) {
-      toast({ title: "Missing fields", description: "Please fill in recipient, subject, and message", variant: "destructive" });
+    const extractEmail = (s: string) => {
+      const m = s.match(/<([^>]+)>/);
+      return (m ? m[1] : s).trim().toLowerCase();
+    };
+    // Accept both autocomplete selections and manually typed addresses.
+    // Ignore empty tokens/trailing commas so the send function always receives
+    // actual recipient addresses.
+    const splitAddresses = (value: string) =>
+      value
+        .split(/[,;]+/)
+        .map(extractEmail)
+        .filter((email) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email));
+
+    const toAddresses = splitAddresses(to);
+    const ccAddresses = splitAddresses(cc);
+    const bccAddresses = splitAddresses(bcc);
+
+    if (toAddresses.length === 0 || !subject.trim() || !plain.trim()) {
+      toast({ title: "Missing fields", description: "Please enter at least one valid receiver, a subject, and a message", variant: "destructive" });
       return;
     }
+
     setSending(true);
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) throw new Error("You must be logged in to send emails.");
-      const extractEmail = (s: string) => {
-        const m = s.match(/<([^>]+)>/);
-        return (m ? m[1] : s).trim();
-      };
-      const toAddresses = to.split(",").map(extractEmail).filter(Boolean);
-      const ccAddresses = cc ? cc.split(",").map(extractEmail).filter(Boolean) : [];
-      const bccAddresses = bcc ? bcc.split(",").map(extractEmail).filter(Boolean) : [];
       const sigHtml = signature ? `<br><div>${escapeHtml(signature).replace(/\n/g, "<br>")}</div>` : "";
       const fullBodyHtml = `${body}${sigHtml}`;
       const fullBody = signature ? `${plain}\n\n${signature}` : plain;
