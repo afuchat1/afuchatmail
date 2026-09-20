@@ -404,11 +404,13 @@ export const EmailComposer = ({ fromAddress: propFromAddress, onClose, replyTo, 
     // Accept both autocomplete selections and manually typed addresses.
     // Ignore empty tokens/trailing commas so the send function always receives
     // actual recipient addresses.
-    const splitAddresses = (value: string) =>
-      value
-        .split(/[,;]+/)
-        .map(extractEmail)
-        .filter((email) => email.length > 0 && /^[^\s@]+@[^\s@]+(?:\.[^\s@]+)*$/.test(email));
+    const splitAddresses = (value: string) => {
+      // Extract actual email addresses from the field instead of relying on
+      // comma-separated tokens. This handles autocomplete values such as
+      // "Name <name@example.com>" as well as manually typed addresses.
+      const matches = value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
+      return Array.from(new Set(matches.map((email) => email.trim().toLowerCase())));
+    };
 
     const toAddresses = splitAddresses(to);
     const ccAddresses = splitAddresses(cc);
